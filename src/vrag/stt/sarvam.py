@@ -64,7 +64,15 @@ async def stream_transcribe(
     url = _build_url(language_code, sample_rate)
     headers = {"API-SUBSCRIPTION-KEY": settings.sarvam_api_key}
 
-    async with ws_connect(url, additional_headers=headers) as sarvam_ws:
+    logger.info("Connecting to Sarvam realtime STT...")
+    try:
+        sarvam_ws = await asyncio.wait_for(ws_connect(url, additional_headers=headers), timeout=10)
+    except TimeoutError as exc:
+        logger.error("Timed out connecting to Sarvam STT after 10s")
+        raise RuntimeError("Timed out connecting to Sarvam STT (10s)") from exc
+    logger.info("Connected to Sarvam realtime STT")
+
+    async with sarvam_ws:
 
         async def _sender() -> None:
             try:
