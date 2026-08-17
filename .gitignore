@@ -32,6 +32,8 @@ data/
 eval/audio/*.wav
 eval/results/
 traces.jsonl
+scripts/*.out.log
+scripts/*.err.log
 
 # --- os / editor cruft ---
 .DS_Store
