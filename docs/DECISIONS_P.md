@@ -54,6 +54,19 @@ connection, instead of blocking forever on `sarvam_ws.recv()`.
 STT connection. If Sarvam's realtime API behavior changes (confirmed by re-testing), revisit
 whether the grace period is still needed.
 
+## P-006 — Configure Python logging at app startup
+
+**Date:** 2026-08-17 · **Status:** Accepted
+**Context:** While diagnosing a live-only `/voice` hang, discovered that `logger.info()`/`.error()`
+calls throughout the app were silently dropped — `logging.basicConfig()` was never called, so the
+root logger defaulted to `WARNING`. Uvicorn configures its own loggers but not arbitrary module
+loggers like `vrag.stt.sarvam`.
+**Decision:** Call `logging.basicConfig(level=logging.INFO, ...)` once at the top of
+`src/vrag/api/main.py`.
+**Consequences:** All app logging is now actually visible in `traces`/Render's log stream. Without
+this, the connect-timeout diagnostic added in the same debugging session would have been silently
+useless on the hosted deploy where there's no debugger to attach.
+
 ## P-004 — Moved `voice-rag-ui-preview.html` into `frontend/reference/`
 
 **Date:** 2026-08-17 · **Status:** Accepted
@@ -62,3 +75,34 @@ whether the grace period is still needed.
 **Decision:** `git mv voice-rag-ui-preview.html frontend/reference/voice-rag-ui-preview.html` to
 match what the docs already assume, rather than updating every doc reference.
 **Consequences:** None outside this track's files.
+
+## P-007 — Verified the real STT golden path against the live deploy using Sarvam TTS
+
+**Date:** 2026-08-17 · **Status:** Accepted
+**Context:** Needed to confirm real speech → real Sarvam STT → transcript → answer actually works
+on the live Render URL (the actual Day 1 exit bar), not just locally, without a physical
+microphone available in this environment.
+**Decision:** Used Sarvam's own TTS API (`POST /text-to-speech`, `speech_sample_rate: 16000`) to
+generate genuine Hindi speech audio for "भारत में सबसे ऊँचा पर्वत कौन सा है", streamed the raw
+16kHz PCM16 WAV frames to the live `/voice` WebSocket exactly as a browser would, and confirmed a
+correct `transcript_final` ("भारत में सबसे ऊँचा पर्वत कौन सा है?") followed by a correct
+`answer_final` — full round trip in ~2.4s.
+**Consequences:** This is real audio processed by real Sarvam STT end to end on the actual public
+deployment — satisfies the "never mock the STT path" hard rule and the Day 1 exit bar without
+needing a physical mic in this session. Worth reusing this technique for Phase 6's TTS'd test
+query set (`AGENT_BUILD_SPEC.md` §7.4) rather than reinventing it. Also surfaced P-R12 (see
+`docs/RISKS.md`) — a Render connection-teardown quirk that doesn't block this flow.
+
+## P-008 — Frontend sends `stop` proactively on final transcript
+
+**Date:** 2026-08-17 · **Status:** Accepted
+**Context:** Found while reviewing the golden-path test (P-007) that `frontend/index.html` only
+sent `{"event": "stop"}` to the server when the user clicked the Stop button mid-listening — not
+when a `transcript_final` arrived naturally. Since `stopMicCapture()` tears down the local mic
+without telling the server, the browser's audio generator on the server side would sit waiting for
+audio that will never come, with no signal to finalize the Sarvam session.
+**Decision:** `frontend/index.html` now sends `{"event": "stop"}` immediately alongside
+`stopMicCapture()` when a final transcript is received.
+**Consequences:** Every real interaction now closes its STT session promptly instead of relying on
+the client eventually disconnecting. Interacts with P-R12 (Render close-frame lag) but doesn't
+depend on it being fixed.

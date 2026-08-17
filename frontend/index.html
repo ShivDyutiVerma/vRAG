@@ -387,6 +387,11 @@
         if(msg.type === 'transcript_final'){
           stopMicCapture();
           goWorking();
+          // Audio capture has stopped locally, so the server will never see more chunks —
+          // tell it explicitly rather than leaving the WS open with nothing left to send.
+          if(ws && ws.readyState === WebSocket.OPEN){
+            ws.send(JSON.stringify({event: 'stop'}));
+          }
         }
       } else if(msg.type === 'answer_final'){
         const ar = msg.answer_response;
