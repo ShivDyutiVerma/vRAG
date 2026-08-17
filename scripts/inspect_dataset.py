@@ -28,8 +28,13 @@ from __future__ import annotations
 import argparse
 import itertools
 import statistics
+import sys
 
 import _dataset
+
+# Windows consoles default stdout to cp1252, which can't encode Devanagari — this script prints
+# raw Hindi text for eyeball spot-checks, so force UTF-8 rather than crash mid-run.
+sys.stdout.reconfigure(encoding="utf-8")
 
 
 def inspect(n_samples: int, n_eyeball: int) -> None:

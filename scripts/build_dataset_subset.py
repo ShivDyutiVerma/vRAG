@@ -55,7 +55,11 @@ def build(pool_size: int, heldout_size: int) -> None:
         print(f"WARNING: only {len(pool)} rows available, requested {pool_size}.")
 
     rng = random.Random(SEED)
-    heldout_indices = set(rng.sample(range(len(pool)), min(heldout_size, len(pool))))
+    # Sample only from rows that actually have a ground-truth relevant passage — otherwise the
+    # heldout count silently falls short (many MSMARCO-XI rows have no is_selected passage at all).
+    eligible = [i for i, row in enumerate(pool) if _relevant_passages(row)]
+    print(f"{len(eligible)}/{len(pool)} pool rows have at least one relevant passage")
+    heldout_indices = set(rng.sample(eligible, min(heldout_size, len(eligible))))
 
     WORKING_SUBSET_PATH.parent.mkdir(parents=True, exist_ok=True)
     with WORKING_SUBSET_PATH.open("w", encoding="utf-8") as f:
@@ -86,14 +90,14 @@ def build(pool_size: int, heldout_size: int) -> None:
     print(f"Wrote {len(heldout)} held-out query->passage pairs -> {HELDOUT_PATH}")
     if skipped_no_relevant:
         print(
-            f"({skipped_no_relevant} sampled rows had no is_selected passage and were skipped — "
+            f"({skipped_no_relevant} sampled rows had no is_selected passage and were skipped - "
             f"resample with a larger heldout_size if you need exactly {heldout_size})"
         )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pool-size", type=int, default=20_500)
+    parser.add_argument("--pool-size", type=int, default=10_000)
     parser.add_argument("--heldout-size", type=int, default=500)
     args = parser.parse_args()
     build(args.pool_size, args.heldout_size)
