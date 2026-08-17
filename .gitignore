@@ -1,0 +1,34 @@
+# --- secrets ---
+.env
+.env.local
+
+# --- per-clone identity, NEVER shared between collaborators ---
+# One letter, R or P. Read by Claude Code at the start of every session
+# (see CLAUDE.md "Step 0") so it always knows which half of the project
+# it's allowed to touch. Deliberately local-only: if this synced through
+# git, your collaborator's clone could tell their Claude Code session
+# "you are R" too, which is exactly the mix-up we're preventing.
+.workstream
+
+# --- python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- node / frontend ---
+node_modules/
+dist/
+.vite/
+
+# --- data & build artifacts (regenerate, don't commit) ---
+data/
+*.faiss
+*.index
+eval/audio/*.wav
+eval/results/
+traces.jsonl
+
+# --- os / editor cruft ---
+.DS_Store
+.vscode/

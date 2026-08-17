@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voice RAG — UI Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=JetBrains+Mono:wght@400;500;600;700&family=Baloo+2:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ DESIGN TOKENS ============
+     Derived from the HH Goa task-card reference. Copy these six lines
+     into the real app's CSS and every component below stays on-brand.
+  */
+  :root{
+    --ink:        #123626;   /* deep forest green — outer bg, borders, dark text */
+    --paper:      #FBF2DA;   /* warm cream — card surface */
+    --paper-dim:  #F3E6C4;   /* deeper cream — recessed surfaces, badges */
+    --moss:       #1F5C40;   /* mid green — mic circle, secondary fills */
+    --signal:     #EE1C77;   /* hot pink — primary accent, CTAs, success state */
+    --spark:      #F2C230;   /* warm yellow — caution / abstain state */
+    --display:    'Fraunces', Georgia, serif;
+    --mono:       'JetBrains Mono', 'IBM Plex Mono', monospace;
+    --radius-lg:  28px;
+    --radius-pill: 999px;
+  }
+  /* v2 additions, pulled from the full HH Goa site (not just the task card):
+     — pink and yellow are BOTH primary accents in their system, not accent+neutral.
+       Observed rule: pink = the core action / active-success moment,
+       yellow = secondary accents, in-progress states, "results"-style actions.
+     — a dashed "ticket" border shows up exactly once on their page (the APPLY
+       button) — reserved for one high-stakes moment, not a general button style.
+     — the DAY 01-04 hanging tags are a real structural device (order = information),
+       repurposed below for the four real pipeline stages, same logic. */
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(238,28,119,0.08), transparent 45%),
+      var(--ink);
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:48px 20px;
+    font-family: var(--mono);
+    color: var(--ink);
+  }
+
+  /* ---------- layout shell ---------- */
+  .stage{ width:100%; max-width:920px; }
+
+  .card{
+    background: var(--paper);
+    border: 3px solid var(--moss);
+    border-radius: var(--radius-lg);
+    padding: 40px 40px 36px;
+    display:grid;
+    grid-template-columns: 220px 1fr;
+    gap: 36px;
+    position:relative;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+  }
+  @media (max-width: 680px){
+    .card{ grid-template-columns: 1fr; padding: 28px 22px 24px; }
+    .mic-col{ align-items:center !important; }
+  }
+
+  /* ---------- left column: mic ---------- */
+  .mic-col{ display:flex; flex-direction:column; align-items:flex-start; gap:16px; }
+
+  .mic-wrap{ position:relative; width:180px; height:180px; }
+
+  .ring{
+    position:absolute; inset:-14px;
+    border-radius:50%;
+    border: 3px dashed var(--signal);
+    animation: spin 14s linear infinite;
+  }
+  [data-state="idle"] .ring{ animation-duration: 40s; opacity:.85; }
+  [data-state="listening"] .ring{ animation-duration: 3s; }
+  [data-state="working"] .ring{ animation-duration: 1.1s; border-style: solid; }
+  [data-state="answered"] .ring,
+  [data-state="refused"] .ring{ animation: none; border-style: solid; opacity:1; }
+  [data-state="refused"] .ring{ border-color: var(--spark); }
+
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){
+    .ring{ animation: none !important; }
+  }
+
+  .mic-circle{
+    position:absolute; inset:0;
+    border-radius:50%;
+    background: var(--moss);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    border:none;
+    transition: transform .15s ease;
+  }
+  .mic-circle:hover{ transform: scale(1.03); }
+  .mic-circle:focus-visible{ outline: 3px solid var(--signal); outline-offset: 4px; }
+  .mic-circle svg{ width:64px; height:64px; }
+
+  .mic-badge{
+    position:absolute; top:-6px; right:-2px;
+    width:38px; height:38px; border-radius:50%;
+    background: var(--spark);
+    display:flex; align-items:center; justify-content:center;
+    border: 2px solid var(--ink);
+  }
+  .mic-badge svg{ width:16px; height:16px; }
+
+  .ask-tag{
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    padding: 10px 14px;
+    transform: rotate(-4deg);
+    display:flex; align-items:center; gap:8px;
+    font-size:11px; font-weight:700; letter-spacing:.06em;
+    color: var(--signal);
+    box-shadow: 4px 5px 0 rgba(18,54,38,0.15);
+  }
+  .ask-tag svg{ width:18px; height:18px; }
+
+  .mic-hint{
+    font-size:11px; letter-spacing:.08em; color: var(--moss);
+    font-weight:600; text-transform:uppercase;
+  }
+
+  /* ---------- right column: content ---------- */
+  .content{ min-width:0; }
+
+  .eyebrow{
+    color: var(--signal); font-weight:700; font-size:12px;
+    letter-spacing:.14em; text-transform:uppercase; margin:0 0 10px;
+  }
+
+  /* the गोवा-style inline script accent — here it's not decorative,
+     it names the actual query language */
+  .script-accent{
+    font-family: 'Baloo 2', var(--mono);
+    font-weight: 700;
+    color: var(--signal);
+    display: inline-block;
+    transform: rotate(-3deg);
+    padding: 0 4px;
+    text-shadow: 2px 2px 0 rgba(18,54,38,0.18);
+  }
+
+  /* thin woven-pattern strip along the card's top inner edge */
+  .pattern-strip{
+    grid-column: 1 / -1;
+    height: 8px; margin: -40px -40px 28px;
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--moss) 0 6px,
+      var(--spark) 6px 12px,
+      var(--signal) 12px 18px,
+      var(--paper) 18px 24px
+    );
+    border-radius: 25px 25px 0 0;
+  }
+  @media (max-width: 680px){
+    .pattern-strip{ margin: -28px -22px 22px; }
+  }
+
+  h1{
+    font-family: var(--display);
+    font-weight:700; font-size: clamp(28px, 4vw, 40px);
+    line-height:1.1; color: var(--ink);
+    margin: 0 0 16px;
+  }
+
+  p.lede{
+    font-size:14.5px; line-height:1.65; color:#2B4A3B;
+    margin: 0 0 20px; max-width:52ch;
+  }
+
+  ul.features{ list-style:none; margin:0 0 24px; padding:0; display:flex; flex-direction:column; gap:9px; }
+  ul.features li{ font-size:13.5px; line-height:1.5; padding-left:22px; position:relative; color: var(--ink); }
+  ul.features li::before{
+    content:"✦"; position:absolute; left:0; top:0; color: var(--signal); font-size:12px;
+  }
+
+  /* live transcript / stage / answer panel swap in here */
+  .dynamic-panel{ min-height: 84px; margin-bottom:20px; }
+
+  .transcript{
+    font-size:15px; line-height:1.6; color: var(--ink);
+    border-left: 3px solid var(--signal); padding-left:14px;
+  }
+  .transcript .cursor{ display:inline-block; width:8px; height:16px; background:var(--signal); margin-left:2px; animation: blink 1s step-start infinite; vertical-align:-2px; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* stage indicator, redesigned as the hanging day-tags from the site's
+     "4 Days, One Rhythm" section — same idea: order carries real information,
+     here it's the four real pipeline stages instead of four residency days */
+  .stages{ display:flex; flex-wrap:wrap; gap:16px 14px; padding-top:4px; }
+  .stage-chip{
+    position:relative;
+    font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:10px 13px 9px; border-radius:8px;
+    border: 2px solid var(--ink); color: var(--ink);
+    background: var(--paper-dim);
+    transition: all .2s ease;
+    transform: rotate(-2deg);
+    box-shadow: 3px 4px 0 rgba(18,54,38,0.14);
+  }
+  .stage-chip:nth-child(even){ transform: rotate(2deg); }
+  .stage-chip::before{
+    /* the little peg/hole at the top of each hanging tag */
+    content:""; position:absolute; top:-5px; left:50%; transform:translateX(-50%);
+    width:8px; height:8px; border-radius:50%;
+    background: var(--ink); border:2px solid var(--paper);
+  }
+  .stage-chip:nth-child(odd){ background: var(--spark); }
+  .stage-chip:nth-child(even){ background: #FCE3EE; border-color: var(--signal); }
+  .stage-chip.done{ opacity:.55; transform: rotate(0deg) scale(.96); }
+  .stage-chip.active{
+    background: var(--signal); color: var(--paper); border-color: var(--ink);
+    transform: rotate(0deg) scale(1.06);
+    box-shadow: 4px 5px 0 rgba(18,54,38,0.25);
+  }
+  .stage-chip .dot{ display:none; } /* superseded by the peg dot above */
+  @keyframes pulse{ 50%{ opacity:1; transform:scale(1.4); } }
+
+  .answer-text{ font-size:15px; line-height:1.65; color:var(--ink); margin:0 0 14px; }
+  .citations{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+  .citation-chip{
+    font-size:10.5px; font-weight:600; letter-spacing:.03em;
+    background: var(--paper-dim); border:1.5px solid var(--moss); color:var(--moss);
+    padding:6px 10px; border-radius:8px;
+  }
+
+  .refuse-text{ font-size:14.5px; line-height:1.6; color:#2B4A3B; max-width:50ch; }
+
+  /* ---------- status pill (the signature element) ---------- */
+  .status-pill{
+    display:inline-flex; align-items:center; gap:10px;
+    background: #FCE3EE; border:1.5px solid var(--signal);
+    color: var(--signal);
+    font-size:12.5px; font-weight:700; letter-spacing:.03em;
+    padding:11px 18px; border-radius: var(--radius-pill);
+    margin-bottom:22px;
+  }
+  .status-pill.neutral{ background: var(--paper-dim); border-color: var(--moss); color: var(--moss); }
+  .status-pill.warn{ background: #FCF0CE; border-color: var(--spark); color:#8A6A00; }
+  /* the dashed "ticket" edge — reserved for exactly one moment, same as the
+     site's own APPLY button: the instant a real answer lands */
+  .status-pill.ticket{
+    border-style: dashed; border-width:2px;
+    background: var(--spark); border-color: var(--ink); color: var(--ink);
+  }
+  .status-pill .led{ width:8px; height:8px; border-radius:50%; background:currentColor; }
+  [data-state="listening"] .status-pill .led,
+  [data-state="working"] .status-pill .led{ animation: pulse 0.9s ease-in-out infinite; }
+
+  /* ---------- buttons ---------- */
+  .actions{ display:flex; gap:12px; flex-wrap:wrap; }
+  .btn{
+    font-family: var(--mono); font-weight:700; font-size:12.5px;
+    letter-spacing:.04em; text-transform:uppercase;
+    padding:14px 26px; border-radius: var(--radius-pill);
+    cursor:pointer; border:2px solid transparent;
+    transition: transform .12s ease, opacity .12s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); }
+  .btn:focus-visible{ outline: 3px solid var(--ink); outline-offset:3px; }
+  .btn-primary{ background: var(--signal); color: var(--paper); }
+  .btn-secondary{ background: transparent; color: var(--signal); border-color: var(--signal); }
+
+  /* ---------- demo control strip (prototype aid, not shipped UI) ---------- */
+  .proto-bar{
+    max-width:920px; margin: 0 auto 14px; display:flex; align-items:center; gap:10px;
+    flex-wrap:wrap; font-size:10.5px; color:#9FB8AB; letter-spacing:.05em;
+  }
+  .proto-bar span.label{ text-transform:uppercase; font-weight:700; color:#6E9583; }
+  .proto-bar button{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.03em; text-transform:uppercase;
+    background:transparent; color:#9FB8AB; border:1px solid #2E5D48;
+    padding:6px 10px; border-radius:999px; cursor:pointer;
+  }
+  .proto-bar button:hover{ color: var(--paper); border-color:#6E9583; }
+  .proto-bar button.current{ color: var(--signal); border-color: var(--signal); }
+</style>
+</head>
+<body data-state="idle">
+
+  <div class="stage">
+
+    <div class="proto-bar">
+      <span class="label">Prototype preview —</span>
+      <button data-jump="idle">Idle</button>
+      <button data-jump="listening">Listening</button>
+      <button data-jump="working">Working</button>
+      <button data-jump="answered">Answered</button>
+      <button data-jump="refused">Refused</button>
+    </div>
+
+    <div class="card">
+
+      <div class="pattern-strip" aria-hidden="true"></div>
+
+      <!-- LEFT: mic -->
+      <div class="mic-col">
+        <div class="mic-wrap">
+          <div class="ring"></div>
+          <button class="mic-circle" id="micBtn" aria-label="Tap to speak">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FBF2DA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+              <path d="M5 10a7 7 0 0 0 14 0"></path>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+              <line x1="8" y1="22" x2="16" y2="22"></line>
+            </svg>
+          </button>
+          <div class="mic-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#123626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+              <path d="M5 10a7 7 0 0 0 14 0"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ask-tag">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1F5C40" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="20" x2="4" y2="10"></line>
+            <line x1="10" y1="20" x2="10" y2="4"></line>
+            <line x1="16" y1="20" x2="16" y2="13"></line>
+            <line x1="22" y1="20" x2="22" y2="8"></line>
+          </svg>
+          ASK ANYTHING
+        </div>
+        <div class="mic-hint" id="micHint">Tap the mic to start</div>
+      </div>
+
+      <!-- RIGHT: content -->
+      <div class="content">
+
+        <p class="eyebrow" id="eyebrow">Voice · Hindi · &lt;200ms</p>
+        <h1 id="headline">Ask in <span class="script-accent">हिंदी</span>. Grounded in seconds.</h1>
+
+        <p class="lede" id="lede">Speak your question. We transcribe it, search real passages, and answer only when we're sure — citing exactly what we found.</p>
+
+        <div class="dynamic-panel" id="dynamicPanel">
+          <ul class="features">
+            <li>Real voice input, not typed</li>
+            <li>Six chunking strategies tested, best one shipped</li>
+            <li>Answers land in under 200ms</li>
+            <li>Says "I don't know" when it doesn't know</li>
+          </ul>
+        </div>
+
+        <div class="status-pill neutral" id="statusPill">
+          <span class="led"></span>
+          <span id="statusText">Tap the mic to start</span>
+        </div>
+
+        <div class="actions" id="actions">
+          <button class="btn btn-primary" id="primaryBtn">Tap to speak</button>
+          <button class="btn btn-secondary">How it works ↗</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const body = document.body;
+  const micBtn = document.getElementById('micBtn');
+  const micHint = document.getElementById('micHint');
+  const eyebrow = document.getElementById('eyebrow');
+  const headline = document.getElementById('headline');
+  const lede = document.getElementById('lede');
+  const panel = document.getElementById('dynamicPanel');
+  const pill = document.getElementById('statusPill');
+  const statusText = document.getElementById('statusText');
+  const actions = document.getElementById('actions');
+  const primaryBtn = document.getElementById('primaryBtn');
+
+  let outcomeToggle = 0; // alternate answered / refused across runs
+  let timers = [];
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+
+  const QUESTION = "भारत में सबसे ऊँचा पर्वत कौन सा है?";
+  const ANSWER = "कंचनजंगा भारत में स्थित सबसे ऊँचा पर्वत है, जिसकी ऊँचाई लगभग 8,586 मीटर है।";
+
+  function setPill(cls, text){
+    pill.className = 'status-pill ' + (cls || '');
+    statusText.textContent = text;
+  }
+
+  function goIdle(){
+    clearTimers();
+    body.dataset.state = 'idle';
+    micHint.textContent = 'Tap the mic to start';
+    eyebrow.textContent = 'Voice · Hindi · <200ms';
+    headline.innerHTML = 'Ask in <span class="script-accent">हिंदी</span>. Grounded in seconds.';
+    lede.textContent = "Speak your question. We transcribe it, search real passages, and answer only when we're sure — citing exactly what we found.";
+    panel.innerHTML = '<ul class="features"><li>Real voice input, not typed</li><li>Six chunking strategies tested, best one shipped</li><li>Answers land in under 200ms</li><li>Says "I don\'t know" when it doesn\'t know</li></ul>';
+    setPill('neutral', 'Tap the mic to start');
+    actions.innerHTML = '<button class="btn btn-primary" id="primaryBtn">Tap to speak</button><button class="btn btn-secondary">How it works ↗</button>';
+    rebindPrimary();
+  }
+
+  function goListening(){
+    body.dataset.state = 'listening';
+    micHint.textContent = 'Listening…';
+    eyebrow.textContent = 'Listening';
+    headline.textContent = 'Go ahead — we\'re listening.';
+    lede.textContent = 'Speak naturally. We\'ll show the transcript as it comes in.';
+    panel.innerHTML = '<div class="transcript" id="live"></div>';
+    setPill('', 'Listening');
+    let sec = 0;
+    const liveEl = document.getElementById('live');
+    let i = 0;
+    const type = () => {
+      if(i <= QUESTION.length){
+        liveEl.innerHTML = QUESTION.slice(0, i) + '<span class="cursor"></span>';
+        i++;
+        timers.push(setTimeout(type, 55));
+      }
+    };
+    type();
+  }
+
+  function goWorking(){
+    body.dataset.state = 'working';
+    eyebrow.textContent = 'Processing';
+    headline.textContent = 'Working on it.';
+    lede.textContent = 'Transcribing, retrieving, checking the answer is grounded — in that order.';
+    const stages = ['Transcribed', 'Retrieving', 'Grounding', 'Generating'];
+    panel.innerHTML = '<div class="stages">' + stages.map(s => `<div class="stage-chip" data-s="${s}"><span class="dot"></span>${s}</div>`).join('') + '</div>';
+    setPill('', 'Working');
+    const chips = panel.querySelectorAll('.stage-chip');
+    let step = 0;
+    const advance = () => {
+      chips.forEach((c, idx) => {
+        c.classList.remove('active');
+        if(idx < step) c.classList.add('done');
+      });
+      if(step < chips.length){ chips[step].classList.add('active'); }
+      step++;
+      if(step <= chips.length){ timers.push(setTimeout(advance, 480)); }
+      else {
+        timers.push(setTimeout(() => {
+          outcomeToggle = (outcomeToggle + 1) % 2;
+          outcomeToggle === 0 ? goAnswered() : goRefused();
+        }, 380));
+      }
+    };
+    advance();
+  }
+
+  function goAnswered(){
+    body.dataset.state = 'answered';
+    micHint.textContent = 'Answered';
+    eyebrow.textContent = 'Answered';
+    headline.textContent = "Here's what we found.";
+    lede.textContent = '';
+    const ms = 28 + Math.floor(Math.random() * 40);
+    panel.innerHTML = `
+      <p class="answer-text">${ANSWER}</p>
+      <div class="citations">
+        <span class="citation-chip">PASSAGE #4192 · HI</span>
+        <span class="citation-chip">PASSAGE #0891 · HI</span>
+      </div>`;
+    setPill('ticket', `Answered in ${ms}ms · Track A extractive`);
+    actions.innerHTML = '<button class="btn btn-primary" id="primaryBtn">Ask another</button><button class="btn btn-secondary">View sources ↗</button>';
+    rebindPrimary();
+  }
+
+  function goRefused(){
+    body.dataset.state = 'refused';
+    micHint.textContent = 'No confident match';
+    eyebrow.textContent = 'No match';
+    headline.textContent = "We don't have enough to answer that.";
+    lede.textContent = '';
+    panel.innerHTML = '<p class="refuse-text">Nothing in what we searched clearly supports a reliable answer, so we\'re not going to guess. Try asking about something else in the dataset.</p>';
+    setPill('warn', 'Abstained · confidence too low');
+    actions.innerHTML = '<button class="btn btn-primary" id="primaryBtn">Try again</button><button class="btn btn-secondary">How it works ↗</button>';
+    rebindPrimary();
+  }
+
+  function runFullSequence(){
+    clearTimers();
+    goListening();
+    timers.push(setTimeout(goWorking, 2100));
+  }
+
+  function rebindPrimary(){
+    const btn = document.getElementById('primaryBtn');
+    if(btn) btn.addEventListener('click', runFullSequence);
+  }
+
+  micBtn.addEventListener('click', runFullSequence);
+  rebindPrimary();
+
+  document.querySelectorAll('.proto-bar button[data-jump]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.proto-bar button').forEach(x => x.classList.remove('current'));
+      b.classList.add('current');
+      clearTimers();
+      const s = b.dataset.jump;
+      if(s === 'idle') goIdle();
+      else if(s === 'listening') goListening();
+      else if(s === 'working') goWorking();
+      else if(s === 'answered') goAnswered();
+      else if(s === 'refused') goRefused();
+    });
+  });
+  document.querySelector('.proto-bar button[data-jump="idle"]').classList.add('current');
+})();
+</script>
+
+</body>
+</html>
