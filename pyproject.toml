@@ -1,0 +1,78 @@
+[project]
+name = "vrag"
+version = "0.1.0"
+description = "Voice-enabled RAG over ai4bharat/MSMARCO-XI — HH Goa Task 2"
+requires-python = ">=3.11"
+
+dependencies = [
+  "pydantic>=2.13",
+  "pydantic-settings>=2.15",
+  "python-dotenv>=1.2",
+]
+
+[project.optional-dependencies]
+# Workstream R: chunking, embeddings, dense/sparse index, hybrid retrieval, reranking
+retrieval = [
+  "numpy>=2.5",
+  "datasets>=5.0",
+  "huggingface-hub>=1.27",
+  "faiss-cpu>=1.15",
+  "bm25s>=0.3",
+  "onnxruntime>=1.28",
+  "torch>=2.13",
+  "transformers>=5.15",
+  "sentence-transformers>=5.7",
+  "rerankers>=0.10",
+]
+# Workstream P: STT, harness, generation, guardrails, telemetry, API, frontend
+pipeline = [
+  "fastapi>=0.141",
+  "uvicorn[standard]>=0.52",
+  "websockets>=17.0",
+  "tenacity>=9.1",
+]
+# Shared: eval scripts, latency analysis, charts
+analysis = [
+  "polars>=1.43",
+  "matplotlib>=3.11",
+]
+dev = [
+  "pytest>=9.1",
+  "pytest-asyncio>=1.4",
+  "ruff>=0.16",
+  "mypy>=2.3",
+  "pre-commit>=4.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+# Matches this dev machine's actual interpreter (3.13, see docs/DECISIONS_R.md R-001), not the
+# project's minimum supported version (3.11) — needed because numpy 2.5's type stubs use 3.12+
+# syntax that mypy can't parse when told to target 3.11. Doesn't affect runtime compatibility;
+# our own code still targets 3.11+ per pyproject.toml's requires-python.
+python_version = "3.13"
+strict = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# Third-party libs with no type stubs / py.typed marker as of their current release.
+module = ["bm25s.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
