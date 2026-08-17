@@ -24,6 +24,11 @@ from vrag.retrieval.interface import retrieve
 from vrag.schemas import AnswerResponse, Citation
 from vrag.stt.sarvam import stream_transcribe
 
+# Uvicorn configures its own loggers but not the root logger, so module-level logger.info() calls
+# (e.g. in vrag.stt.sarvam) are silently dropped without this. Needed for visibility on a hosted
+# deploy where we can't attach a debugger — see docs/DECISIONS_P.md P-006.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="vrag", version="0.1.0")
@@ -94,17 +99,22 @@ async def voice(websocket: WebSocket) -> None:
     relayed back, per docs/API_CONTRACTS.md. On a final transcript, runs retrieval and returns a
     Track A placeholder answer."""
     await websocket.accept()
+    logger.info("WS /voice: accepted")
 
     async def browser_audio_chunks():
+        n = 0
         while True:
             try:
                 message = await websocket.receive()
             except WebSocketDisconnect:
+                logger.info("WS /voice: browser disconnected after %d chunks", n)
                 return
             if message.get("type") == "websocket.disconnect":
+                logger.info("WS /voice: browser disconnect message after %d chunks", n)
                 return
             audio_bytes = message.get("bytes")
             if audio_bytes:
+                n += 1
                 yield audio_bytes
                 continue
             text = message.get("text")
@@ -114,10 +124,12 @@ async def voice(websocket: WebSocket) -> None:
                 except json.JSONDecodeError:
                     continue
                 if control.get("event") == "stop":
+                    logger.info("WS /voice: received stop control after %d chunks", n)
                     return
 
     try:
         async for event in stream_transcribe(browser_audio_chunks(), language_code="hi-IN"):
+            logger.info("WS /voice: transcript event: %s", event)
             if event.type == "partial":
                 await websocket.send_json({"type": "transcript_partial", "text": event.text})
             elif event.type == "final":
@@ -129,10 +141,11 @@ async def voice(websocket: WebSocket) -> None:
                     )
             elif event.type == "error":
                 await websocket.send_json({"type": "error", "detail": event.text})
+        logger.info("WS /voice: stream_transcribe generator finished normally")
     except WebSocketDisconnect:
         pass
-    except RuntimeError as exc:
-        # e.g. missing SARVAM_API_KEY — surface it instead of dying silently
+    except Exception as exc:  # noqa: BLE001 - last resort so nothing hangs/vanishes silently
+        logger.exception("WS /voice: unhandled error")
         if websocket.client_state == WebSocketState.CONNECTED:
             await websocket.send_json({"type": "error", "detail": str(exc)})
     finally:

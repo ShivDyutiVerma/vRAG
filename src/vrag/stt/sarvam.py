@@ -75,15 +75,19 @@ async def stream_transcribe(
     async with sarvam_ws:
 
         async def _sender() -> None:
+            n = 0
             try:
                 async for chunk in audio_chunks:
+                    n += 1
                     await sarvam_ws.send(
                         json.dumps(
                             {"event": "audio_input", "audio": base64.b64encode(chunk).decode()}
                         )
                     )
             finally:
+                logger.info("Audio sender done (%d chunks), sending 'end' to Sarvam", n)
                 await sarvam_ws.send(json.dumps({"event": "end"}))
+                logger.info("Sent 'end' to Sarvam")
 
         sender_task = asyncio.create_task(_sender())
         # Grace period to keep waiting for a trailing message after we've sent "end" and the
@@ -94,10 +98,13 @@ async def stream_transcribe(
         try:
             while True:
                 timeout = end_grace_s if sender_task.done() else None
+                logger.info("Waiting for Sarvam message (timeout=%s)", timeout)
                 try:
                     raw = await asyncio.wait_for(sarvam_ws.recv(), timeout=timeout)
                 except asyncio.TimeoutError:
+                    logger.info("Grace period elapsed with no further message, ending stream")
                     break  # sender is done and nothing arrived within the grace period
+                logger.info("Received from Sarvam: %s", raw)
                 msg = json.loads(raw)
                 event = msg.get("event")
                 if event == "transcript.partial":
