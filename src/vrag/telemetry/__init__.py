@@ -1,1 +1,1 @@
-"""TraceRecord definitions and traces.jsonl writer. Owner: Workstream P."""
+"""Per-stage ns timing capture -> TraceRecord -> traces.jsonl. Owner: Workstream P."""

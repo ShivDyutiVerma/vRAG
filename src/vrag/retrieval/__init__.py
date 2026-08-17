@@ -1,4 +1,5 @@
 """Dense ∥ sparse retrieval orchestration behind the shared retrieve() interface.
 
-Owner: Workstream R.
+interface.py is the joint contract; internals (hybrid.py, rerank.py, metrics.py) owned by
+Workstream R.
 """

@@ -15,6 +15,7 @@
 
 - Stages never raise past their own boundary on the hot path — a stage that fails degrades
   (`stages_skipped`) rather than crashing the request. See `harness/budget.py` (Workstream P).
+- Stages are pure with respect to `PipelineContext` — they read and append, never mutate history.
 - Retries (`tenacity`) only on stages that are idempotent, capped so a retry storm can never exceed
   the request deadline.
 
@@ -35,7 +36,11 @@
 - Dense and sparse retrieval run concurrently via `asyncio.gather`, never sequentially — there's a
   test asserting wall-clock < sum of the two stage times.
 - E5 embeddings require `"query: "` / `"passage: "` prefixes. There is a test for this
-  (`tests/test_embedder.py`). Do not remove it, do not "simplify" it away.
+  (`tests/test_embedder.py`). Do not remove it, do not "simplify" it away — Workstream R's module,
+  but if you're ever near it, don't touch the prefix logic.
+- ONNX int8 is CPU-only — on GPU it's slower than FP32; use FP16 there.
+- Structured LLM output: **reasoning field before the answer field** in the schema, so the model
+  thinks before it commits.
 
 ## Workstream discipline (repo-specific, not generic style)
 
@@ -43,3 +48,5 @@
   module files (`docs/TEAM_SPLIT.md` §2 has the exact table). Read freely, write only your own.
 - Every ADR is dated, numbered per-workstream (`R-001`, `P-001`), and append-only. To reverse one,
   write a new ADR that supersedes it — never edit history.
+- Commit messages reference the phase: `[P<phase>] <what changed>` or `[R<phase>] <what changed>`
+  depending on which track's work the commit contains.
