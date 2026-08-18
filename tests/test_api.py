@@ -26,7 +26,17 @@ def test_healthz():
     assert resp.json() == {"status": "ok"}
 
 
-def test_ask_returns_answered_for_a_query_the_stub_covers():
+def test_ask_returns_answered_for_a_query_the_stub_covers(monkeypatch):
+    """Forces the Day-0 stub retrieval path explicitly, rather than relying on ambient filesystem
+    state. A real persisted index (data/index/metadata_aware/) exists on Workstream R's dev machine
+    after the A1-A4 ablation work but never on a fresh clone or CI (data/ is gitignored) -- without
+    forcing it, this test's pass/fail depended on which machine it ran on, not on the stub behavior
+    it's actually named for. G3 correctly makes a different, real decision against the real index;
+    that's not a bug, it's just not what this test is checking."""
+    import vrag.retrieval.interface as interface
+
+    monkeypatch.setattr(interface, "_get_real_retriever", lambda: None)
+
     resp = client.post("/ask", json={"query": "भारत में सबसे ऊँचा पर्वत कौन सा है?", "k": 3})
     assert resp.status_code == 200
     body = resp.json()

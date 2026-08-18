@@ -398,3 +398,31 @@ for latency reasons, not language fit) was not tested — out of scope for A4's 
 candidates, worth a footnote for anyone revisiting rerankers later. `flashrank`'s dependency
 (R-011) stays in `pyproject.toml` since `FlashRankReranker` remains valid, tested code, just unused
 by default.
+
+## R-013 — Made `test_api.py`'s stub-covers test hermetic (crosses into Workstream P's file, explicitly authorized)
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** `tests/test_api.py::test_ask_returns_answered_for_a_query_the_stub_covers` (Workstream
+P's file — `src/vrag/api/`, `src/vrag/guardrails/` are P's ownership per `docs/TEAM_SPLIT.md` §2)
+failed locally throughout this session, first noted as "G3 correctly abstains on real low scores"
+and later, after R-010's fix, as G3's margin check firing instead. Root cause either way: the test
+assumes `retrieve()` takes the Day-0 stub path, which is only true when no real index is present on
+disk. On this machine, `data/index/metadata_aware/` exists (built during A1-A2), so `retrieve()`
+took the real path and G3 made a real decision the test didn't anticipate — environment-dependent,
+not broken (CI is unaffected, `data/` is gitignored, a fresh clone always hits the stub).
+**Decision:** Asked the user directly rather than silently editing P's file or silently leaving it —
+CLAUDE.md's Step 0 explicitly says to stop and flag a cross-ownership edit even when the request
+sounds reasonable in isolation. User confirmed they're acting as both R and P for this instruction
+and to proceed. Fixed by making the test hermetic: `monkeypatch.setattr(interface,
+"_get_real_retriever", lambda: None)` forces the stub path regardless of ambient filesystem state,
+so the test verifies what it's named for (stub behavior) on every machine, not just fresh clones.
+**Rationale:** This is a test-hygiene fix, not a guardrail-calibration change — it doesn't touch
+`g3_confidence.py`'s logic or thresholds, doesn't resolve the real calibration work `docs/RISKS.md`
+P-R18 still flags as open for Workstream P, and doesn't second-guess any decision that's actually
+P's to make. It only removes an accidental dependency on local machine state from one test's
+pass/fail, which is a legitimate fix regardless of which workstream "owns" the file.
+**Consequences:** 149/149 tests pass. `docs/RISKS.md` P-R18 stays open (real G3 calibration is
+still Workstream P's future work) — only the test's hermeticity was fixed here, not the underlying
+guardrail. Flagging this ADR itself is the transparency mechanism for the cross-boundary edit, same
+as any other decision in this log.
