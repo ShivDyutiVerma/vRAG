@@ -1022,3 +1022,42 @@ didn't have access to Render's own logs/dashboard to check for an actual OOM-kil
 adjustment, or something else) requires `Dockerfile`/`render.yaml`/Render dashboard access, all P's
 ownership (`docs/TEAM_SPLIT.md` §2) — recording the verified symptom here and in `docs/RISKS.md`
 R-R21 for P's session to pick up, not attempting a fix myself.
+
+## R-026 — R-R14's candidate-pool mitigation tested: doesn't rescue hybrid, closing the item
+
+**Date:** 2026-08-18
+**Status:** Accepted — tested, real result, closes `docs/RISKS.md` R-R14. No config change (dense-
+only stays the shipped default, unaffected either way).
+**Context:** A3 (R-010) found hybrid+RRF regresses vs. dense-only (Recall@5 0.604 vs. 0.652) and
+named a hypothesis: each lane only contributes `top_k=10` candidates before fusion, so BM25's
+weaker top ranks get equal RRF weight against dense's stronger ones — a larger per-lane candidate
+pool before fusion (fetch more, truncate to `top_k` after) is the standard mitigation for exactly
+this failure mode. Flagged as untested, worth a quick follow-up "if time remains after A4/A5
+land" (R-R14). With R4/R-R21 both currently blocked on decisions/access outside R's control (user
+direction on the RAM tradeoff, P's Render diagnosis) and Day 4's freeze not yet reached, this was
+available, self-contained R-owned work.
+**What was tested:** `scripts/eval_rrf_candidate_pool.py` — same held-out 500-query set, chunking/
+embedder/`retrieval_mode="hybrid"`/`fusion_k=60` all held fixed at existing values; only the
+per-lane candidate pool size (fetched from each of dense/sparse before RRF fusion, then truncated
+to `top_k=10` after) varies: 10 (A3's original baseline), 30, 50, 100.
+**Result — real, not a projection:**
+
+| candidate_pool | Recall@5 | MRR@10 | nDCG@10 |
+|---|---|---|---|
+| 10 (A3 baseline) | 0.604 | 0.392 | 0.467 |
+| 30 | 0.578 | 0.378 | 0.451 |
+| 50 | 0.586 | 0.378 | 0.449 |
+| 100 | 0.578 | 0.375 | 0.446 |
+| *dense-only, for reference* | *0.652* | *0.452* | *0.516* |
+
+A larger candidate pool does **not** help — Recall@5 is flat-to-slightly-worse than the pool=10
+baseline at every size tested, and every hybrid configuration remains well below dense-only
+regardless of pool size. The hypothesis doesn't hold: this isn't a simple "candidate starvation"
+problem a bigger pool fixes. A plausible reason, consistent with A3's original diagnosis: a larger
+pool admits *more* of BM25's weaker, lower-precision candidates into the fusion at full RRF weight,
+which can dilute good dense hits further rather than rescuing hybrid's ranking.
+**Decision:** No config change — dense-only remains correct and unchallenged as the shipped
+default. Closes R-R14 with a real, tested answer instead of leaving it as an open, untested idea.
+**Consequences:** One less open item on `docs/RISKS.md`. Confirms A3's original conclusion is
+robust to the most obvious first mitigation attempt, strengthening confidence in the dense-only
+decision rather than casting doubt on it.
