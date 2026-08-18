@@ -207,10 +207,13 @@ enough runway before Aug 22.
 
 ## Blockers
 
-- **Real retrieval in production is blocked on R4/R-020's memory fix** (shrink corpus + lean
-  `embedder.py`) — R's work, not started. If it's not clearly on track with enough runway before
-  Aug 22, switching Render to Standard ($25/mo) is the pre-authorized fallback — my call to make
-  if the deadline gets close and R's side hasn't landed, not something to keep waiting on silently.
+- **Real retrieval in production is blocked on R4/R-020's memory fix** — real progress, not
+  stalled: R-021 (SQLite chunk_lookup) + R-022 (torch-free `LiteE5Embedder`, byte-identical output
+  verified) together cut combined RSS 1,539MB → 741MB (-52%, zero quality cost), still 145% of the
+  512MB budget. **User has since given R explicit direction to rule out the paid Render plan for
+  now and keep shrinking for free** — the $25/mo Standard-plan fallback documented earlier this
+  session is de-prioritized per that direction, not something to execute unilaterally without
+  checking first if it still applies as the deadline approaches.
 - `GROQ_API_KEY` still empty if a second generation provider is ever wanted for comparison — not
   currently needed since Sarvam is healthy again.
 
@@ -220,8 +223,9 @@ enough runway before Aug 22.
    new leaner extras group to the Dockerfile install line, redeploy, and re-verify with a real
    `/ask` call against the live URL (the same check that found this bug in the first place — never
    trust "should be deployed" without checking the actual URL again).
-2. If R's fix hasn't landed and the deadline is getting close, execute the fallback: switch Render
-   to the Standard plan ($25/mo), install `[retrieval]` with today's stack as-is, redeploy, verify.
+2. R is close (741MB vs. a 512MB budget, R-021/R-022) and the user has directed R to keep shrinking
+   for free rather than pay — respect that unless it's genuinely not going to land in time; check
+   with the user again before reviving the paid-plan fallback, don't execute it unilaterally.
 3. Report P-R20 to Sarvam — now has a much sharper, highly reproducible repro case (P-019: 12/12
    failures on insufficient-context queries, any chunk count, with or without the extra schema
    field) rather than a vague "sometimes stalls." Worth writing up properly and sending.
