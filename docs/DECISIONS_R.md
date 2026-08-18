@@ -536,3 +536,25 @@ already implemented by Workstream P) as a necessary second line of defense: the 
 near-miss example is exactly the kind of plausible-but-wrong match G3 alone can't reliably catch, but
 a generated answer asserting the wrong city should fail G4's groundedness check once compared against
 what was actually retrieved.
+
+## R-016 — `fixed_overlap`'s overlap hyperparameter sweep: no measurable effect, confirms R-004
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** `docs/BUILD_PLAN.md` P2 task 5 / `TECH_MENU.md` §A named `overlap ∈ {0, 0.1, 0.2}` as an
+open sweep, left unrun (flagged as a low-priority gap in `docs/EVAL_RESULTS.md` §1 and
+`docs/PROGRESS_R.md` across this session). Ran the two missing points (0.0, 0.1) against the frozen
+500-query held-out set — 0.2 already had a ledger row from A1. Full table:
+`docs/EVAL_RESULTS.md` §1.
+**Decision:** No change to `fixed_overlap`'s shipped config or to R-004's chunking decision.
+**Rationale:** All three overlap values (Recall@5 0.650/0.652/0.650) land inside A1's own measured
+noise floor (~0.2-0.4pp, R-004) — a genuine null result, not just a small effect. Consistent with
+this corpus's passage-length distribution (p50=57 words vs. a 256-word chunk size, R-003): most
+passages fit in one chunk regardless of overlap, so overlap has little surface area to act on. Also
+matches the literature citation already in `fixed_overlap.py`'s own docstring (no measurable overlap
+benefit found for sparse retrieval in a Jan 2026 study) — this extends the same null result to dense
+retrieval on this specific corpus.
+**Consequences:** Closes the last open item from A1's "what's not done yet" list. `eval/
+ablation_ledger.csv` gets 2 new rows (`fixed_overlap` at overlap=0.0 and 0.1); no code or config
+changes needed since the shipped strategy (`metadata_aware`) doesn't use `fixed_overlap` at all — this
+was purely a methodology-completeness check on a strategy that was already not the winner.

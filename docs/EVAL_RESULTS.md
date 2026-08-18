@@ -87,10 +87,27 @@ and measurably ahead of `hierarchical`/`semantic` beyond noise — ships as the 
 because it costs nothing over the cheapest tied option and adds metadata other stages can use for
 free. Already wired into `retrieve()` via `HybridRetriever` (`src/vrag/retrieval/hybrid.py`).
 
-### What's not done yet
+### `fixed_overlap` hyperparameter sweep — overlap has no measurable effect on this corpus
 
-- Hyperparameter sweep for `fixed_overlap` (overlap ∈ {0, 0.1, 0.2}) — not run; strategy is tied with
-  the winner already, so this is a low-priority nice-to-have, not a blocker for anything
+**Setup:** same held-fixed config as the rest of A1 (e5-small, dense-only, no rerank), size=256
+words held constant, `overlap` ∈ {0.0, 0.1, 0.2} (0.2 is the strategy's default and was already run
+as part of the A1 table above; 0.0 and 0.1 are new runs completing the sweep).
+
+| overlap | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 | Chunks | Index build (GPU) |
+|---|---|---|---|---|---|---|---|
+| 0.0 | 0.322 | 0.650 | 0.748 | 0.4504 | 0.5149 | 100,781 | 220.3s |
+| 0.1 | 0.322 | 0.652 | 0.750 | 0.4523 | 0.5168 | 100,888 | 233.4s |
+| 0.2 (default) | 0.322 | 0.650 | 0.750 | 0.4518 | 0.5212 | 101,008 | — (CPU-era run) |
+
+**Analysis:** all three overlap values land inside A1's own measured noise floor (~0.2-0.4pp,
+`docs/DECISIONS_R.md` R-004) — overlap genuinely doesn't matter here, not just "didn't move the
+number much." Consistent with this corpus's passage-length stats (p50=57 words, p95=115 words,
+`docs/DECISIONS_R.md` R-003): with a 256-word chunk size, the large majority of passages fit inside
+a single chunk regardless of overlap, so there's rarely a second overlapping window for overlap to
+even apply to. Also consistent with `fixed_overlap.py`'s own docstring citation ("a Jan 2026 study
+found no measurable overlap benefit with sparse retrieval") — this extends the same null result to
+dense retrieval on this corpus. **No change to R-004's decision** — `fixed_overlap` was already tied
+with the shipped winner at its default overlap, and stays tied across the full swept range.
 
 ## §2 — Embedding (A2)
 

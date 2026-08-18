@@ -69,11 +69,11 @@ ready for whoever makes the final call.
 - `CrossEncoderReranker`/`FlashRankReranker` both implemented, tested for wiring correctness (not
   quality — their quality verdict is "actively harmful on Hindi," documented in R-012) ✅
 - `DenseIndex.set_ef_search()` — mutates HNSW search-time behavior without a rebuild, unit-tested ✅
+- `fixed_overlap`'s overlap ∈ {0, 0.1, 0.2} swept — confirmed no measurable effect on this corpus
+  (R-016), closing the last open item from A1's methodology ✅
 
 ## What is stubbed / faked / TODO
 
-- `fixed_overlap`'s hyperparameter sweep (overlap ∈ {0, 0.1, 0.2}) — low priority, tied with the
-  winner already
 - A candidate RRF mitigation (larger per-lane candidate pool before fusion) — logged as an idea in
   `docs/RISKS.md` R-R14, not tested; wouldn't change the shipped default without a fresh ablation run
 - A genuinely Hindi-capable reranker (e.g. `bge-reranker-v2-m3`) was never tried — A4 only tested the
