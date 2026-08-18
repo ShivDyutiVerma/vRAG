@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from vrag.generation import circuit_breaker
 from vrag.generation.sarvam_llm import generate as generate_track_b
 from vrag.guardrails import (
     g1_input_safety,
@@ -179,6 +180,14 @@ class GenerateStage(Stage):
     hard way: with Sarvam's chat endpoint hanging (docs/RISKS.md P-R13), an unguarded call here
     blew a 200ms budget by 10+ real seconds. `asyncio.wait_for` against the *actual* remaining
     budget closes that gap — deadline propagation has to hold during a stage, not just before it.
+
+    A circuit breaker (src/vrag/generation/circuit_breaker.py) sits in front of the network call:
+    once recent fair-chance attempts have failed repeatedly, further attempts skip straight to
+    Track A without even trying the network, for `reset_timeout_s` before the next probe. Only
+    outcomes at a "fair" timeout (>= MIN_FAIR_TIMEOUT_S) move the breaker — see
+    `circuit_breaker.should_count_as_health_signal()`'s docstring for why a tight-budget timeout
+    must NOT count as a provider-health failure (it's the two-track design's normal, expected
+    outcome, not evidence Sarvam is down).
     """
 
     name = "generate"
@@ -194,7 +203,17 @@ class GenerateStage(Stage):
                 stage_name=self.name, skipped=True, skip_reason="no context to generate over"
             )
 
+        if not circuit_breaker.TRACK_B_BREAKER.allow_request():
+            return StageResult(
+                stage_name=self.name,
+                skipped=True,
+                skip_reason="circuit breaker open: Track B's provider failed repeatedly recently",
+            )
+
         timeout_s = max(ctx.budget.remaining_ms / 1000, 0.001)
+        fair_chance = circuit_breaker.should_count_as_health_signal(
+            timeout_s, circuit_breaker.MIN_FAIR_TIMEOUT_S
+        )
         try:
             # Pass the same timeout into generate()'s own httpx client, not just the outer
             # wait_for — generate()'s default (10s) is a sane cap for standalone callers, but
@@ -205,15 +224,23 @@ class GenerateStage(Stage):
                 generate_track_b(ctx.query, chunks, timeout_s=timeout_s), timeout=timeout_s
             )
         except TimeoutError:
+            if fair_chance:
+                circuit_breaker.TRACK_B_BREAKER.record_failure()
             return StageResult(
                 stage_name=self.name,
                 skipped=True,
                 skip_reason=f"generation exceeded remaining budget ({timeout_s:.3f}s)",
             )
         if result is None:
+            if fair_chance:
+                circuit_breaker.TRACK_B_BREAKER.record_failure()
             return StageResult(
                 stage_name=self.name, skipped=True, skip_reason="generation failed, kept Track A"
             )
+
+        # A completed call is unambiguous evidence the provider is up, regardless of how much
+        # time it was given — always record it, not just fair-chance ones.
+        circuit_breaker.TRACK_B_BREAKER.record_success()
 
         valid_chunks_by_id = {c.chunk_id: c for c in chunks}
         cited = [
