@@ -185,6 +185,34 @@ smoke-tested, and run against the same frozen eval set, and none came close. No 
 "switch back" to e5-small since it was never actually replaced — this ran as a genuine ablation
 stage, and the incumbent won on its merits.
 
+### ONNX int8 quantisation (`docs/BUILD_PLAN.md` P6 task 5) — closes footnote 1's gap
+
+**Setup:** `intfloat/multilingual-e5-small` exported to ONNX and dynamically int8-quantised
+(`scripts/export_onnx_embedder.py`, `avx2` config). Tested the realistic production shape: passages
+stay FP32 in the already-built index (embedded once, offline — build time doesn't matter there);
+only *query-time* embedding is quantised, since that's the actual hot-path cost against the 200ms
+budget. `scripts/eval_onnx_quantization.py` embeds the frozen 500 held-out queries with the int8
+model and searches the existing FP32-built `data/index/metadata_aware/` index.
+
+| | Recall@1 | Recall@5 | Recall@10 | MRR@10 |
+|---|---|---|---|---|
+| FP32 baseline | 0.322 | 0.653 | 0.752 | 0.453 |
+| int8 ONNX query, FP32 index | 0.330 | 0.644 | 0.750 | 0.4563 |
+
+| | p50 | p95 | p100 |
+|---|---|---|---|
+| FP32, CPU | 20.48ms | 25.83ms | 35.02ms |
+| int8 ONNX, CPU | 5.60ms | 7.67ms | 10.38ms |
+
+**3.7x faster query embedding for a -0.9pp Recall@5 cost.** The drop is small but not noise — this
+comparison has no randomness at all (same queries, same FP32 index, only the query embedder's
+numeric precision differs), so it's a genuine, small, deterministic quality cost of quantisation.
+Also closes footnote 1 below: e5-small's CPU embed latency was left unmeasured in the original A2
+write-up ("Phase 6 will measure the real ONNX-quantised figure") — 20.48ms p50 is that number.
+**Not yet wired into production** — `docs/DECISIONS_R.md` R-019 explains why (the live deployment
+doesn't run real retrieval at all yet, `docs/RISKS.md` R-R21; wiring a query-embedder swap before
+that's fixed would be untestable against the actual deploy target and conflates two changes at once).
+
 ### Confirmation pass (A1×A2 cross-check) — reasoned skip, not an oversight
 
 `docs/TECH_MENU.md` §A names a confirmation pass ("top-2 chunkers × top-2 embedders, 4 cross runs")

@@ -65,6 +65,59 @@ class E5Embedder:
         return vectors.tolist()
 
 
+DEFAULT_ONNX_MODEL_DIR = "data/onnx/multilingual-e5-small"
+DEFAULT_ONNX_FILE_NAME = "onnx/model_quint8_avx2.onnx"
+
+
+class ONNXE5Embedder:
+    """`multilingual-e5-small`, ONNX-exported and dynamically int8-quantised for CPU inference
+    (docs/BUILD_PLAN.md P6 task 5, docs/DECISIONS_R.md R-019). CPU only, per CLAUDE.md's hot-path
+    invariant: "ONNX int8 is for CPU only — on GPU it is slower than FP32; use FP16 there" — this
+    is the production embedder shape, not for use on this dev machine's GPU (`E5Embedder` stays the
+    right choice for offline GPU index-building, docs/DECISIONS_R.md R-005).
+
+    Requires `scripts/export_onnx_embedder.py` to have been run first — this class loads a local,
+    pre-exported model directory, it does not export on the fly (exporting needs `torch` +
+    `optimum`'s export path, which are offline/dev-time tools; the deployed production path should
+    only need `onnxruntime` + `sentence-transformers[onnx]`'s inference-only backend).
+
+    Same interface, same query:/passage: prefix requirement as `E5Embedder` — this is a drop-in
+    replacement at the embedding layer, not a different model.
+    """
+
+    name = "multilingual-e5-small-onnx-int8"
+
+    def __init__(
+        self,
+        model_dir: str = DEFAULT_ONNX_MODEL_DIR,
+        file_name: str = DEFAULT_ONNX_FILE_NAME,
+    ) -> None:
+        self._model_dir = model_dir
+        self._file_name = file_name
+        self._model: SentenceTransformer | None = None
+
+    def _model_instance(self) -> SentenceTransformer:
+        if self._model is None:
+            from sentence_transformers import SentenceTransformer
+
+            self._model = SentenceTransformer(
+                self._model_dir,
+                backend="onnx",
+                model_kwargs={"file_name": self._file_name},
+            )
+        return self._model
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        prefixed = [format_query(t) for t in texts]
+        vectors = self._model_instance().encode(prefixed, normalize_embeddings=True)
+        return vectors.tolist()
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        prefixed = [format_passage(t) for t in texts]
+        vectors = self._model_instance().encode(prefixed, normalize_embeddings=True)
+        return vectors.tolist()
+
+
 class Model2VecEmbedder:
     """potion-multilingual-128M — static (non-contextual) embeddings via lookup + mean-pool, no
     transformer forward pass at all (docs/TECH_MENU.md §S4: "up to 500x faster than the source
@@ -178,6 +231,7 @@ class VyakyarthEmbedder:
 
 EMBEDDER_REGISTRY: dict[str, type] = {
     E5Embedder.name: E5Embedder,
+    ONNXE5Embedder.name: ONNXE5Embedder,
     Model2VecEmbedder.name: Model2VecEmbedder,
     BGEM3Embedder.name: BGEM3Embedder,
     VyakyarthEmbedder.name: VyakyarthEmbedder,

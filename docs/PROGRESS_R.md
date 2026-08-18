@@ -3,7 +3,7 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met; G3 calibration complete and applied jointly with P; found and partially addressed a real deployment gap (R-018/R-R21) — **live URL still needs a P-side fix before it reflects any of this**
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; found a real deployment gap (R-018/R-R21, artifact prepared, P-side fix still needed); ONNX int8 embedder built + validated (R-019), not yet wired in — deliberately blocked on R-R21 landing first
 **Build status:** 🟢 green — 172/172 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
@@ -62,7 +62,7 @@ internally consistent with its own stated target.
 - [x] A3 retrieval-mode ablation — winner picked (dense-only, a real surprise), wired into production
 - [x] A4 reranker ablation — winner picked (none), already the default
 - [x] efSearch recall-vs-latency curve (`docs/assets/efsearch_curve.png`) — 64 confirmed as the knee
-- [x] `pytest` green (151/151)
+- [x] `pytest` green (172/172)
 - [x] G3 calibration — data gathered (R-015), TAU applied by P, MARGIN corrected same day (R-017),
   both verified live
 
@@ -112,29 +112,39 @@ Prepared the R-side half of the fix without touching `Dockerfile`/`render.yaml` 
 ownership): packaged and published the current production index as a GitHub Release asset
 (`index-metadata_aware-v1`, 187MB, verified publicly downloadable) — extracting it to
 `data/index/metadata_aware/` is all the code side needs, no code changes required.
-`sentence-transformers[onnx]`/`optimum` got installed locally while exploring the ONNX path before
-this was found; not yet added to `pyproject.toml` (no commit made), harmless to leave installed,
-picking this back up is a legitimate next step once the deploy gap is closed.
+
+**Then did the ONNX embedder work anyway** (`docs/DECISIONS_R.md` R-019) — didn't need R-R21 fixed
+first to build and *validate* it, only to *ship* it. Exported `multilingual-e5-small` to ONNX,
+dynamically int8-quantised (`ONNXE5Embedder`, new class in `src/vrag/index/embedder.py`, registered
+in `EMBEDDER_REGISTRY`). Tested the realistic production shape: quantised only the query-time
+embedder (passages stay FP32 in the already-built index — build time doesn't matter there, query
+latency does). **Result: 3.7x faster query embedding (20.48ms → 5.60ms p50, CPU) for a real but
+small -0.9pp Recall@5 cost.** Closes a gap A2's own write-up flagged as deferred to Phase 6.
+Deliberately **not wired into `retrieve()`** — R-019 explains why: there's no live deployment for
+this to matter to yet (R-R21), and wiring a query-embedder swap in before that's fixed would be
+untestable against the real deploy target and would conflate two changes when R-R21's fix needs to
+stay isolated and easy to verify. New dependencies (`onnx`, `optimum`, `optimum-onnx`,
+`sentence-transformers[onnx]`) added to `pyproject.toml`'s `retrieval` extra — required lowering
+`transformers`'s floor and adding a ceiling (`optimum-onnx` hard-pins `<4.58.0`), verified safe
+against the full test suite before committing.
 
 ## Blockers
 
-- **The live deployment gap (`docs/RISKS.md` R-R21) needs Workstream P** — Dockerfile/render.yaml
-  are their ownership. The artifact is ready; three small steps remain (install `[retrieval]` in the
-  image, download+extract the release asset at boot/build, redeploy+reverify) — not something R
-  should do unilaterally on shared deploy infra.
+- **The live deployment gap (`docs/RISKS.md` R-R21) needs Workstream P** before ONNX can actually
+  ship — Dockerfile/render.yaml are their ownership. The artifact is ready; three small steps remain
+  (install `[retrieval]` in the image, download+extract the release asset at boot/build,
+  redeploy+reverify) — not something R should do unilaterally on shared deploy infra.
 
 ## Next session should start by
 
 1. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
    against the live URL, the same way this was found, before trusting "deployed and working" claims
    again for anything beyond local testing.
-2. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014 for the full
+2. Once R-R21 is fixed, wiring `ONNXE5Embedder` into `interface.py`'s production path is a one-line
+   change (`docs/DECISIONS_R.md` R-019 has the numbers already) — the natural next R task.
+3. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014 for the full
    A3/A4/efSearch story before touching retrieval code again — the production default is now
    dense-only, no reranker, efSearch=64, and all three are deliberate, data-driven, documented
    choices, not oversights
-3. Read `docs/DECISIONS_R.md` R-015/R-017 for the G3 calibration story before touching TAU/MARGIN
+4. Read `docs/DECISIONS_R.md` R-015/R-017 for the G3 calibration story before touching TAU/MARGIN
    again — both are now live-verified, not placeholders
-4. Once R-R21 is resolved, ONNX-quantising the embedder (`docs/BUILD_PLAN.md` P6, R's file
-   `src/vrag/index/embedder.py`) is the natural next R-owned task — `sentence-transformers[onnx]`
-   is already installed locally from this session's exploration, not yet formalized in
-   `pyproject.toml`

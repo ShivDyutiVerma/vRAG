@@ -649,3 +649,70 @@ retroactively invalidate any ablation finding (A1-A4, efSearch, G3 calibration) 
 measured against the real index directly, never through the stub — it only means the *deployed
 demo* doesn't yet reflect that work. Flagged in `docs/RISKS.md` as blocking for the actual C7
 deliverable ("public GitHub repo, live working link") if left unresolved before submission.
+
+## R-019 — ONNX int8 embedder: 3.7x faster query embedding, small real quality cost, not yet shipped
+
+**Date:** 2026-08-18
+**Status:** Accepted — code + validation complete, **not wired into `retrieve()`'s production
+path** (see Consequences for why)
+**Context:** `docs/BUILD_PLAN.md` P6 task 5 / `CLAUDE.md`'s own hot-path invariant: "ONNX int8 is
+for CPU only — on GPU it is slower than FP32; use FP16 there," targeting the actual production
+deploy shape (CPU-only host, `AGENT_BUILD_SPEC.md` §5.3), not this dev machine's GPU. Exported
+`intfloat/multilingual-e5-small` to ONNX and applied dynamic int8 quantisation via
+`sentence-transformers`' own `export_dynamic_quantized_onnx_model` helper (`avx2` config — the
+broadest generically-supported x86_64 instruction set, since Render's exact CPU isn't known in
+advance; dynamic quantisation needs no calibration dataset). New `ONNXE5Embedder` class in
+`src/vrag/index/embedder.py`, registered in `EMBEDDER_REGISTRY`, same interface and query:/passage:
+prefix requirement as `E5Embedder` — a drop-in replacement at the embedding layer.
+
+**Tested the realistic production shape, not a same-precision rebuild.** Passages are embedded
+once, offline, where build time doesn't matter (the existing FP32-built `data/index/
+metadata_aware/` index already exists and works — R-004/R-009/R-014). Query embedding is the actual
+hot-path cost against the 200ms budget, so `scripts/eval_onnx_quantization.py` quantises only the
+*query-time* embedder and searches the existing FP32-built index with int8-embedded queries —
+cross-precision compatibility is exactly what would ship, not a hypothetical same-precision rebuild
+(which would also have cost ~50+ min of CPU-bound re-embedding for ~100k passages, for a number that
+doesn't reflect the actual deploy shape anyway).
+
+| | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|
+| FP32 baseline (§2, A2) | 0.322 | 0.653 | 0.752 | 0.453 | — |
+| int8 ONNX query, FP32 index | 0.330 | 0.644 | 0.750 | 0.4563 | 0.5197 |
+| **Δ** | **+0.8pp** | **-0.9pp** | **-0.2pp** | **+0.3pp** | — |
+
+| | p50 | p95 | p100 |
+|---|---|---|---|
+| FP32, forced CPU | 20.48ms | 25.83ms | 35.02ms |
+| int8 ONNX, CPU | 5.60ms | 7.67ms | 10.38ms |
+| **Speedup** | **3.7x** | **3.4x** | **3.4x** |
+
+**Analysis:** the -0.9pp Recall@5 drop is small but not run-to-run noise — unlike A1's noise floor
+(measured from repeated *index rebuilds*, where FAISS HNSW insertion-order randomness is the
+variance source, R-004), this comparison has no randomness at all: same frozen 500-query set, same
+FP32-built index, same corpus — the only variable is a fixed, deterministic float32→int8
+quantisation of the query embeddings. It's a genuine, small, real quality cost of quantisation, not
+noise. Recall@1 and MRR@10 both moved *up* slightly and Recall@10 barely moved, consistent with a
+small precision-loss effect that mostly nudges borderline rankings rather than breaking clearly-correct
+or clearly-wrong matches. The FP32-CPU baseline itself (20.48ms p50) is also a new, real number worth
+having on its own — A2's original write-up (`docs/EVAL_RESULTS.md` §2, footnote 1) explicitly left
+e5-small's CPU embed latency unmeasured, flagging "Phase 6 will measure the real ONNX-quantised
+figure" — this closes that exact gap.
+**Decision:** The 3.7x latency win for a <1pp quality cost is a good trade in isolation — but this
+ADR does **not** wire `ONNXE5Embedder` into `retrieve()`/`interface.py` as the production default.
+**Rationale for not shipping the wiring change yet:** `docs/RISKS.md` R-R21 (found the same session,
+just before this) means there is currently no live deployment for this to matter to — the production
+container doesn't even run real retrieval yet. Wiring in a query-embedder swap before that's fixed
+would be premature (untestable against the actual deploy target) and would add a second simultaneous
+change (query latency *and* whether retrieval is real at all) exactly when R-R21's fix needs to be
+isolated and easy to verify. Once R-R21 lands, swapping `interface.py`'s `E5Embedder()` for
+`ONNXE5Embedder()` is a one-line change with this ADR's numbers as the justification.
+**Consequences:** New dependencies: `onnx`, `optimum`, `optimum-onnx` added to `pyproject.toml`'s
+`retrieval` extra; `sentence-transformers>=5.7` changed to `sentence-transformers[onnx]>=5.7` to
+pull in ONNX Runtime inference support. **Real, non-trivial side effect:** `optimum-onnx==0.1.0`
+hard-pins `transformers<4.58.0`, incompatible with this project's prior `transformers>=5.15` floor —
+`huggingface-hub`'s floor also had to drop (`>=1.27` → `>=0.23,<2.0`) to match what `sentence-
+transformers[onnx]` actually resolves to. Verified safe before committing, not assumed: full test
+suite (172/172) green at the downgraded versions, every embedder class smoke-tested individually
+against the new floor. `data/onnx/multilingual-e5-small/` (the exported+quantised model,
+~590MB combined FP32+int8 files) is gitignored like the rest of `data/` — regenerate with
+`scripts/export_onnx_embedder.py`, don't commit ONNX binaries.

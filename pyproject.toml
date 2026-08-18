@@ -23,10 +23,18 @@ dependencies = [
 retrieval = [
   "numpy>=2.5",
   "datasets>=5.0",
-  "huggingface-hub>=1.27",
+  # huggingface-hub / transformers: ceiling, not just a floor, on purpose (docs/DECISIONS_R.md
+  # R-019) — optimum-onnx==0.1.0 (needed for ONNX export/quantisation) hard-pins
+  # transformers<4.58.0, incompatible with the >=5.15 floor this project used before ONNX work
+  # started. Verified safe at the resolved versions (huggingface-hub 0.36.2, transformers
+  # 4.57.6): full test suite green, every embedder smoke-tested against the downgrade.
+  "huggingface-hub>=0.23,<2.0",
   "faiss-cpu>=1.15",
   "bm25s>=0.3",
   "onnxruntime>=1.28",
+  "onnx>=1.22",
+  "optimum>=2.1",
+  "optimum-onnx>=0.1",  # ONNX export + quantisation (docs/DECISIONS_R.md R-019)
   # torch: no version floor here on purpose. A plain `pip install -e .` pulls the CPU-only
   # wheel from PyPI (fine for CI/fresh clones). On a machine with an NVIDIA GPU, install the
   # CUDA build AFTER this instead — it's ~16x faster for index-build-time embedding
@@ -35,8 +43,8 @@ retrieval = [
   # working GPU install back to CPU-only on the next `pip install -e .`:
   #   pip install torch --index-url https://download.pytorch.org/whl/cu124 --force-reinstall --no-deps
   "torch",
-  "transformers>=5.15",
-  "sentence-transformers>=5.7",
+  "transformers>=4.41,<4.58",  # ceiling from optimum-onnx, see huggingface-hub comment above
+  "sentence-transformers[onnx]>=5.7",
   "rerankers>=0.10",
   "flashrank>=0.2",  # rerankers' FlashRank backend needs this installed separately (R-011)
 ]
