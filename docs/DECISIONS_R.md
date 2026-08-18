@@ -333,7 +333,7 @@ failure noted earlier this session ("G3 correctly abstains on real low scores") 
 a structurally-guaranteed `top1 < TAU` failure to `"Ambiguous match: top result doesn't clearly stand
 out"` (the *margin* check, `top1 - top5 < MARGIN=0.05`) — `top1` now clears `TAU` as the docstring
 intends. Not fixed here (G3 is Workstream P's module, not touched) — flagged in `docs/RISKS.md`
-(P-R15) for P to verify against real G3 calibration; `MARGIN`, not `TAU`, looks like the placeholder
+(P-R18) for P to verify against real G3 calibration; `MARGIN`, not `TAU`, looks like the placeholder
 most worth scrutinizing first now.
 
 ## R-011 — New dependency: `flashrank` (rerankers' FlashRank backend, for the A4 rerank ablation)
