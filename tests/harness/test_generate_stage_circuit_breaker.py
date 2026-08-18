@@ -13,6 +13,8 @@ from __future__ import annotations
 import pytest
 
 from vrag.generation import circuit_breaker as cb
+from vrag.generation.sarvam_llm import GenerationResult
+from vrag.generation.schemas import GeneratedAnswer
 from vrag.harness.budget import Budget
 from vrag.harness.pipeline import PipelineContext
 from vrag.harness.stages import GenerateStage
@@ -121,12 +123,14 @@ async def test_success_closes_an_open_breaker(monkeypatch):
         )
     ]
 
-    class _FakeResult:
-        answer = "असली उत्तर"
-        cited_chunk_ids = ["c1"]
-
     async def _fake_generate(*args, **kwargs):
-        return _FakeResult()
+        answer = GeneratedAnswer(
+            reasoning="संक्षिप्त कारण",
+            needs_more_context=False,
+            answer="असली उत्तर",
+            cited_chunk_ids_csv="c1",
+        )
+        return GenerationResult(answer=answer, chunks=ctx.data["chunks"])
 
     monkeypatch.setattr("vrag.harness.stages.generate_track_b", _fake_generate)
 

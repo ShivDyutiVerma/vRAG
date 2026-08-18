@@ -99,7 +99,12 @@ async def test_generate_retries_once_after_a_stall_and_succeeds(monkeypatch):
         if calls["n"] == 1:
             raise _GenerationStalled(partial_content='{"reasoning": "x",')
         return json.dumps(
-            {"reasoning": "संक्षिप्त कारण", "answer": "असली उत्तर", "cited_chunk_ids_csv": "c1"}
+            {
+                "reasoning": "संक्षिप्त कारण",
+                "needs_more_context": False,
+                "answer": "असली उत्तर",
+                "cited_chunk_ids_csv": "c1",
+            }
         )
 
     monkeypatch.setattr(sarvam_llm, "_call_once_streaming", _fake_call_once_streaming)
@@ -108,8 +113,9 @@ async def test_generate_retries_once_after_a_stall_and_succeeds(monkeypatch):
 
     assert calls["n"] == 2
     assert result is not None
-    assert result.answer == "असली उत्तर"
-    assert result.cited_chunk_ids == ["c1"]
+    assert result.answer.answer == "असली उत्तर"
+    assert result.answer.cited_chunk_ids == ["c1"]
+    assert result.chunks == [_chunk()]
 
 
 @pytest.mark.asyncio

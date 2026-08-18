@@ -9,6 +9,14 @@ the preceding fields, then pad the rest of `max_tokens` with whitespace instead 
 array and closing the object — confirmed reproducible and isolated by removing the array field
 alone and observing `finish_reason` flip from "length" to "stop". A comma-separated string
 sidesteps the provider bug entirely while keeping the response genuinely structured.
+
+`needs_more_context` (docs/DECISIONS_P.md P-019, AGENT_BUILD_SPEC.md §7.2 item 5's `search_corpus`
+tool) is the signal `sarvam_llm.generate()` uses to decide whether to escalate to a real
+tool-calling follow-up round — placed after `reasoning`/before `answer` so the model decides
+*before* committing to an answer, same rationale as the reasoning-before-answer invariant. Kept as
+a schema field rather than combining `tools` with `response_format: json_schema` in one request
+because that combination is broken on Sarvam's side too (live-tested): the model ignores the tool
+option and tries to force an answer into the schema, hitting the same whitespace-padding bug.
 """
 
 from __future__ import annotations
@@ -22,6 +30,10 @@ class GeneratedAnswer(BaseModel):
             "Brief internal reasoning connecting the retrieved context to the answer. "
             "Not shown to the user."
         )
+    )
+    needs_more_context: bool = Field(
+        description="True if the provided context passages are insufficient to answer the "
+        "question and a follow-up search would help. False if you can answer from what's given."
     )
     answer: str = Field(
         description="The final, fluent answer to the user's question, grounded only in the "
@@ -42,8 +54,9 @@ GENERATED_ANSWER_JSON_SCHEMA: dict = {
     "type": "object",
     "properties": {
         "reasoning": {"type": "string"},
+        "needs_more_context": {"type": "boolean"},
         "answer": {"type": "string"},
         "cited_chunk_ids_csv": {"type": "string"},
     },
-    "required": ["reasoning", "answer", "cited_chunk_ids_csv"],
+    "required": ["reasoning", "needs_more_context", "answer", "cited_chunk_ids_csv"],
 }

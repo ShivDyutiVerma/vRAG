@@ -188,6 +188,14 @@ class GenerateStage(Stage):
     `circuit_breaker.should_count_as_health_signal()`'s docstring for why a tight-budget timeout
     must NOT count as a provider-health failure (it's the two-track design's normal, expected
     outcome, not evidence Sarvam is down).
+
+    `generate_track_b` (src/vrag/generation/sarvam_llm.py) may internally issue a real
+    `search_corpus` tool call (AGENT_BUILD_SPEC.md §7.2 item 5, docs/DECISIONS_P.md P-019) when
+    the model signals `needs_more_context` — depth capped at 1, all within this single
+    `asyncio.wait_for` budget window, so a slow follow-up still gets cut cleanly rather than
+    silently exceeding the deadline. Its return (`GenerationResult`) carries the full chunk set
+    actually used (original + any tool-fetched), not just what `RetrieveStage` originally found —
+    G4 below validates against that full set.
     """
 
     name = "generate"
@@ -242,14 +250,20 @@ class GenerateStage(Stage):
         # time it was given — always record it, not just fair-chance ones.
         circuit_breaker.TRACK_B_BREAKER.record_success()
 
-        valid_chunks_by_id = {c.chunk_id: c for c in chunks}
+        # `result.chunks` may be larger than the `chunks` this stage started with — the
+        # search_corpus follow-up (AGENT_BUILD_SPEC.md §7.2 item 5) can fetch more. G4 must
+        # validate citations against everything actually available when the answer was produced,
+        # not just RetrieveStage's original list, or a real tool-fetched citation would be wrongly
+        # flagged as invented.
+        answer = result.answer
+        valid_chunks_by_id = {c.chunk_id: c for c in result.chunks}
         cited = [
             valid_chunks_by_id[cid]
-            for cid in result.cited_chunk_ids
+            for cid in answer.cited_chunk_ids
             if cid in valid_chunks_by_id
         ]
 
-        verdict = g4_groundedness.check(result.answer, cited, set(valid_chunks_by_id))
+        verdict = g4_groundedness.check(answer.answer, cited, set(valid_chunks_by_id))
         if not verdict.passed:
             logger.info("Track B answer failed G4 (%s), keeping Track A", verdict.reason)
             return StageResult(
@@ -258,7 +272,8 @@ class GenerateStage(Stage):
                 skip_reason=f"failed G4 groundedness ({verdict.reason}), kept Track A",
             )
 
-        ctx.data["answer_text"] = result.answer
+        ctx.data["chunks"] = result.chunks
+        ctx.data["answer_text"] = answer.answer
         ctx.data["citations"] = cited
         ctx.data["track"] = "generative"
         return StageResult(stage_name=self.name)
