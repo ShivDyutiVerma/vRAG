@@ -3,7 +3,7 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 03
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; memory fix **built, prototyped, AND now wired into the real production code path + published as GitHub Release artifacts** (R-023) — 727MB measured end-to-end in an isolated torch-free venv, real (non-stub) retrieval confirmed working. Still ~215-230MB over Render free tier's 512MB; P's Dockerfile change is now precisely specified (3 steps, `docs/DECISIONS_R.md` R-023) but not yet made — that's the one remaining piece before this reaches the live URL
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; memory fix wired into production (R-023, 727MB verified). P tried it live and hit a real OOM on first `/ask` (peak-load memory, not steady-state — P-020), rolled back cleanly; live URL is safe again, serving the stub. R-024 found the remaining corpus-shrink lever needs an ~83% cut to hit 512MB — escalated to the user, who chose to check alternative free hosts first (P's domain, flagged in RISKS.md R4). R-026 closed R-R14 (RRF candidate-pool mitigation tested, doesn't help). R4/R-R21 are both now blocked on P's hosting investigation / Render diagnosis, not on R
 **Build status:** 🟢 green — 197/197 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
@@ -174,24 +174,59 @@ Dockerfile has something to point at: `embedder-lite-onnx-v1` (87.6MB — just t
 `chunk_lookup.sqlite3` to the existing index archive). Full 3-step Dockerfile change P needs is
 spelled out in R-023 — did not touch `Dockerfile` itself (P's module).
 
+**P tried R-023's fix live, found a real OOM, rolled back** (`docs/DECISIONS_P.md` P-020) — verified
+myself right after via a direct `/ask` call against the live URL (same discipline as R-018's
+original discovery): `/healthz` 200 OK, `/ask` 502 (`x-render-routing: no-deploy`), reproduced
+twice (R-025, `docs/DECISIONS_R.md`). P's session independently caught the same thing via Render's
+own runtime logs, confirmed it's a real OOM (not a routing artifact), rolled back within ~15
+minutes, and sharpened the diagnosis: the blocker is **peak memory during `_get_real_retriever()`'s
+first load**, not the 727MB steady-state figure — local Docker testing under the same 512MB limit
+had shown comfortable steady-state headroom (446.8MB), so the transient spike while the index/ONNX
+session initialize is the newly-identified real constraint. Live URL re-verified stable afterward
+(serving the stub again, no more 502s).
+
+**Measured the corpus-shrink lever's real ceiling before running it** (R-024) — the embedder's
+fixed ~388MB session cost dominates the remaining gap: an *empty* index would still cost ~467MB
+(91% of the 512MB budget), so hitting 512MB via corpus-shrink alone needs ~17,300 chunks, an ~83%
+cut from 99,767. Checked whether a smaller embedder (Model2Vec) could remove the fixed cost
+instead: Recall@5 0.266 vs. e5-small's 0.652 — not viable either. **Escalated to the user rather
+than running an ablation on a lever that's very likely disqualifying** — this now touches graded
+quality requirements (C1-C6), not a call to make unilaterally. User's direction: check whether a
+different free host offers more RAM before accepting a quality cut or revisiting the paid tier.
+That's P's deployment domain — flagged in `docs/RISKS.md` R4 for their session, not investigated
+here. (P's session has already started on this per their P-020 write-up.)
+
+**Closed R-R14 with a real, tested answer** (R-026) — the standing "larger candidate pool before
+RRF fusion" mitigation for hybrid's A3 underperformance was untested; tested it properly
+(`scripts/eval_rrf_candidate_pool.py`, pools of 10/30/50/100). Doesn't help — Recall@5 stays
+flat-to-worse (0.578-0.604) at every size, all below dense-only's 0.652. No config change; confirms
+A3's dense-only decision is robust to the most obvious first mitigation attempt.
+
 ## Blockers
 
-- **R-R21 (live deployment stub) needs Workstream P** — Dockerfile is their ownership. R's side is
-  now fully done: code wired, tested, artifacts published, exact 3-step change specified in
-  `docs/DECISIONS_R.md` R-023.
-- **R4 (still ~215-230MB over the 512MB free-tier target even with R-023 wired in)** — the
-  remaining lever most likely needs a real quality tradeoff (shrinking the chunk count), which
-  needs a real re-ablation pass to quantify honestly, not a guess. Not started.
+- **R-R21 (live deployment stub)** — R's side is fully done (code wired, tested, artifacts
+  published, R-023). Blocked on P diagnosing the Render-specific peak-memory-during-load issue
+  (P-020) — needs Render's own logs/dashboard, which R has no access to.
+- **R4 (RAM gap)** — R's engineering side is done (727MB steady-state, zero quality cost). The
+  corpus-shrink lever's real cost is now known and it's severe (R-024, ~83% cut needed). Decision
+  escalated to the user, who directed a hosting-alternatives check first — that's P's domain,
+  already in motion on their side per P-020.
+- Nothing currently blocked on R alone. Both open R4/R-R21 items need P's investigation or the
+  user's/team's decision, not more R-side engineering.
 
 ## Next session should start by
 
-1. **Check whether P's Dockerfile change (R-023's 3 steps) has landed** — verify with a real `/ask`
-   call against the live URL (same discipline as R-018's original discovery: don't trust a
-   "deployed" claim without checking), and if it has, measure production RSS for real rather than
-   assuming the 727MB isolated-venv number transfers exactly.
-2. If the memory gap is still open after that, the remaining lever is corpus/chunk-count shrink —
-   needs a real re-ablation pass (quality cost against A1-A4's Recall@5 numbers), not a guess. This
-   has not been started.
-3. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014/R-015/R-017/R-023
-   for the full A3/A4/efSearch/G3-calibration/memory-fix story before touching retrieval code
-   again — all of it is deliberate, data-driven, and documented, not oversights.
+1. **Check `docs/RISKS.md` R4/R-R21 for what P's session found** on the hosting-alternatives check
+   and the peak-memory-during-load diagnosis — both were in progress on P's side as of this
+   session's end, not yet resolved.
+2. **Re-verify the live URL directly** before trusting any "fixed" claim (same discipline every
+   time) — `GET /healthz` then a real `POST /ask` with a genuine query, not just a health check.
+3. If real retrieval reaches production, measure actual live RSS/behavior rather than assuming the
+   727MB isolated-venv or 446.8MB local-Docker numbers transfer exactly — P-020's OOM already
+   showed local ≠ Render for peak memory specifically.
+4. If the team ultimately decides on a corpus-shrink cut (R4), that needs a real re-ablation pass
+   quantifying the actual Recall@5 cost at whatever size is chosen — not a guess, and not started.
+5. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014/R-015/R-017/
+   R-023/R-024/R-025/R-026 for the full A3/A4/efSearch/G3-calibration/memory-fix story before
+   touching retrieval code again — all of it is deliberate, data-driven, and documented, not
+   oversights.
