@@ -580,3 +580,59 @@ observed end-to-end live" position Track B itself shipped in earlier this sessio
 `docs/RISKS.md` P-R20 sharpened with this finding, not treated as a new separate risk — same root
 cause, better characterized. Also strengthens the case for reporting P-R20 to Sarvam with a much
 more precise, highly reproducible repro case than was available before today.
+
+## P-020 — Tried R-023's memory fix live; real OOM found on `/ask` specifically; rolled back
+
+**Date:** 2026-08-18 · **Status:** Accepted — tried, real negative result, reverted
+**Context:** R-023 wired their memory-fix work into production and specified 3 Dockerfile steps,
+but their own isolated measurement (727MB) still exceeded the 512MB budget. Presented the real
+tradeoff to the user (try it and roll back if needed, vs. wait for R to shrink the corpus further,
+vs. reconsider the now-much-cheaper paid tier). User chose: try deploying, roll back if it crashes.
+**Applying the fix surfaced two real issues R's writeup hadn't anticipated:**
+1. The `embedder-lite-onnx-v1` release tarball extracts to `multilingual-e5-small-lite/`, not
+   `multilingual-e5-small/` (what `LiteE5Embedder`'s `DEFAULT_ONNX_MODEL_DIR` expects) — found by
+   downloading and inspecting the actual tarball before writing the extraction path. Fixed with
+   `tar --strip-components=1`.
+2. `numpy>=2.5` (part of the new `retrieval-lean` extra) requires Python 3.12+; the Dockerfile's
+   base image was still `python:3.11-slim` — never surfaced before since retrieval extras were
+   never actually installed in the image until this change. Bumped to `python:3.12-slim`.
+**Local verification looked genuinely promising:** built and ran the fixed image under Docker's
+own `-m 512m` limit (matching Render's stated free-tier constraint) — 446.8MiB steady-state, real
+(non-stub) retrieval confirmed working (1072ms `retrieve` timing, a live G3 borderline refusal),
+far under R's 727MB isolated measurement. Deployed to Render on that strength.
+**First deploy attempt failed at the build stage** — `curl: (56) Recv failure: Connection reset by
+peer` mid-download of the 84MB embedder tarball. A transient network failure, not a real bug
+(everything else in the build succeeded: `retrieval-lean` installed cleanly, the index downloaded
+fine, Python 3.12 worked). Retried — the retry built and deployed successfully.
+**The real, live answer, once actually tested:** `/healthz` returned 200 consistently, but every
+real `/ask` call returned a fast (<1s) `502 Bad Gateway` with empty content. Checked runtime logs
+directly rather than guessing: no `"POST /ask"` access-log line ever appeared before each restart —
+the process died mid-request, before FastAPI could even log the completed response, then restarted
+(`"Started server process [N]"` a few seconds later). This is the exact signature of an OOM kill
+happening during `_get_real_retriever()`'s first real load (the lazy singleton that loads the FAISS
+index + SQLite chunk lookup + ONNX embedder) — the process survives serving the cheap `/healthz`
+endpoint but cannot survive the actual memory spike of first-use retrieval, even though the
+*steady-state* RSS measured comfortably fits locally. Reproduced 3/3 on deliberate, separate `/ask`
+calls after confirming `/healthz` was healthy each time — not a fluke.
+**Why this doesn't contradict the earlier local test:** the local test measured steady-state RSS
+*after* a request had already completed once (loading finishes, memory settles) — it never
+specifically captured the *peak* during the singleton's first real initialization, which is
+plausibly higher than steady-state (loading a 180MB FAISS index and initializing an ONNX inference
+session both have real transient overhead beyond their final resident size). Render's actual OOM
+enforcement may also be stricter/less forgiving of a brief overshoot than Docker Desktop's local
+limit enforcement. Both are ordinary, plausible explanations — not a sign the local test was
+performed wrong, just that "steady-state fits" and "peak-during-first-load fits" are different
+claims, and only the live test could distinguish them.
+**Decision:** Rolled back immediately via `git revert` (not a force-push or history rewrite) of the
+Dockerfile commit, redeployed, and re-verified live: `/healthz` 200, 3/3 `/ask` calls 200 OK,
+demo fully restored. Chose `git revert` specifically so a future ordinary push to `main` wouldn't
+silently undo the rollback — a straight redeploy-of-an-old-SHA would have left the *branch itself*
+still pointing at the broken commit.
+**Consequences:** `docs/RISKS.md` R4 stays open — this is a real, live-verified negative result,
+not a projection either way anymore. The remaining gap is now specifically characterized as "peak
+first-load memory," not just "steady-state RSS," which is new, useful information for whoever
+tackles this next (R, if reducing peak-load overhead specifically; or the user, if reconsidering
+the paid tier now that even 727MB steady-state — let alone the higher peak — is the real number).
+No further deploy attempts against the free tier without either a fix that specifically targets
+peak load (e.g., loading the index/embedder in a way that avoids holding multiple copies in memory
+during initialization) or a decision to pay for headroom.
