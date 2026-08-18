@@ -93,6 +93,22 @@ needing a physical mic in this session. Worth reusing this technique for Phase 6
 query set (`AGENT_BUILD_SPEC.md` §7.4) rather than reinventing it. Also surfaced P-R12 (see
 `docs/RISKS.md`) — a Render connection-teardown quirk that doesn't block this flow.
 
+## P-009 — Retry policy not attached to `retrieve()`; tested in isolation instead
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** `docs/TEAM_SPLIT.md` §5 lists "retries" as Day 2 harness-hardening work. But
+`retrieve()`'s contract (`src/vrag/retrieval/interface.py`) is explicit: "Never raises. Returns []
+on internal failure." A `tenacity` retry policy has nothing to catch if the wrapped call never
+raises — wrapping it anyway would be a no-op that looks like real hardening but isn't.
+**Decision:** Leave `RetrieveStage` (`src/vrag/harness/stages.py`) unwrapped. Instead,
+`tests/harness/test_retry.py` proves `IDEMPOTENT_STAGE_RETRY` (`src/vrag/harness/retry.py`) itself
+works correctly in isolation — retries a transient failure once and succeeds, gives up and
+reraises after the configured cap — so the policy is verified and ready the moment there's a
+stage that can actually raise (Track B's LLM call, Day 3 per `docs/TEAM_SPLIT.md` §5).
+**Consequences:** No dishonest "retries: ✓" checkbox — `docs/PROGRESS_P.md` states plainly that
+retries aren't exercised on the live request path yet, only proven as a mechanism. Revisit this
+note once Track B lands; if the LLM call is the first real attach point, link back here.
+
 ## P-008 — Frontend sends `stop` proactively on final transcript
 
 **Date:** 2026-08-17 · **Status:** Accepted

@@ -1,18 +1,21 @@
 """FastAPI app: POST /ask (text debug entry point) + WS /voice (real mic -> Sarvam -> transcript).
 
-Day 1 scope (see docs/PROGRESS_P.md): STT is real, retrieval is the Day-1 stub from
-src/vrag/retrieval/interface.py, and the "answer" is Track A only — literally the best-supporting
-retrieved passage, no generation/guardrails/harness orchestration wired through yet. That wiring
-is explicitly Day 2 work per docs/TEAM_SPLIT.md §5. Nothing here pretends otherwise: every
-response's `stages_skipped` lists what isn't implemented yet.
+Day 2 scope (see docs/PROGRESS_P.md): STT is real, retrieval is the real R/P seam (falls back to
+the Day-1 stub shape automatically when no index is present locally, see
+src/vrag/retrieval/interface.py), and requests now run through the real harness — G1/G2 input
+guardrails, deadline-propagated Budget, Track A answer extraction, G5 output redaction — via
+`src/vrag/harness/stages.py::default_stages()`. Still missing: G3 confidence gate and G4
+groundedness (joint work with Workstream R, needs real retrieval scores — Day 3 per
+docs/TEAM_SPLIT.md §5), Track B generation, retries/circuit-breaker on a real network-calling
+stage (retrieve() never raises by contract, so there's nothing to retry yet — see
+docs/DECISIONS_P.md).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import time
-import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -20,9 +23,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.websockets import WebSocketState
 
-from vrag.retrieval.interface import retrieve
-from vrag.schemas import AnswerResponse, Citation
+from vrag.harness.budget import Budget
+from vrag.harness.pipeline import PipelineContext, run_pipeline
+from vrag.harness.stages import default_stages
+from vrag.schemas import AnswerResponse
 from vrag.stt.sarvam import stream_transcribe
+from vrag.telemetry.trace import build_trace_record, emit_trace
 
 # Uvicorn configures its own loggers but not the root logger, so module-level logger.info() calls
 # (e.g. in vrag.stt.sarvam) are silently dropped without this. Needed for visibility on a hosted
@@ -35,14 +41,10 @@ app = FastAPI(title="vrag", version="0.1.0")
 
 _FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
 
-# NOT-YET-IMPLEMENTED stages, honestly declared rather than silently skipped.
-_DAY1_STAGES_SKIPPED = [
-    "input_guardrail",
-    "rerank",
-    "grounding_gate",
-    "generate",
-    "output_guardrail",
-]
+# Target budget per AGENT_BUILD_SPEC.md §4's "Total to Track A answer" row. Generous relative to
+# the ~30ms target until Phase 6 actually measures the real per-stage numbers — today's job is
+# proving the mechanism works, not hitting the final number.
+_DEFAULT_BUDGET_MS = 200.0
 
 
 class AskRequest(BaseModel):
@@ -50,43 +52,25 @@ class AskRequest(BaseModel):
     k: int = 5
 
 
-async def build_placeholder_answer(query: str, k: int = 5) -> AnswerResponse:
-    """Track A only: best-supporting retrieved span, verbatim. See module docstring for scope."""
-    trace_id = uuid.uuid4().hex
-    start_ns = time.perf_counter_ns()
-    chunks = await retrieve(query, k=k)
-    retrieve_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
+async def build_answer(
+    query: str, k: int = 5, budget_ms: float = _DEFAULT_BUDGET_MS
+) -> AnswerResponse:
+    """Runs the real harness pipeline (G1 -> G2 -> Retrieve -> Track A -> G5 -> Assemble) and
+    fires a trace emission in the background — never awaited before the response is built, so
+    disk I/O never sits on the hot path (docs/CONVENTIONS.md)."""
+    ctx = PipelineContext(query=query, budget=Budget(total_ms=budget_ms))
+    ctx.data["k"] = k
+    await run_pipeline(ctx, default_stages())
+    response: AnswerResponse = ctx.data["answer_response"]
 
-    if not chunks:
-        return AnswerResponse(
-            status="abstained",
-            answer=None,
-            track="extractive",
-            citations=[],
-            confidence=0.0,
-            refusal_reason="No relevant passages found for this query.",
-            language="hi",
-            stages_skipped=_DAY1_STAGES_SKIPPED,
-            trace_id=trace_id,
-            timings_ms={"retrieve": retrieve_ms},
-        )
+    async def _emit() -> None:
+        try:
+            emit_trace(build_trace_record(ctx, budget_ms))
+        except Exception:
+            logger.exception("Failed to emit trace record")
 
-    top = chunks[0]
-    return AnswerResponse(
-        status="answered",
-        answer=top.text,
-        track="extractive",
-        citations=[
-            Citation(chunk_id=c.chunk_id, passage_id=c.passage_id, score=c.score, text_span=c.text)
-            for c in chunks[:2]
-        ],
-        confidence=top.score,
-        refusal_reason=None,
-        language=top.language,
-        stages_skipped=_DAY1_STAGES_SKIPPED,
-        trace_id=trace_id,
-        timings_ms={"retrieve": retrieve_ms},
-    )
+    asyncio.create_task(_emit())
+    return response
 
 
 @app.get("/healthz")
@@ -96,14 +80,14 @@ async def healthz() -> dict[str, str]:
 
 @app.post("/ask", response_model=AnswerResponse)
 async def ask(req: AskRequest) -> AnswerResponse:
-    return await build_placeholder_answer(req.query, k=req.k)
+    return await build_answer(req.query, k=req.k)
 
 
 @app.websocket("/voice")
 async def voice(websocket: WebSocket) -> None:
     """Browser mic -> raw PCM16 frames over this socket -> real Sarvam STT -> transcript events
-    relayed back, per docs/API_CONTRACTS.md. On a final transcript, runs retrieval and returns a
-    Track A placeholder answer."""
+    relayed back, per docs/API_CONTRACTS.md. On a final transcript, runs the full harness
+    pipeline (build_answer) and returns the resulting AnswerResponse."""
     await websocket.accept()
     logger.info("WS /voice: accepted")
 
@@ -141,7 +125,7 @@ async def voice(websocket: WebSocket) -> None:
             elif event.type == "final":
                 await websocket.send_json({"type": "transcript_final", "text": event.text})
                 if event.text.strip():
-                    answer = await build_placeholder_answer(event.text)
+                    answer = await build_answer(event.text)
                     await websocket.send_json(
                         {"type": "answer_final", "answer_response": answer.model_dump()}
                     )
