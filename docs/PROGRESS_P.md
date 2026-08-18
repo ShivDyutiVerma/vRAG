@@ -2,87 +2,90 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-17 (Day 1, session 01)
-**Current phase:** P1 — Walking Skeleton & First Deploy
+**Last updated:** 2026-08-18 (Day 2, session 02)
+**Current phase:** P4 — Harness Hardening (per `docs/TEAM_SPLIT.md` §5 Day 2 goals)
 
 ## Where we are, in one paragraph
 
-Day 1 walking skeleton is complete and live. **https://vrag-voice.onrender.com** is deployed and
-verified with a real, full golden-path test: genuine Hindi speech audio (via Sarvam's own TTS, see
-P-007) streamed to the live `/voice` WebSocket, transcribed correctly by real Sarvam STT
-("भारत में सबसे ऊँचा पर्वत कौन सा है?"), and answered correctly through the Day-1 `retrieve()`
-stub in ~2.4s end to end. No harness orchestration (deadline propagation, retries, guardrails) is
-wired through the request path yet — that's explicitly Day 2 scope per `docs/TEAM_SPLIT.md` §5.
-Deploy target was switched from Hugging Face Spaces (hit a real paywall — HF's free tier no longer
-covers Docker apps) to Render mid-session; see DECISIONS_P P-005.
+Synced with Workstream R's Day 1 work first thing this session: R shipped real chunking (A1
+ablation complete, `metadata_aware` chosen), a real `HybridRetriever`, and wired `retrieve()` to
+use it — with a clean automatic fallback to the Day-1 stub shape when no index is present locally,
+so this machine (no downloaded corpus/model) keeps working unchanged. Merged `origin/main` into
+`workstream-p` — fast-forward, no conflicts. Then built out the Day 2 harness: `/ask` and `/voice`
+now run through a real pipeline (`src/vrag/harness/stages.py`) — G1 input safety → G2 scope/
+language → Retrieve → Track A extraction → G5 output redaction → Assemble — with real deadline
+propagation via `Budget`, and every request emits a `TraceRecord` to `traces.jsonl` (fired after
+the response is built, never blocking it). All three demo-critical refusal-adjacent paths
+(normal answer, G1 unsafe-input refusal, G2 degenerate-input refusal) verified live against the
+running app. G3/G4 and Track B are explicitly not today's scope — joint work with R, Day 3.
+
+## Phase exit criteria — P4 (partial; full harness hardening continues Day 3)
+
+- [x] Every stage typed with Pydantic in/out (`StageResult`, `AnswerResponse`)
+- [x] Forced-tight-budget degradation test green (`tests/harness/test_degradation.py`) — proves
+      the shedding *mechanism* works; nothing sheds in the *real* pipeline yet since no stage is
+      optional until Track B lands (Day 3) — see `docs/DECISIONS_P.md`
+- [ ] Circuit breaker — not started, needs a real network-calling stage (Track B) to protect
+- [ ] `search_corpus` tool for Track B — not started, depends on generation provider decision
+- [x] Retry policy tested and proven correct in isolation (`tests/harness/test_retry.py`) — not
+      yet attached to a live stage, see `docs/DECISIONS_P.md` P-009 for why
+- [x] Every request writes a trace with per-stage ms timings (`src/vrag/telemetry/trace.py`)
+- [x] G1/G2/G5 guardrails implemented and unit-tested
 
 ## What works right now (verified, not assumed)
 
-- `.workstream` = `P`, `workstream-p` branch created and pushed ✅
-- `docs/` fully bootstrapped (PRD, ARCHITECTURE, CONVENTIONS, API_CONTRACTS, EVAL_PROTOCOL,
-  LATENCY_BUDGET, RISKS, GLOSSARY, EVAL_RESULTS shell, SUBMISSION_CHECKLIST, PROGRESS/DECISIONS
-  shared + mine) ✅
-- `retrieve()` stub returns valid `RetrievedChunk`s, matches the joint contract exactly ✅ verified
-  by `tests/test_retrieval_stub.py`, all passing
-- Harness skeleton (`Stage`, `PipelineContext`, `Budget` deadline tracker, retry policy shape)
-  imports cleanly, not yet wired into the request path ✅
-- Real Sarvam realtime STT (`saaras:v3-realtime`) — full golden path verified against the live
-  deployed URL using genuine TTS-generated Hindi speech (not silence, not a mock): correct
-  progressive partial transcripts, correct final transcript, correct downstream answer, ~2.4s
-  round trip ✅ (see DECISIONS_P P-007)
-- `POST /ask` — real end-to-end request through stub `retrieve()` → Track A placeholder answer,
-  verified both locally and on the live URL, returns correct Devanagari text + citations ✅
-- `WS /voice` — verified end to end on the **live Render deployment** with real speech audio,
-  including partial transcripts, final transcript, and the resulting answer ✅. **Not yet tested
-  with an actual physical microphone in a real browser** — the server-side path is proven with
-  real audio, but browser mic capture (`frontend/index.html`'s `getUserMedia` + PCM conversion)
-  hasn't been clicked through in an actual browser this session.
-- Frontend (`frontend/index.html`) — real mic capture (ScriptProcessorNode → PCM16) wired to the
-  WS, reusing the on-brand design from `frontend/reference/voice-rag-ui-preview.html`. Served
-  correctly by the FastAPI app at `/` ✅. Sends `stop` proactively on final transcript (P-008).
-- Docker image builds and runs correctly locally (`docker build` + `docker run`, health/frontend/
-  ask all verified inside the container) ✅
-- Live deployment on Render (`https://vrag-voice.onrender.com`), verified via `/healthz`, `/`,
-  `/ask`, and a full real-audio `/voice` round trip ✅
-- `pytest`: 7/7 passing ✅
-
-**Known non-blocking issue:** the `/voice` WebSocket doesn't close cleanly on Render — it lingers
-~20-25s after the server calls `websocket.close()` and eventually drops with code 1006 instead of
-a clean handshake. Confirmed this does **not** affect the actual answer delivery (both
-`transcript_final` and `answer_final` arrive correctly within ~2.4s, long before the lingering
-window). Documented as P-R12 in `docs/RISKS.md` — worth a look on Day 4 (polish) if there's time,
-not worth chasing further today.
+- Merge with Workstream R's work: clean fast-forward, `pytest`/`ruff`/`mypy` all green on the
+  merged tree within my scope (R's `[retrieval]`-extra tests need `faiss`/`torch`/`bm25s`, not
+  installed on this machine by design — CI installs all extras and covers that) ✅
+- `src/vrag/harness/stages.py` — real pipeline: `InputGuardStage` (G1), `ScopeGuardStage` (G2),
+  `RetrieveStage`, `ExtractAnswerStage` (Track A), `OutputGuardStage` (G5), `AssembleStage` ✅
+- `POST /ask` and `WS /voice` both run the real pipeline via `build_answer()` — no more direct
+  `retrieve()` calls bypassing the harness ✅
+- G1 (`src/vrag/guardrails/g1_input_safety.py`) — regex denylist for unsafe content + a length
+  guard, unit-tested against Hindi and English unsafe phrasings + a prompt-injection attempt ✅
+- G2 (`src/vrag/guardrails/g2_scope_language.py`) — empty/degenerate/no-recognisable-words
+  detection, accepts Devanagari and Latin-script (romanised) queries ✅
+- G5 (`src/vrag/guardrails/g5_output_safety.py`) — email/Indian-mobile/card-number redaction ✅
+- Live verification of all three paths through the actual running app: normal query → `answered`;
+  unsafe query ("बम बनाने का तरीका बताओ") → `refused` via G1; degenerate query ("???") → `refused`
+  via G2 ✅
+- `TraceRecord` → `traces.jsonl`, one per request, fired as a background task after the response
+  is built (confirmed via a live run: both an `answered` and a `refused` trace wrote correctly) ✅
+- Forced-tight-budget test (`Budget(total_ms=0.001)`) — the real pipeline still returns a valid
+  `AnswerResponse`, never hangs or raises ✅
+- `pytest` (my scope): 37/37 passing. `ruff check` / `mypy src` (my modules): clean ✅
 
 ## What is stubbed / faked / TODO
 
-- `retrieve()` is the Day-1 stub (hardcoded fake chunks) — swapped for Workstream R's real
-  implementation at the Day 2 sync, per the joint contract.
-- The "answer" in both `/ask` and `/voice` is Track A only, and a *simplified* Track A at that:
-  literally the top retrieved chunk's full text, not a real span-selection algorithm. No G1-G5
-  guardrails, no rerank, no grounding gate, no LLM generation (Track B) are wired in yet — every
-  `AnswerResponse` honestly lists these in `stages_skipped`.
-- The harness (`Stage`/`PipelineContext`/`Budget`) exists as a shape but isn't actually driving
-  `/ask` or `/voice` yet — those call `retrieve()` directly. Wiring the real pipeline through them
-  is Day 2 hardening work.
-- No retries, no circuit breaker, no structured-output repair loop yet.
-- Frontend has not been manually tested in a real browser with real mic permission this session —
-  only server-side WS logic was verified with simulated audio.
-- Deploy: **live on Render, verified end to end including real speech**, see above.
+- No G3 (retrieval confidence gate) or G4 (groundedness) — joint work with Workstream R, needs
+  real retrieval scores and calibration data neither of us has built yet. Day 3 per
+  `docs/TEAM_SPLIT.md` §5.
+- No Track B (LLM generation) — every answer is still Track A only (best-supporting span,
+  verbatim). Generation provider probe (`scripts/probe_latency.py`) hasn't run — blocked on
+  deciding Groq vs Sarvam LLM, which needs the Phase 0 latency probe neither track has run yet.
+- No circuit breaker — nothing to protect against yet without a real external LLM call on the
+  hot path.
+- Retry policy (`tenacity`) is tested correct in isolation but not attached to any live stage —
+  `retrieve()` never raises by contract, so there's nothing to retry there. Will attach to Track
+  B's LLM call.
+- Real browser mic click-through still not done — verified via TTS-generated audio (Day 1, P-007)
+  and via curl/WS-client smoke tests (today), but never through an actual phone browser tapping
+  the mic button. Carrying this forward as the top follow-up again.
+- efSearch curve, A2/A3/A4 ablations — Workstream R's queue, not mine.
 
 ## Blockers
 
-- None. Note for the next session: confirm the Render free-tier instance doesn't spin down in a
-  way that breaks the demo (Render free web services sleep after inactivity and cold-start on the
-  next request — worth checking response time on first hit before relying on this for the actual
-  demo video). Also see the non-blocking WS close-lag issue (P-R12) above.
+- None. Generation provider choice (Groq vs Sarvam LLM) blocks starting Track B — needs the
+  latency probe, which needs both API keys tested from the deployment region. I have
+  `SARVAM_API_KEY`; `GROQ_API_KEY` is still empty in `.env`.
 
 ## Next session should start by
 
-1. Open https://vrag-voice.onrender.com on an actual phone over mobile data and click through the
-   real mic UI (not just the server-side audio pipeline, which is already proven) — the one gap
-   left from today's verification.
-2. Check whether Workstream R has started their session / pushed `docs/PROGRESS_R.md` — if so,
-   read it before touching anything.
-3. Start Day 2 harness hardening per `docs/TEAM_SPLIT.md` §5: wire `Stage`/`PipelineContext`/
-   `Budget` through the actual request path (currently they exist but aren't used by `/ask` or
-   `/voice`), add `tenacity` retries, begin G1/G2/G5 guardrails.
+1. Click through the real mic UI on an actual phone (still not done — third session in a row this
+   is deferred; worth just doing it before starting new feature work).
+2. Check `docs/PROGRESS_R.md` for R's latest state before touching anything.
+3. If a Groq key is available, run `scripts/probe_latency.py` and record ADR-003 (currently
+   blocked on both tracks per the shared `docs/PROGRESS.md`).
+4. Start Track A/B split properly: pick a generation provider, wire a real LLM call behind a new
+   optional `GenerateStage`, and only then does the forced-budget degradation test get to prove
+   something sheds for real.

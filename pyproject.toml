@@ -39,6 +39,11 @@ retrieval = [
   "sentence-transformers>=5.7",
   "rerankers>=0.10",
 ]
+# Workstream P: generation, guardrails beyond regex/lexical, telemetry analysis extras.
+# Empty for now — G1/G2/G5 are pure-stdlib regex/lexical (docs/TECH_MENU.md §S3), no heavy deps
+# needed yet. Add here (not to base `dependencies`) the moment Track B generation or a guardrail
+# classifier needs one, so a plain `pip install -e .` in the Dockerfile stays lightweight.
+pipeline = []
 # Shared: eval scripts, latency analysis, charts
 analysis = [
   "polars>=1.43",
