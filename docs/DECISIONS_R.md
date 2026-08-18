@@ -1126,3 +1126,100 @@ different host, or accepting a severe, spec-violating corpus cut with real (now 
 quantified) quality cost. `eval/corpus_size_tmp/` (gitignored, ~313MB, regenerate via
 `scripts/eval_corpus_size.py --sizes 20000 50000 99767`) holds the built subsample artifacts this
 run used.
+
+## R-028 — Deep LiteE5Embedder memory audit: the tokenizer costs more than the model, and no ONNX Runtime setting meaningfully helps
+
+**Date:** 2026-08-19
+**Status:** Investigation only, per the user's explicit "do not modify production code yet"
+instruction. `scripts/audit_embedder_memory_faithful.py` (real step-by-step RSS, matching
+production's actual code path), `scripts/audit_embedder_memory.py` (an earlier, flawed attempt —
+kept and documented rather than deleted, see the methodology lesson below), and
+`scripts/investigate_onnx_settings.py` (SessionOptions sweep).
+
+**Methodology lesson worth keeping on record:** the first attempt at fine-grained step separation
+used `onnx.load()` to get an intermediate "model loaded into memory" checkpoint before
+`InferenceSession(...)`, splitting what `InferenceSession(path)` normally does in one call. This
+produced a session-ready total of ~704.7MB — which didn't match ADR-006's already-real, already-
+trusted 460.2MB isolated-embedder figure, so it was NOT taken at face value. Investigated the
+discrepancy before reporting anything: `onnx.load()` + `SerializeToString()` + `InferenceSession()`
+double-parses the model (a full Python-side `ModelProto` plus ORT's own internal C++
+representation coexist simultaneously), adding **~250MB of pure measurement artifact** not present
+in real usage. A second, faithful script (`ort.InferenceSession(path)` called directly, exactly as
+`_ensure_loaded()` does, no `onnx.load()` detour) landed at 456.0MB steady-state — within 4MB of
+ADR-006's number. **The faithful numbers below are the ones to trust; the staged ones are kept in
+the repo for the methodology lesson, not as a source of truth.**
+
+**Real, faithful step-by-step RSS (production code path, no artificial split):**
+
+| Step | RSS | Delta |
+|---|---|---|
+| 1. Before any import | 18.9MB | — |
+| 2. After importing `vrag.index.embedder` | 19.5MB | +0.6MB |
+| 3. After importing `onnxruntime` | 54.1MB | +34.7MB |
+| 4. After importing `tokenizers` | 54.7MB | +0.6MB |
+| 5. After `Tokenizer.from_file()` (tokenizer loaded) | **317.0MB** | **+262.3MB** |
+| 6. After `InferenceSession(path)` (model read + session built) | **454.4MB** | **+137.3MB** |
+| 7. After first dummy inference | 455.9MB | +1.6MB |
+| 8. After 20 more inferences | 456.0MB | +0.1MB (flat — no growth/leak) |
+
+**The tokenizer costs almost 2x what the actual neural network session does** — 262MB vs. 137MB.
+Root cause, verified not assumed: the tokenizer is a SentencePiece Unigram model (XLM-RoBERTa's,
+same family E5-multilingual uses) with a **250,002-token vocabulary** — real, checked directly in
+`tokenizer.json`. The `tokenizers` Rust library builds trie/lookup structures for the full
+vocabulary at load time; this cost is inherent to using this model's tokenizer at all, and applies
+identically to `E5Embedder`/`ONNXE5Embedder` too (same tokenizer, same vocab) — it isn't something
+`LiteE5Embedder`'s implementation choice caused or can avoid alone.
+
+**Requested facts, all measured directly:**
+- ONNX model file size: 118,335,516 bytes (~118.3MB)
+- ONNX Runtime version: 1.28.0. Available providers: `AzureExecutionProvider`,
+  `CPUExecutionProvider`. **Provider actually selected: `CPUExecutionProvider` only** (no GPU).
+- Threads: `intra_op_num_threads=0`, `inter_op_num_threads=0` — ORT's "auto" sentinel (not
+  literally zero threads; ORT picks a default based on visible CPU cores at session-run time, not
+  something the Python `SessionOptions` object reports back as a resolved number after the fact).
+- Execution mode: `ORT_SEQUENTIAL`. Graph optimization: `ORT_ENABLE_ALL` (both are ORT's un-set
+  defaults — `LiteE5Embedder` passes no `SessionOptions` at all today).
+- Memory arena: `enable_cpu_mem_arena=True`, `enable_mem_pattern=True` (both ORT defaults).
+- Batch size in production: **1** — `interface.py`/`hybrid.py` always call
+  `embed_queries([single_query])`, one item, every request.
+- Peak RSS across all 8 steps: 456.0MB (steady-state *is* the peak here — no transient spike above
+  the final resting value, unlike the earlier full-stack finding where peak-during-load mattered).
+- Duplicate session check: **no duplication** — `LiteE5Embedder._session` is a true lazy singleton;
+  verified directly by comparing `id(embedder._session)` across three separate `embed_queries()`/
+  `embed_passages()` calls on the same instance — identical object every time.
+- Dtype breakdown, byte-weighted (not just tensor count): **UINT8: 117.49MB (99.65%), FLOAT32:
+  0.41MB (0.35%)**. The model is genuinely, overwhelmingly int8 — the small float32 remainder is
+  the normal, expected residue of dynamic quantization (LayerNorm/bias parameters are typically
+  left unquantized; quantizing them barely saves space and can hurt precision), not evidence the
+  "int8" claim is wrong.
+
+**ONNX Runtime settings investigated (each isolated, one variable at a time, real latency P50/P100
+over 30 real inferences per variant):**
+
+| Variant | Session RSS | Δ vs. baseline | Latency P50 | Latency P100 |
+|---|---|---|---|---|
+| Baseline (current production defaults) | 455.2MB | — | 3.615ms | 4.125ms |
+| `enable_cpu_mem_arena=False` | 454.2MB | **-1.1MB** | 2.829ms | 3.931ms |
+| `enable_mem_pattern=False` | 455.3MB | +0.0MB | 3.327ms | 3.751ms |
+| `intra_op_num_threads=1` | 453.8MB | **-1.4MB** | 4.985ms (+38%) | 5.699ms |
+| `graph_optimization_level=ORT_DISABLE_ALL` | 453.0MB | **-2.2MB** | 3.628ms | 5.661ms |
+| All three memory settings combined | 454.4MB | -0.9MB | 4.753ms (+31%) | 5.112ms |
+
+**None of these settings offer a meaningful memory reduction** — every delta is ≤2.2MB against a
+~455MB session (under 0.5%), consistent with (and now more rigorously confirming, with real
+per-setting isolation and latency data) R-022's earlier finding that session-option tuning showed
+no real headroom. `intra_op_num_threads=1` and the combined variant both cost real latency (+31 to
++38% P50) for essentially zero memory benefit — a clear net loss, not a tradeoff worth taking.
+`enable_cpu_mem_arena=False`'s faster latency in this run is more likely measurement noise (30
+samples, single run) than a real effect — arena allocators normally exist to make repeated
+same-shape allocations faster, so a reproducible *speedup* from disabling one would be surprising;
+not re-run for a tighter confidence interval since the memory question (the reason to investigate
+this at all) was already answered as "no meaningful gain either way."
+
+**Consequences, not acted on (measurement/investigation only, no production change):** ONNX Runtime
+session settings are not a fruitful lever for this model — the ~455MB session cost is dominated by
+actual weight/vocabulary data, not tunable session bookkeeping. The one real, unexploited, and
+substantial finding is the **tokenizer's 262MB** — larger than the model itself — which sits
+entirely outside ONNX Runtime's settings surface (a `tokenizers`-library concern, not an ORT one)
+and wasn't in scope for this investigation, but is the more consequential place to look next if
+embedder memory is revisited.

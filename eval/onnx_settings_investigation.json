@@ -1,0 +1,56 @@
+{
+  "baseline_(current_production_defaults)": {
+    "baseline_rss": 54411264,
+    "after_tokenizer_rss": 316506112,
+    "after_session_rss": 455249920,
+    "after_warmup_rss": 456704000,
+    "latency_p50_ms": 3.6151999956928194,
+    "latency_p100_ms": 4.125300009036437,
+    "latency_mean_ms": 3.58293333168452
+  },
+  "disable_cpu_mem_arena": {
+    "baseline_rss": 54390784,
+    "after_tokenizer_rss": 316743680,
+    "after_session_rss": 454184960,
+    "after_warmup_rss": 455540736,
+    "latency_p50_ms": 2.829199976986274,
+    "latency_p100_ms": 3.9311999862547964,
+    "latency_mean_ms": 2.9011399970234684
+  },
+  "disable_mem_pattern": {
+    "baseline_rss": 54296576,
+    "after_tokenizer_rss": 316522496,
+    "after_session_rss": 455270400,
+    "after_warmup_rss": 456716288,
+    "latency_p50_ms": 3.327100013848394,
+    "latency_p100_ms": 3.7508000095840544,
+    "latency_mean_ms": 3.2867633359273896
+  },
+  "intra_op_threads_1": {
+    "baseline_rss": 54276096,
+    "after_tokenizer_rss": 316547072,
+    "after_session_rss": 453812224,
+    "after_warmup_rss": 455315456,
+    "latency_p50_ms": 4.984600003808737,
+    "latency_p100_ms": 5.698599998140708,
+    "latency_mean_ms": 5.025493333232589
+  },
+  "disable_graph_optimization": {
+    "baseline_rss": 54427648,
+    "after_tokenizer_rss": 316633088,
+    "after_session_rss": 453042176,
+    "after_warmup_rss": 454639616,
+    "latency_p50_ms": 3.628300008131191,
+    "latency_p100_ms": 5.6607000005897135,
+    "latency_mean_ms": 3.972806668995569
+  },
+  "all_memory_settings_combined": {
+    "baseline_rss": 54452224,
+    "after_tokenizer_rss": 316604416,
+    "after_session_rss": 454373376,
+    "after_warmup_rss": 455696384,
+    "latency_p50_ms": 4.752600012579933,
+    "latency_p100_ms": 5.11150000966154,
+    "latency_mean_ms": 4.76286666331968
+  }
+}
