@@ -716,3 +716,45 @@ suite (172/172) green at the downgraded versions, every embedder class smoke-tes
 against the new floor. `data/onnx/multilingual-e5-small/` (the exported+quantised model,
 ~590MB combined FP32+int8 files) is gitignored like the rest of `data/` — regenerate with
 `scripts/export_onnx_embedder.py`, don't commit ONNX binaries.
+
+## R-020 — Measured real RSS: the index alone already exceeds Render free tier's memory limit
+
+**Date:** 2026-08-18
+**Status:** Accepted — measured and documented; the actual fix is not decided or applied here
+**Context:** `docs/RISKS.md` R4 ("index too large for host memory... measure RSS in Phase 1") sat
+open, unmeasured, since Phase 0. Became urgent once R-R21 (`docs/RISKS.md`) meant Workstream P was
+about to attempt loading the real index into the live Render container for the first time.
+**Method:** loaded `data/index/metadata_aware/` (99,767 chunks — under `AGENT_BUILD_SPEC.md` §6.1's
+200k cap) in three separate processes, each left idle after loading, RSS read via Windows `tasklist`
+(the same technique already used earlier this session to confirm GPU-embedding progress — no new
+dependency needed for a one-off diagnostic).
+**Results:**
+| Config | RSS | % of Render free tier's 512MB |
+|---|---|---|
+| Index only (no embedder) | 591MB | 115% |
+| + `E5Embedder`, forced CPU | 1,474MB | 288% |
+| + `ONNXE5Embedder` (int8) | 1,539MB | 301% |
+| + `E5Embedder`, this dev machine's GPU (not production-representative) | 1,860MB | — |
+
+**Finding:** the index alone already exceeds the free-tier limit before any embedder loads — this
+isn't an embedder-choice problem. `ONNXE5Embedder` (R-019) gave no meaningful RSS reduction vs FP32,
+despite the ONNX model file itself being 4x smaller on disk — `sentence-transformers` still imports
+the full `torch`/`transformers` stack regardless of inference backend, so R-019's win is real but
+latency-only, not the memory win P6's "optimisation pass" framing might suggest.
+**Likely largest single contributor (not yet isolated further):** `chunk_lookup.json` stores full
+chunk text for all 99,767 chunks (113MB serialized) — CPython's per-object/string overhead when
+that's parsed into a live dict of `Chunk` objects typically inflates well beyond the raw JSON size,
+plausibly accounting for the largest share of the 591MB index-only figure alongside FAISS's 180MB
+on-disk HNSW graph and bm25s's ~35MB files.
+**Decision:** Document and flag, not fix unilaterally. Real options exist with real tradeoffs
+outside R's sole authority: upgrade Render's plan (cost/infra, joint), shrink the working pool
+(fewer chunks — a genuine quality cost against A1-A4's already-measured numbers, would need
+re-ablation, not a free lunch), or a leaner `chunk_lookup.json` format (e.g., memory-mapped or
+lazy-loaded rather than one big in-memory dict — an R-ownable engineering fix, not yet designed).
+**Rationale for not picking one now:** unlike R-017/R-019 (data-backed corrections completing
+already-flagged gaps), this is a fresh tradeoff decision with cost/quality/engineering-effort axes
+that go beyond pure retrieval-quality data — matches the same reasoning R-015/R-018 used to leave
+their own decisions for joint sign-off rather than picking alone.
+**Consequences:** `docs/RISKS.md` R4 escalated to 🔴 high and marked confirmed-real, cross-referenced
+from R-R21 — whoever attempts R-R21's deploy fix should read this first, or risk an OOM crash that
+looks like an unrelated deploy failure. No code changes in this ADR.
