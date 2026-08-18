@@ -1223,3 +1223,96 @@ substantial finding is the **tokenizer's 262MB** — larger than the model itsel
 entirely outside ONNX Runtime's settings surface (a `tokenizers`-library concern, not an ORT one)
 and wasn't in scope for this investigation, but is the more consequential place to look next if
 embedder memory is revisited.
+
+## R-029 — Tokenizer-only investigation: sentencepiece reproduces exact token IDs at ~18% the memory
+
+**Date:** 2026-08-19
+**Status:** Investigation only, per the user's explicit "do not modify production code yet"
+instruction. `src/vrag/index/embedder.py` untouched. Recommending consideration (not making the
+change) since the user's stated bar — 100% exact token-ID equivalence — was met, verified, not
+assumed.
+
+**Where the 262MB actually goes (isolated further than R-028):** read-and-`json.loads()`-ing
+`tokenizer.json` in pure Python costs ~53MB; the Rust `tokenizers` library's own internal
+structures (trie/automaton for Unigram decoding over the vocabulary) cost an *additional* ~262MB
+on top of that when built via `Tokenizer.from_file()` — the two aren't the same allocation, and
+production only ever pays the second one (`_ensure_loaded()` never materialises a Python dict of
+the vocab). Re-measured fresh via `scripts/investigate_tokenizer.py --stage where_262mb_goes`:
++262.4MB, matching R-028's 262.3MB closely.
+
+**Backend identity, confirmed directly (not inferred from the filename):** `tokenizers.Tokenizer`
+(HuggingFace, Rust, v0.22.2) running a `tokenizers.models.Unigram` model — this is a **different
+codebase** from Google's `sentencepiece` C++ library, even though both implement the same
+published Unigram/SentencePiece algorithm. `tokenizer.json`'s normalizer is a `Precompiled`
+charsmap and its pre-tokenizer is `Metaspace` (the "▁" convention) — both are exactly what raw
+`sentencepiece` already does internally as part of loading its own `.model` file, which is why a
+sentencepiece-based candidate doesn't need to reimplement them separately.
+
+**Vocabulary/model file size on disk:** `tokenizer.json` = 17,082,800 bytes (~16.3MB — of which the
+`model.vocab` section alone is ~11.9MB, metadata ~0.3MB). The raw `sentencepiece.bpe.model` (the
+original binary this was converted from, downloaded fresh from `intfloat/multilingual-e5-small`
+for this investigation, not present in this repo before) is **5,069,051 bytes (~5.07MB) — 3.4x
+smaller on disk** before any RSS measurement.
+
+**Memory-mapped/lazy-loading:** no explicit mmap parameter exists in either library's public
+Python API (`sentencepiece.SentencePieceProcessor.__init__`'s full signature has none;
+`tokenizers.Tokenizer.from_file()` takes only a path). Google's own project documentation states a
+"~6MB" typical memory footprint for sentencepiece as a general claim (not measured by this
+investigation, but directionally consistent with what was actually measured below) — whether that
+comes from an internal mmap mechanism wasn't confirmed from public docs; not claimed either way.
+
+**Token-ID equivalence test — the core result:**
+- Test corpus: **1,020 real strings** (`scripts/build_tokenizer_test_corpus.py`) — 500 real Hindi
+  queries (the frozen held-out set), 500 real English queries (`data/working_subset.jsonl`'s
+  `Eng_Query` field — the original English MS MARCO queries this corpus was translated from, real
+  1:1-paired data already in the project, not synthetic filler), 20 mixed/romanized strings (real
+  English+Hindi concatenations plus the already-vetted romanized example from
+  `tests/guardrails/test_g2_scope_language.py`). Every string formatted with the real `"query: "`
+  E5 prefix, matching exactly what `format_query()` sends to the tokenizer in production.
+- **First attempt: 0/1020 (0%) exact match.** Investigated before concluding incompatibility, not
+  assumed: every mismatch showed the *same* pattern — candidate IDs exactly 1 less than current
+  IDs, for every token except BOS/EOS. Root-caused via `sp.id_to_piece()`: raw sentencepiece's
+  native layout is `0=<unk> 1=<s> 2=</s> 3=<first real piece>...` (confirmed: `sp.pad_id() == -1`,
+  sentencepiece has no native pad concept), while HF's `tokenizer.json` conversion renumbered
+  specials to `0=<s> 1=<pad> 2=</s> 3=<unk>` and shifted every real piece up by 1 to make room for
+  the inserted `<pad>` token. A **verified, formula-based remap** (`hf_id = raw_id + 1` for real
+  pieces, `raw 0 (<unk>) -> hf 3`), not a fudge factor — re-tested:
+- **After the remap: 1,020/1,020 = 100.0000% exact match.** Hindi 500/500, English 500/500, mixed
+  20/20. Also spot-checked two edge cases the main corpus wouldn't naturally hit: a >512-token
+  string (current tokenizer truncates to 512; candidate requires the same truncation applied
+  manually, then matches exactly) and a genuinely exotic-script string (emoji + Greek + Russian +
+  Arabic mixed) — both matched exactly too.
+
+**Measured, real:**
+
+| | Current (`tokenizers`) | Candidate (`sentencepiece`) | Delta |
+|---|---|---|---|
+| RSS (net, load only) | 264.2MB | 48.7MB | **-215.5MB (-81.6%)** |
+| Tokenization latency P50 | 0.038ms | 0.009ms | **-76% (faster)** |
+| Tokenization latency P95 | 0.071ms | 0.015ms | **-79% (faster)** |
+| On-disk model file | 17.08MB (`tokenizer.json`) | 5.07MB (`sentencepiece.bpe.model`) | -70.3% |
+| Token-ID equivalence | — | **100.0000% (1,020/1,020)** | — |
+
+**Compatibility risks, stated plainly (not glossed over despite the strong result):**
+1. **The ID remap is specific to this exact model's vocab layout**, not a generic solution — if
+   the ONNX model is ever re-exported from a different/updated checkpoint, the remap formula would
+   need re-verification against that checkpoint's own `tokenizer.json`, not assumed to still hold.
+2. **Padding/truncation must be reimplemented manually** for a real integration — `tokenizers`
+   handles `enable_padding(pad_id=1)`/`enable_truncation(max_length=512)` internally;
+   `sentencepiece` has no batch API with equivalent built-in padding, so `LiteE5Embedder._embed()`
+   would need its own padding/truncation logic added (straightforward — pad_id=1 confirmed correct
+   from `tokenizer.json`'s own `added_tokens`, truncation-then-append-EOS confirmed correct via the
+   edge-case test above — but not yet written).
+3. **New dependency + new release artifact**: `sentencepiece` isn't currently in any
+   `pyproject.toml` extra used by production (added to `dev` only, for this investigation) —
+   adopting it would need promotion to `retrieval-lean`, and `sentencepiece.bpe.model` (5MB) isn't
+   in the current `embedder-lite-onnx-v1` release asset — a new release/asset would be needed.
+4. **1,020 real strings is a strong sample, not exhaustive** — genuinely adversarial or
+   pathological inputs (deeply nested Unicode combining characters, e.g.) weren't specifically
+   constructed and tested beyond the two edge cases above.
+**Consequences:** Meets the user's explicit bar (100% exact token-ID equivalence) for
+recommendation consideration. Real, substantial win on both memory (-215.5MB, more than
+R-023+R-021's combined memory work) and latency (faster, not a tradeoff) if adopted — but adoption
+itself (embedder.py changes, padding/truncation logic, dependency promotion, release artifact
+update, full test-suite re-verification) was explicitly out of scope for this investigation and
+not done here.

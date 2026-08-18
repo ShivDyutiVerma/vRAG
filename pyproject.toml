@@ -82,6 +82,12 @@ dev = [
   # process launching, see docs/DECISIONS_R.md R-020's methodology notes). Diagnostic-only, never
   # imported by application code.
   "psutil>=6.0",
+  # Comparison candidate for scripts/investigate_tokenizer.py (docs/DECISIONS_R.md R-029) -- tests
+  # whether Google's original sentencepiece library reproduces LiteE5Embedder's exact token IDs at
+  # lower memory than the `tokenizers` (Rust) library production currently uses. Diagnostic-only,
+  # never imported by application code; production keeps using `tokenizers` unless R-029 finds
+  # 100% exact token-ID equivalence.
+  "sentencepiece>=0.2",
 ]
 
 [tool.ruff]

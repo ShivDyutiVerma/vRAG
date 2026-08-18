@@ -1,0 +1,24 @@
+{
+  "n_total": 1020,
+  "n_exact_match": 1020,
+  "equivalence_rate": 1.0,
+  "current_tokenizer": {
+    "backend": "tokenizers (HF, Rust) -- CURRENT PRODUCTION",
+    "rss_baseline_bytes": 19681280,
+    "rss_after_load_bytes": 283877376,
+    "rss_net_bytes": 264196096,
+    "latency_p50_ms": 0.03819999983534217,
+    "latency_p95_ms": 0.07080001523718238
+  },
+  "candidate_tokenizer": {
+    "backend": "sentencepiece (Google, C++) -- CANDIDATE",
+    "rss_baseline_bytes": 25542656,
+    "rss_after_load_bytes": 74215424,
+    "rss_net_bytes": 48672768,
+    "latency_p50_ms": 0.009000010322779417,
+    "latency_p95_ms": 0.015300000086426735,
+    "spm_vocab_size": 250000
+  },
+  "mismatches_sample": [],
+  "n_mismatches_total": 0
+}
