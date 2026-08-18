@@ -558,3 +558,41 @@ retrieval on this specific corpus.
 ablation_ledger.csv` gets 2 new rows (`fixed_overlap` at overlap=0.0 and 0.1); no code or config
 changes needed since the shipped strategy (`metadata_aware`) doesn't use `fixed_overlap` at all — this
 was purely a methodology-completeness check on a strategy that was already not the winner.
+
+## R-017 — G3's joint operating point applied by Workstream P; MARGIN corrected same day to match it
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** Workstream P picked and applied `TAU=0.8835` from R-015's curve (the "weighs both
+`EVAL_PROTOCOL.md` targets equally" point, 19.3% false-refusal / 75.3% correct-refusal) — the joint
+decision R-015 deliberately left open. `docs/DECISIONS_P.md` P-015 has P's side of this. Their
+commit's own docstring already flagged the one thing it hadn't done: "MARGIN is carried over
+unchanged from the pre-calibration placeholder — not yet independently swept at this TAU."
+**Root cause found completing that flagged step:** `MARGIN=0.05` (the pre-calibration placeholder)
+does not transfer to the new `TAU=0.8835`. At this operating point, in-domain top1-vs-top5 gaps are
+naturally tiny (this TAU sits in a narrow, tightly-clustered part of the score distribution — R-015),
+so `MARGIN=0.05` pushed false-refusal to **88.0%** in live testing, not the 19.3% the just-shipped
+commit's own docstring states as its design target. Verified two ways before concluding this was a
+real bug and not a misreading: (1) a live `/ask` call against 3 real queries — all 3 abstained, 2 via
+the margin check specifically; (2) a direct fine sweep at `TAU=0.8835` showed false-refusal degrades
+steeply even at tiny margins (`MARGIN=0.01` alone → 28.7%) — there is no useful non-zero `MARGIN` at
+this `TAU` on this corpus.
+**Decision:** Set `MARGIN=0.0` (which structurally disables the margin gate, since `top1-weakest`
+can never be negative) — the value the calibration data itself supports at this `TAU`, confirmed
+live: the same 3 queries now correctly get 2/3 answered, 1/3 still abstains via a legitimate `TAU`
+check (0.87 vs. 0.8835 — a genuine borderline case, not a bug).
+**Rationale for fixing directly rather than only flagging:** unlike R-015's `TAU` pick (a genuine
+product-tradeoff value judgment with no data-only answer), this is not a new judgment call — it's
+applying the *same* calibration data and analysis that already produced `TAU=0.8835`, to keep the
+file internally consistent with its own stated design target. `g3_confidence.py` is joint-owned
+(`docs/TEAM_SPLIT.md` §2), and the gap was already explicitly named as unfinished in the commit that
+introduced it, so completing it is a natural continuation of the same joint work, not a
+second-guess. Verified live before shipping, same discipline as every other finding this session.
+**Consequences:** `tests/guardrails/test_g3_confidence.py`'s `test_ambiguous_close_scores_fail_
+margin_check` no longer matches reality at `MARGIN=0.0` (the margin gate is a no-op at this
+operating point) — split into two tests: one confirming clustered-but-above-tau scores now correctly
+pass (the real, current, intentional behavior), one confirming the margin *mechanism* still works
+correctly when a nonzero value is set via `monkeypatch` (so the code path stays covered for any
+future recalibration). 151/151 tests pass. If `TAU` is ever recalibrated again, `MARGIN` needs
+re-sweeping at the new value too — the module docstring now says so explicitly, so this doesn't
+silently recur.
