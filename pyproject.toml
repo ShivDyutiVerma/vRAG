@@ -27,7 +27,14 @@ retrieval = [
   "faiss-cpu>=1.15",
   "bm25s>=0.3",
   "onnxruntime>=1.28",
-  "torch>=2.13",
+  # torch: no version floor here on purpose. A plain `pip install -e .` pulls the CPU-only
+  # wheel from PyPI (fine for CI/fresh clones). On a machine with an NVIDIA GPU, install the
+  # CUDA build AFTER this instead — it's ~16x faster for index-build-time embedding
+  # (docs/DECISIONS_R.md R-005) — and its version numbers lag PyPI's CPU releases (e.g.
+  # 2.6.0+cu124 vs a CPU-only 2.13+), so pinning a high floor here would make pip "fix" a
+  # working GPU install back to CPU-only on the next `pip install -e .`:
+  #   pip install torch --index-url https://download.pytorch.org/whl/cu124 --force-reinstall --no-deps
+  "torch",
   "transformers>=5.15",
   "sentence-transformers>=5.7",
   "rerankers>=0.10",

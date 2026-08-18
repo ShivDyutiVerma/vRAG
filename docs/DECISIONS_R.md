@@ -126,3 +126,33 @@ still leave `metadata_aware` as the right pick (cheapest-among-tied) but for a c
 (2) no hyperparameter sweep for `fixed_overlap` (overlap ∈ {0, 0.1, 0.2}) has run. Neither blocks
 wiring `HybridRetriever` into `retrieve()` now — both are cheap to revisit before Phase 7 lock-in if
 time allows, and reversing this ADR later costs one re-index, not a redesign.
+
+## R-005 — Use the CUDA build of PyTorch for offline index-building (embedding), not CPU
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** This dev machine has an NVIDIA RTX 3060 (6GB VRAM), but `pip install torch` (no index
+specified) installs the CPU-only wheel by default — `torch.cuda.is_available()` was `False` even
+though the hardware and driver (CUDA 13.2) both support it. All A1 ablation index builds
+(`docs/DECISIONS_R.md` R-004, `docs/EVAL_RESULTS.md` §1) ran on CPU: 39-141 minutes per strategy,
+~6.5 hours total for all 6.
+**Decision:** Install the CUDA build explicitly —
+`pip install torch --index-url https://download.pytorch.org/whl/cu124 --force-reinstall --no-deps`
+— for any offline embedding-heavy work (index building, future A2 embedder ablation, noise-floor
+reruns). `sentence-transformers`' `SentenceTransformer` auto-detects and uses CUDA with zero code
+changes once the right wheel is installed — `E5Embedder` needed no changes.
+**Rationale:** Measured, not assumed: a 2,000-text sample embedded at 1.60ms/text on GPU vs.
+26.4ms/text on CPU — a 16.5x speedup. Rebuilding the `metadata_aware` production index (99,767
+chunks) took 200s on GPU vs. the 2,320s it took during the CPU-run ablation. This is purely an
+offline-build-time optimisation — does **not** touch the CLAUDE.md hot-path invariant ("ONNX int8 is
+for CPU only — on GPU it is slower than FP32; use FP16 there"), which is about the eventual
+*production, query-time* embedding path (Phase 6, ONNX-quantised, deployed on a CPU-only host per
+`AGENT_BUILD_SPEC.md` §5.3) — a completely different stage from building an index once, offline,
+on a dev machine.
+**Consequences:** `pyproject.toml`'s `torch` dependency has no version floor (see the inline
+comment) specifically so a routine `pip install -e ".[retrieval]"` doesn't silently downgrade a
+working CUDA install back to CPU-only — the CUDA wheel's version numbers (2.6.0+cu124) lag the
+CPU-only PyPI releases (2.13+), so a naive `torch>=2.13` floor would make pip "fix" it every time.
+Workstream P's machine and CI both stay CPU-only (no GPU there), which is fine — this only speeds up
+offline work on this one machine, and every persisted index artifact works identically regardless of
+which device built it.
