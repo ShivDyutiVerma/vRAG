@@ -117,6 +117,12 @@ class BGEM3Embedder:
     name = "bge-m3"
     DEFAULT_MODEL_NAME = "BAAI/bge-m3"
 
+    # BGE-M3 is the largest of the 4 A2 candidates (568M params, 1024-dim hidden states). The
+    # default sentence-transformers batch_size (32) repeatedly hit CUDA OOM on this machine's 6GB
+    # laptop GPU (docs/DECISIONS_R.md R-008) — smaller batches trade a bit of throughput for
+    # actually fitting in VRAM.
+    BATCH_SIZE = 8
+
     def __init__(self, model_name: str = DEFAULT_MODEL_NAME) -> None:
         self._model_name = model_name
         self._model: SentenceTransformer | None = None
@@ -129,11 +135,15 @@ class BGEM3Embedder:
         return self._model
 
     def embed_queries(self, texts: list[str]) -> list[list[float]]:
-        vectors = self._model_instance().encode(texts, normalize_embeddings=True)
+        vectors = self._model_instance().encode(
+            texts, normalize_embeddings=True, batch_size=self.BATCH_SIZE
+        )
         return vectors.tolist()
 
     def embed_passages(self, texts: list[str]) -> list[list[float]]:
-        vectors = self._model_instance().encode(texts, normalize_embeddings=True)
+        vectors = self._model_instance().encode(
+            texts, normalize_embeddings=True, batch_size=self.BATCH_SIZE
+        )
         return vectors.tolist()
 
 

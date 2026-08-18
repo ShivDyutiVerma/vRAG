@@ -225,3 +225,22 @@ misrepresent what's being tested; `sentence-transformers`' own `StaticEmbedding`
 specifically to serve Model2Vec models natively. `model2vec` removed from `pyproject.toml` — nothing
 imports it anymore, and CLAUDE.md's conventions call for deleting confirmed-unused code rather than
 leaving it as documented dead weight.
+
+## R-008 — Reduced batch size for BGE-M3 to fit this machine's 6GB GPU
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** During the A2 embedder ablation, `BGEM3Embedder` hit `torch.OutOfMemoryError: CUDA out
+of memory` twice in a row (once mid-run in a sequential batch of 3 embedder evaluations, once again
+on a clean-GPU-state retry) while embedding the 99,767-chunk working set at
+`sentence-transformers`' default `batch_size=32`. BGE-M3 is the largest of the 4 A2 candidates
+(568M params, 1024-dim hidden states) and this machine's RTX 3060 Laptop GPU has only 6GB VRAM
+(`docs/DECISIONS_R.md` R-005) — the other three candidates (E5-small, potion-multilingual-128M,
+Vyakyarth) are all meaningfully smaller and never hit this.
+**Decision:** `BGEM3Embedder` passes `batch_size=8` to `.encode()` explicitly, rather than the
+library default of 32.
+**Rationale:** Smaller batches reduce peak VRAM usage at some throughput cost — an acceptable
+trade for a one-time offline index build (AGENT_BUILD_SPEC.md §3.2), not a hot-path constraint.
+**Consequences:** If BGE-M3 wins A2 and needs a production embedding pass at a larger scale later,
+revisit whether 8 is still necessary or whether it was specific to this ablation's GPU/driver state.
+Doesn't affect the other three embedders' batch sizes (left at the library default, no OOM observed).
