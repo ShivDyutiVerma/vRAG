@@ -2,90 +2,93 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-18 (Day 2, session 02)
-**Current phase:** P4 — Harness Hardening (per `docs/TEAM_SPLIT.md` §5 Day 2 goals)
+**Last updated:** 2026-08-18 (Day 2, session 03 — same-day continuation)
+**Current phase:** P4/P5 — Harness Hardening + Guardrails (ahead of the Day 3 schedule on G3/G4)
 
 ## Where we are, in one paragraph
 
-Synced with Workstream R's Day 1 work first thing this session: R shipped real chunking (A1
-ablation complete, `metadata_aware` chosen), a real `HybridRetriever`, and wired `retrieve()` to
-use it — with a clean automatic fallback to the Day-1 stub shape when no index is present locally,
-so this machine (no downloaded corpus/model) keeps working unchanged. Merged `origin/main` into
-`workstream-p` — fast-forward, no conflicts. Then built out the Day 2 harness: `/ask` and `/voice`
-now run through a real pipeline (`src/vrag/harness/stages.py`) — G1 input safety → G2 scope/
-language → Retrieve → Track A extraction → G5 output redaction → Assemble — with real deadline
-propagation via `Budget`, and every request emits a `TraceRecord` to `traces.jsonl` (fired after
-the response is built, never blocking it). All three demo-critical refusal-adjacent paths
-(normal answer, G1 unsafe-input refusal, G2 degenerate-input refusal) verified live against the
-running app. G3/G4 and Track B are explicitly not today's scope — joint work with R, Day 3.
+Second sync of the day: pulled in R's noise-floor validation work (confirmed `metadata_aware`
+stands as the chunking winner) via another clean fast-forward merge. Attempted to build Track B
+(LLM generation) against Sarvam and hit a real external blocker: Sarvam's `/v1/chat/completions`
+hangs indefinitely on every valid request (confirmed via isolated tests — bad key/bad model both
+fail fast and correctly, only genuinely valid requests hang) — see `docs/RISKS.md` P-R13. User
+decided to retry Sarvam later rather than block on a Groq key. Rather than sit idle, built G3
+(confidence gate) and G4 (groundedness) — realized these don't actually need to wait for Day 3's
+"joint calibration," since `retrieve()` already returns real scores; only the *threshold tuning*
+is joint work, not the mechanism. All 5 guardrail layers are now live on the request path, ahead
+of schedule, with G3/G4 thresholds explicitly marked as uncalibrated placeholders. Also built
+`GenerateStage` (Track B) itself — even though Sarvam is down, this let me discover and fix a real
+architectural gap: a stage's declared `min_viable_ms` is only a pre-flight check, not an active
+timeout, so an unguarded network call inside an optional stage can blow the budget by 50x. Fixed
+with `asyncio.wait_for` against the actual remaining budget — verified live (10+s → ~204ms).
 
-## Phase exit criteria — P4 (partial; full harness hardening continues Day 3)
+## Phase exit criteria — P4/P5
 
-- [x] Every stage typed with Pydantic in/out (`StageResult`, `AnswerResponse`)
-- [x] Forced-tight-budget degradation test green (`tests/harness/test_degradation.py`) — proves
-      the shedding *mechanism* works; nothing sheds in the *real* pipeline yet since no stage is
-      optional until Track B lands (Day 3) — see `docs/DECISIONS_P.md`
-- [ ] Circuit breaker — not started, needs a real network-calling stage (Track B) to protect
-- [ ] `search_corpus` tool for Track B — not started, depends on generation provider decision
-- [x] Retry policy tested and proven correct in isolation (`tests/harness/test_retry.py`) — not
-      yet attached to a live stage, see `docs/DECISIONS_P.md` P-009 for why
-- [x] Every request writes a trace with per-stage ms timings (`src/vrag/telemetry/trace.py`)
-- [x] G1/G2/G5 guardrails implemented and unit-tested
+- [x] Every stage typed with Pydantic in/out
+- [x] Forced-tight-budget degradation test green, **and now real**: `GenerateStage` is the first
+      stage that actually sheds under budget pressure in the live pipeline, not just in isolation
+- [x] Deadline propagation holds *during* a stage, not just before it (`docs/DECISIONS_P.md` P-011)
+- [ ] Circuit breaker — still not started; arguably more urgent now that P-R13 exists (a provider
+      that hangs rather than erroring is exactly the failure mode a circuit breaker protects
+      against — currently every request pays up to the full remaining budget probing a dead
+      endpoint). Candidate for next session.
+- [ ] `search_corpus` tool for Track B — not started
+- [x] Retry policy tested correct in isolation, not attached to a live stage (P-009)
+- [x] Every request writes a trace with per-stage ms timings
+- [x] All five guardrail layers (G1/G2/G3/G4/G5) implemented and unit-tested — G3/G4 thresholds
+      are documented placeholders pending joint calibration (P-010)
 
 ## What works right now (verified, not assumed)
 
-- Merge with Workstream R's work: clean fast-forward, `pytest`/`ruff`/`mypy` all green on the
-  merged tree within my scope (R's `[retrieval]`-extra tests need `faiss`/`torch`/`bm25s`, not
-  installed on this machine by design — CI installs all extras and covers that) ✅
-- `src/vrag/harness/stages.py` — real pipeline: `InputGuardStage` (G1), `ScopeGuardStage` (G2),
-  `RetrieveStage`, `ExtractAnswerStage` (Track A), `OutputGuardStage` (G5), `AssembleStage` ✅
-- `POST /ask` and `WS /voice` both run the real pipeline via `build_answer()` — no more direct
-  `retrieve()` calls bypassing the harness ✅
-- G1 (`src/vrag/guardrails/g1_input_safety.py`) — regex denylist for unsafe content + a length
-  guard, unit-tested against Hindi and English unsafe phrasings + a prompt-injection attempt ✅
-- G2 (`src/vrag/guardrails/g2_scope_language.py`) — empty/degenerate/no-recognisable-words
-  detection, accepts Devanagari and Latin-script (romanised) queries ✅
-- G5 (`src/vrag/guardrails/g5_output_safety.py`) — email/Indian-mobile/card-number redaction ✅
-- Live verification of all three paths through the actual running app: normal query → `answered`;
-  unsafe query ("बम बनाने का तरीका बताओ") → `refused` via G1; degenerate query ("???") → `refused`
-  via G2 ✅
-- `TraceRecord` → `traces.jsonl`, one per request, fired as a background task after the response
-  is built (confirmed via a live run: both an `answered` and a `refused` trace wrote correctly) ✅
-- Forced-tight-budget test (`Budget(total_ms=0.001)`) — the real pipeline still returns a valid
-  `AnswerResponse`, never hangs or raises ✅
-- `pytest` (my scope): 37/37 passing. `ruff check` / `mypy src` (my modules): clean ✅
+- Second same-day merge from `origin/main` (R's noise-floor validation + metric bug fix): clean
+  fast-forward, no conflicts, tests still green ✅
+- `src/vrag/harness/stages.py` — full pipeline: G1 → G2 → Retrieve → **G3** → Track A →
+  **Track B (G4-gated)** → G5 → Assemble ✅
+- G3 (`g3_confidence.py`) — top1<tau OR (top1−top5)<margin, unit-tested including the "clear
+  winner passes / ambiguous close scores fail" distinction ✅
+- G4 (`g4_groundedness.py`) — citation-ID validation + lexical overlap, unit-tested including an
+  invented-chunk-id case and a real-but-ungrounded-answer case ✅
+- `GenerateStage` — real Sarvam LLM client (`src/vrag/generation/sarvam_llm.py`) using
+  provider-native `response_format: json_schema` (confirmed Sarvam supports this), with one
+  repair-attempt on parse failure per spec. **Live path currently blocked by P-R13** (Sarvam
+  outage), but the fallback-to-Track-A path is fully verified live, repeatedly, against the actual
+  broken endpoint — which is itself a real (if accidental) end-to-end test of the two-track design
+  under provider failure ✅
+- Deadline propagation now holds *during* GenerateStage, not just as a pre-flight check — verified
+  live: unguarded call = 10+ real seconds against a 200ms budget; guarded = ~204ms ✅
+- `pytest` (my scope): 47/47 passing. `ruff check` / `mypy src` (my modules): clean ✅
 
 ## What is stubbed / faked / TODO
 
-- No G3 (retrieval confidence gate) or G4 (groundedness) — joint work with Workstream R, needs
-  real retrieval scores and calibration data neither of us has built yet. Day 3 per
-  `docs/TEAM_SPLIT.md` §5.
-- No Track B (LLM generation) — every answer is still Track A only (best-supporting span,
-  verbatim). Generation provider probe (`scripts/probe_latency.py`) hasn't run — blocked on
-  deciding Groq vs Sarvam LLM, which needs the Phase 0 latency probe neither track has run yet.
-- No circuit breaker — nothing to protect against yet without a real external LLM call on the
-  hot path.
-- Retry policy (`tenacity`) is tested correct in isolation but not attached to any live stage —
-  `retrieve()` never raises by contract, so there's nothing to retry there. Will attach to Track
-  B's LLM call.
-- Real browser mic click-through still not done — verified via TTS-generated audio (Day 1, P-007)
-  and via curl/WS-client smoke tests (today), but never through an actual phone browser tapping
-  the mic button. Carrying this forward as the top follow-up again.
-- efSearch curve, A2/A3/A4 ablations — Workstream R's queue, not mine.
+- Track B has never produced a real generated answer — Sarvam's chat endpoint has been down for
+  this entire session (P-R13). The code path is real and ready; it's unverified end-to-end because
+  the provider is unverified, not because anything here is fake.
+- G3/G4 thresholds are placeholders, not calibrated numbers (P-010). Do not report a false-refusal
+  rate anywhere until the real 150+150 calibration set exists and gets swept.
+- No circuit breaker yet — see exit criteria above, now a more concrete need than before.
+- No `search_corpus` tool for Track B.
+- Retry policy tested correct in isolation but not attached to a live stage (P-009) —
+  `generate()`'s repair-retry is a *different* mechanism (JSON-parse repair), not the tenacity
+  policy; worth revisiting whether tenacity should also wrap the whole `generate()` call once
+  Sarvam is back, for transient (not permanent) failures.
+- Real browser mic click-through — still not done. Fourth time flagging this; genuinely just
+  needs someone with a phone to do it, nothing more I can do about it from here.
+- efSearch curve, A2/A3/A4 ablations — Workstream R's queue.
 
 ## Blockers
 
-- None. Generation provider choice (Groq vs Sarvam LLM) blocks starting Track B — needs the
-  latency probe, which needs both API keys tested from the deployment region. I have
-  `SARVAM_API_KEY`; `GROQ_API_KEY` is still empty in `.env`.
+- **P-R13 (external, not code):** Sarvam's chat completions endpoint hangs on every valid request.
+  User's call: retry later. I'll re-probe periodically but won't block other work on it.
+- Real mic click-through needs a human with a phone — not blocking further backend work, but
+  genuinely can't be done from here.
 
 ## Next session should start by
 
-1. Click through the real mic UI on an actual phone (still not done — third session in a row this
-   is deferred; worth just doing it before starting new feature work).
+1. Re-run `scripts/probe_latency.py` (or a quick manual curl) to check if Sarvam's chat endpoint
+   has recovered — if so, actually exercise Track B end to end for the first time and record real
+   TTFT numbers as ADR-003.
 2. Check `docs/PROGRESS_R.md` for R's latest state before touching anything.
-3. If a Groq key is available, run `scripts/probe_latency.py` and record ADR-003 (currently
-   blocked on both tracks per the shared `docs/PROGRESS.md`).
-4. Start Track A/B split properly: pick a generation provider, wire a real LLM call behind a new
-   optional `GenerateStage`, and only then does the forced-budget degradation test get to prove
-   something sheds for real.
+3. Build the circuit breaker — P-R13 makes the case for it concrete: N failures/hangs in a rolling
+   window should trip it and skip straight to Track A without even attempting the network call,
+   rather than paying the timeout cost on every single request.
+4. Click through the real mic UI on a phone. Still.

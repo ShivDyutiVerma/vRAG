@@ -1,10 +1,17 @@
 """Smoke tests for the FastAPI app: /healthz and /ask (text debug entry point), now running
-through the real harness pipeline (G1 -> G2 -> Retrieve -> Track A -> G5 -> Assemble).
+through the real harness pipeline (G1 -> G2 -> Retrieve -> G3 -> Track A -> Track B -> G5 ->
+Assemble).
 
 /voice is deliberately not covered here — it drives real Sarvam STT (never mocked, see
 CLAUDE.md hard rules) and isn't suitable for an automated, network-dependent unit test. It was
 manually smoke-tested end to end against the real Sarvam API during Day 1; see
-docs/PROGRESS_P.md."""
+docs/PROGRESS_P.md.
+
+Note: an "answered" query really does attempt a real network call to Sarvam for Track B
+(src/vrag/generation/sarvam_llm.py) — it isn't mocked. It's bounded by GenerateStage's own
+remaining-budget timeout (docs/DECISIONS_P.md P-011), so a slow/unreachable provider adds up to
+~200ms per such test rather than hanging, and Track A's fallback answer is what these tests
+actually assert on."""
 
 from fastapi.testclient import TestClient
 
@@ -28,7 +35,9 @@ def test_ask_returns_answered_for_a_query_the_stub_covers():
     assert body["answer"]
     assert len(body["citations"]) >= 1
     assert "retrieve" in body["timings_ms"]
-    assert body["stages_skipped"] == []
+    # generate (Track B) may or may not be skipped depending on live provider availability
+    # (see module docstring) — but no guardrail/retrieval stage should ever be skipped here.
+    assert set(body["stages_skipped"]) <= {"generate"}
 
 
 def test_ask_refuses_empty_query_via_g2_before_retrieval_runs():

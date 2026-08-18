@@ -93,6 +93,63 @@ needing a physical mic in this session. Worth reusing this technique for Phase 6
 query set (`AGENT_BUILD_SPEC.md` §7.4) rather than reinventing it. Also surfaced P-R12 (see
 `docs/RISKS.md`) — a Render connection-teardown quirk that doesn't block this flow.
 
+## P-012 — Real provider latency probe results (feeds ADR-003, not yet merged into shared DECISIONS.md)
+
+**Date:** 2026-08-18 · **Status:** Accepted — recorded here per `docs/TEAM_SPLIT.md` §3 (shared
+`DECISIONS.md`/ADR-003 is sync-only; this is the source data for whoever does that merge)
+**Context:** Ran `scripts/probe_latency.py --n 30` for real, using the Sarvam key on this machine
+(`GROQ_API_KEY` still empty — Groq's chat TTFT column is therefore blank, not zero/bad).
+
+| Measurement | Provider | P50 | P95 | P100 | Failures |
+|---|---|---|---|---|---|
+| TCP+TLS connect | sarvam (api.sarvam.ai) | 210.9ms | 315.8ms | 368.6ms | 0/30 |
+| TCP+TLS connect | groq (api.groq.com) | 173.5ms | 218.3ms | 317.9ms | 0/30 |
+| Chat TTFT | sarvam (sarvam-105b) | — | — | — | **30/30 (all timed out)** |
+| Chat TTFT | groq | — | — | — | SKIPPED — no `GROQ_API_KEY` |
+
+**Decision:** Do not treat the 30/30 Sarvam chat failure as a latency data point — it's not slow,
+it's a live provider-side outage (see `docs/RISKS.md` P-R13, isolated via controlled tests: bad
+key/bad model both fail fast and correctly, only valid requests hang). ADR-003 stays open pending
+either Sarvam recovering or a Groq key becoming available.
+**Consequences:** These TCP/TLS numbers are real network physics from this specific dev machine's
+location, not the eventual deployment region — don't treat them as final either, they're one data
+point for the eventual region-choice decision in `docs/ARCHITECTURE.md` §Deploy runbook.
+
+## P-010 — G3/G4 mechanisms implemented ahead of calibration; thresholds are documented placeholders
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** `docs/TEAM_SPLIT.md` §5 schedules G3/G4 as joint work with Workstream R on Day 3,
+reasoning that calibration needs real retrieval scores. But `retrieve()` already returns real
+scores now (R wired `HybridRetriever` on Day 1) — what's actually still joint/blocked is the
+*calibration sweep* (150 in-domain + 150 out-of-domain queries), not the mechanism itself.
+**Decision:** Built `g3_confidence.py` (top1<tau OR (top1-top5)<margin) and
+`g4_groundedness.py` (citation-ID validation + lexical overlap) with explicit UNCALIBRATED
+placeholder thresholds (tau=0.35, margin=0.05, overlap_ratio=0.15), wired live into
+`src/vrag/harness/stages.py` (`GroundGateStage` for G3, inline in `GenerateStage` for G4). Chose
+placeholders using the literature prior in `docs/TECH_MENU.md` §S3 (query-doc cosine typically
+0.30-0.55) rather than guessing blind.
+**Consequences:** All 5 guardrail layers are now functionally present and demoable, ahead of the
+Day 3 schedule — satisfies `docs/BUILD_PLAN.md` P5's exit criterion structurally, but the
+calibration curve, false-refusal-rate measurement, and correct-refusal-rate measurement are still
+outstanding and still joint work. Do not report a false-refusal rate or claim these numbers are
+calibrated anywhere — they are a documented starting guess, not a result.
+
+## P-011 — Enforce the actual remaining budget during GenerateStage, not just before it
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** Discovered directly while testing GenerateStage against a live outage (P-R13, Sarvam's
+chat endpoint hanging): `run_pipeline`'s budget check (`stage.optional and not
+ctx.budget.can_afford(min_viable_ms)`) only decides whether to *start* an optional stage — nothing
+stopped the stage from running arbitrarily long once started. A 200ms-budget request took 10+ real
+seconds because `GenerateStage` awaited `generate_track_b()` unguarded.
+**Decision:** `GenerateStage.run()` now wraps its call in `asyncio.wait_for(...,
+timeout=ctx.budget.remaining_ms / 1000)` — the *actual* remaining budget at call time, not a
+fixed number. A timeout is treated exactly like a generation failure: skip, keep Track A.
+**Consequences:** Verified with a live (broken) Sarvam endpoint: request time dropped from 10+s to
+~204ms against a 200ms budget. This is a general principle worth remembering for any future
+network-calling optional stage, not just this one — a `min_viable_ms` pre-check alone does not
+make deadline propagation real; the stage itself must respect the clock once running.
+
 ## P-009 — Retry policy not attached to `retrieve()`; tested in isolation instead
 
 **Date:** 2026-08-18 · **Status:** Accepted
