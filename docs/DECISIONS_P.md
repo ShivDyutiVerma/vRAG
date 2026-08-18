@@ -100,6 +100,8 @@ query set (`AGENT_BUILD_SPEC.md` §7.4) rather than reinventing it. Also surface
 **Context:** Ran `scripts/probe_latency.py --n 30` for real, using the Sarvam key on this machine
 (`GROQ_API_KEY` still empty — Groq's chat TTFT column is therefore blank, not zero/bad).
 
+**First run, while Sarvam's chat endpoint was down (see `docs/RISKS.md` P-R13):**
+
 | Measurement | Provider | P50 | P95 | P100 | Failures |
 |---|---|---|---|---|---|
 | TCP+TLS connect | sarvam (api.sarvam.ai) | 210.9ms | 315.8ms | 368.6ms | 0/30 |
@@ -107,13 +109,80 @@ query set (`AGENT_BUILD_SPEC.md` §7.4) rather than reinventing it. Also surface
 | Chat TTFT | sarvam (sarvam-105b) | — | — | — | **30/30 (all timed out)** |
 | Chat TTFT | groq | — | — | — | SKIPPED — no `GROQ_API_KEY` |
 
-**Decision:** Do not treat the 30/30 Sarvam chat failure as a latency data point — it's not slow,
-it's a live provider-side outage (see `docs/RISKS.md` P-R13, isolated via controlled tests: bad
-key/bad model both fail fast and correctly, only valid requests hang). ADR-003 stays open pending
-either Sarvam recovering or a Groq key becoming available.
+**Second run, same day, after Sarvam recovered:**
+
+| Measurement | Provider | P50 | P95 | P100 | Failures |
+|---|---|---|---|---|---|
+| TCP+TLS connect | sarvam (api.sarvam.ai) | 233.0ms | 1697.7ms | 1706.0ms | 0/30 |
+| TCP+TLS connect | groq (api.groq.com) | 173.4ms | 293.9ms | 571.8ms | 0/30 |
+| Chat TTFT | sarvam (sarvam-105b) | **452.4ms** | **858.1ms** | **903.8ms** | 4/30 |
+| Chat TTFT | groq | — | — | — | SKIPPED — no `GROQ_API_KEY` |
+
+**Decision:** The first run's 30/30 Sarvam chat failure was a genuine transient outage, not a
+latency data point and not our bug — confirmed by the second run succeeding with reasonable
+numbers a few hours later, same code, same key, same day. Streaming TTFT (P50 452ms) is
+encouraging but still ~4x the 110ms target; note this is TTFT specifically, not full-completion
+time (P-014 below covers why those differ a lot for our non-streaming implementation). Sarvam's
+own TCP+TLS P95/P100 got notably worse in the second run (315ms → 1698ms) — network conditions
+from this dev machine are themselves noisy; don't over-read either single run. ADR-003 (shared)
+still needs a joint sync to actually record this — Groq remains untested (no key).
 **Consequences:** These TCP/TLS numbers are real network physics from this specific dev machine's
 location, not the eventual deployment region — don't treat them as final either, they're one data
 point for the eventual region-choice decision in `docs/ARCHITECTURE.md` §Deploy runbook.
+
+## P-013 — Track B fixes: CSV citations (not array), disable reasoning, switch model, consistent timeout
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** Sarvam's chat endpoint recovered mid-session (P-R13 resolved). Getting Track B to
+actually produce a correct, grounded, Hindi-language answer required four separate fixes, each
+found by direct testing against the live API, not guessed:
+1. **Array-field bug** (P-R15): `response_format: json_schema` with an `array`-typed required
+   field (`cited_chunk_ids: list[str]`) makes the model pad whitespace forever instead of closing
+   the JSON — confirmed by removing the array field alone and watching `finish_reason` flip from
+   `"length"` to `"stop"`. Fixed by changing the schema to `cited_chunk_ids_csv: str`
+   (comma-separated), parsed into a list via a `GeneratedAnswer.cited_chunk_ids` property —
+   `src/vrag/harness/stages.py`'s `GenerateStage` needed zero changes since it only ever used
+   `.cited_chunk_ids`.
+2. **Reasoning starves the answer** (P-R16): `sarvam-105b` emits a billed `reasoning_content`
+   chain-of-thought before the real content; with `max_tokens=512`, a non-trivial prompt can
+   consume the entire budget on reasoning and never produce `content`. Fixed with
+   `"reasoning_effort": null` — Sarvam's own documented recommendation for latency-sensitive use.
+3. **Wrong model for structured output**: `sarvam-105b-conversations` (chosen in P1 for its
+   voice-agent-tuned billing) produces pure whitespace under `response_format: json_schema`
+   regardless of schema shape or `reasoning_effort` — switched to plain `sarvam-105b`, which
+   works correctly.
+4. **Answered in English despite a Hindi question**: with the original system prompt ("respond in
+   the same language as the user's question"), the model sometimes ignored this and answered in
+   English even for a Hindi query over Hindi context — which also (correctly) tanked G4's lexical
+   overlap check to ~9%, since the answer shared almost no tokens with Devanagari context.
+   Strengthened the system prompt with an explicit, capitalized instruction naming the script;
+   confirmed fixed — overlap on the same query went to 100% after the change.
+**Decision:** All four fixes landed together in `src/vrag/generation/{schemas,sarvam_llm}.py`.
+**Consequences:** Track B verified working end-to-end for the first time this session: real
+Sarvam call → correct Hindi structured answer → correct citation → G4 groundedness pass →
+`track: "generative"` in the final `AnswerResponse`. Also fixed a related bug while testing this
+(`GenerateStage` was calling `generate_track_b()` without passing the actual remaining budget as
+`generate()`'s own `timeout_s`, so its unrelated internal 10s default could cut off a call the
+outer `asyncio.wait_for` would otherwise have allowed to finish) — now both timeouts derive from
+the same `ctx.budget.remaining_ms` value.
+
+## P-014 — Track B's non-streaming completion time is highly variable; Track A remains the practical default
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** Repeated identical `generate()` calls against the now-healthy Sarvam endpoint took
+anywhere from ~1.4s to over 15s to fully complete (non-streaming — waits for the entire
+structured JSON response). The probe's streaming TTFT is a real, much better number (P50 452ms,
+P95 858ms, `docs/DECISIONS_P.md` P-012) — but that's time-to-*first*-token, not time-to-*full*-
+completion, and our non-streaming implementation can't benefit from it.
+**Decision:** No code change here — this is a documented, accepted consequence of the earlier
+non-streaming design choice, not a bug to fix today. `GenerateStage` already handles it correctly:
+under any realistic request budget (200ms, even 2-5s), Track B times out and Track A's
+already-computed answer stands, exactly as designed.
+**Consequences:** Track B will rarely if ever fire within the actual product's real time budget
+until real token streaming is built (AGENT_BUILD_SPEC.md §3.3's "begin emitting on the first
+sentence"). Worth being explicit about this in the README's honest-limitations section — Track B
+is real, tested, and correct, but not fast enough yet to be more than an occasional/best-effort
+upgrade over Track A under the current architecture.
 
 ## P-010 — G3/G4 mechanisms implemented ahead of calibration; thresholds are documented placeholders
 

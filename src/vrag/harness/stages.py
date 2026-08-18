@@ -194,10 +194,15 @@ class GenerateStage(Stage):
                 stage_name=self.name, skipped=True, skip_reason="no context to generate over"
             )
 
-        timeout_s = ctx.budget.remaining_ms / 1000
+        timeout_s = max(ctx.budget.remaining_ms / 1000, 0.001)
         try:
+            # Pass the same timeout into generate()'s own httpx client, not just the outer
+            # wait_for — generate()'s default (10s) is a sane cap for standalone callers, but
+            # here the actual remaining budget is the only number that should matter. Without
+            # this, a generous budget (e.g. 12s) could still get cut short by generate()'s
+            # unrelated internal default, which is exactly what happened during testing.
             result = await asyncio.wait_for(
-                generate_track_b(ctx.query, chunks), timeout=max(timeout_s, 0.001)
+                generate_track_b(ctx.query, chunks, timeout_s=timeout_s), timeout=timeout_s
             )
         except TimeoutError:
             return StageResult(
