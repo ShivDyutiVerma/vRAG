@@ -3,7 +3,7 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met — full staged ablation (A1-A4) + efSearch curve complete, production wiring applied
+**Current phase:** P3 exit criteria fully met (ahead of schedule — see below); G3 calibration data gathered, decision pending joint sync
 **Build status:** 🟢 green — 150/150 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
@@ -26,9 +26,23 @@ criterion and CLAUDE.md's original hybrid-retrieval hot-path invariant, both now
 this), `HybridRetriever` defaults to `retrieval_mode="dense"` and skips BM25 on the hot path
 entirely; reranking stays off by default (already was). A real, verified side effect worth watching:
 this also fixed `RetrievedChunk.score`'s scale to match what G3's `TAU` placeholder was actually
-calibrated for (flagged for Workstream P in `docs/RISKS.md` P-R18, not touched since G3 is their
-module). Also fixed one flaky test in P's file (`tests/test_api.py`) with explicit user
+calibrated for. Also fixed one flaky test in P's file (`tests/test_api.py`) with explicit user
 authorization to cross the ownership boundary — documented as R-013.
+
+**Ran ahead on the schedule** (`docs/TEAM_SPLIT.md` §5 spreads A1-A4 across Days 1-3; all done here
+on Day 1) into the next R-scoped item — supporting G3 calibration (`docs/TEAM_SPLIT.md` §5 names
+this R's Day-3 task, joint with P). Built `eval/calibration.json` (150 in-domain + 150 genuinely
+out-of-index queries, no LLM call needed — reused the already-cached corpus parquet) and ran the
+full `TAU` sweep against the real production index. **Finding: `docs/EVAL_PROTOCOL.md`'s calibration
+targets (false-refusal<10% AND correct-refusal>80%) are not simultaneously reachable** on this
+corpus via pure cosine-similarity gating — verified root cause: MSMARCO-XI passages recur across
+different query_ids, so genuinely out-of-index queries often still retrieve a topically-close or
+even coincidentally-correct match. Full curve and reference-point table: `docs/DECISIONS_R.md`
+R-015, chart at `docs/assets/g3_calibration.png`. Deliberately did **not** apply a chosen TAU/MARGIN
+to `g3_confidence.py` — the pick is a real product tradeoff, and `docs/TEAM_SPLIT.md` §5 reserves it
+as a joint Day-3/4 decision, not R's to make alone even though the file is joint-owned (unlike
+R-013's P-exclusive-file situation). Flagged in `docs/RISKS.md` R-R19 with the full reference table
+ready for whoever makes the final call.
 
 ## Phase exit criteria I'm targeting (P3, my slice) — all met
 
@@ -68,8 +82,9 @@ authorization to cross the ownership boundary — documented as R-013.
 
 ## Blockers
 
-- None currently blocking R's work. `docs/RISKS.md` P-R18 is a flag *for* Workstream P (G3 score
-  scale), not a blocker on my side.
+- None currently blocking R's own work. `docs/RISKS.md` R-R19 (G3's TAU/MARGIN operating point) is a
+  genuine joint decision, not something either track should pick alone — needs a sync, not just a
+  ping.
 
 ## Next session should start by
 
@@ -77,8 +92,10 @@ authorization to cross the ownership boundary — documented as R-013.
    A3/A4/efSearch story before touching retrieval code again — the production default is now
    dense-only, no reranker, efSearch=64, and all three are deliberate, data-driven, documented
    choices, not oversights
-2. P3's exit criteria (my slice) are all met — next is likely whatever `docs/BUILD_PLAN.md` names for
-   Phase 6+ (ONNX quantisation, real latency benchmarking) or coordinating with Workstream P on the
-   G3 calibration flagged in `docs/RISKS.md` P-R18
-3. Check `docs/BUILD_PLAN.md`'s later phases for R's remaining ownership before assuming there's
-   nothing left — this session focused entirely on closing out P3, not on scoping what's next
+2. Read `docs/DECISIONS_R.md` R-015 and `docs/RISKS.md` R-R19 before touching G3 — the calibration
+   data and curve are ready, but the actual TAU/MARGIN pick is a joint call, not a solo one
+3. R is running ~2 days ahead of `docs/TEAM_SPLIT.md` §5's schedule (all of A1-A4 + efSearch + G3
+   calibration data, originally spread across Days 1-3, done on Day 1). Check with the user or
+   `docs/BUILD_PLAN.md`'s later phases (P6 ONNX quantisation is R's file, `src/vrag/index/
+   embedder.py`) before assuming there's nothing left, but don't pull Day-4-scoped latency work
+   forward on its own — `docs/TEAM_SPLIT.md` explicitly warns against that

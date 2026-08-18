@@ -466,3 +466,73 @@ confirmation (R-009).
 or query distribution changes materially (e.g. after ONNX quantisation in Phase 6, though efSearch
 is a pure search-time/graph-traversal parameter and shouldn't be affected by the embedding
 backend's own precision).
+
+## R-015 — G3 calibration: real data gathered, targets not simultaneously reachable via TAU alone (proposal only, not applied)
+
+**Date:** 2026-08-18
+**Status:** Proposed — data and curve complete, final TAU/MARGIN NOT applied to
+`src/vrag/guardrails/g3_confidence.py`, deliberately left for joint sign-off (see Rationale)
+**Context:** `docs/EVAL_PROTOCOL.md`'s G3 calibration spec — 150 in-domain + 150 out-of-domain
+queries, sweep `TAU`/`MARGIN`, target false-refusal(in-domain) < 10% and correct-refusal
+(out-of-domain) > 80%. Built `eval/calibration.json` (`scripts/build_calibration_set.py`): 150
+in-domain = a random sample of the existing frozen `eval/heldout_queries.json`; 150 out-of-domain =
+real MSMARCO-XI Hindi questions drawn from the *same* parquet, past row 10,000 (the indexed
+working-pool cutoff, `docs/DECISIONS_R.md` R-003) — well-formed, on-topic-*sounding* questions whose
+gold passage is genuinely absent from the actual index, which is specifically what G3 (not G1/G2) is
+supposed to catch: "no good match in *this* index," not topic/safety classification. No LLM call or
+new external dataset needed — the already-cached parquet supplied both halves. Scored all 300 against
+the real production index (dense-only, e5-small, efSearch=64) via `scripts/eval_g3_calibration.py`,
+replicating `g3_confidence.py`'s exact OR-gated refusal logic (`top1 < TAU OR margin < MARGIN`), not
+an approximation of it.
+
+**Headline finding — the two targets cannot both be hit, and this is a real corpus property, not a
+calibration-script bug:**
+
+| target false-refusal | actual TAU | actual false-refusal | correct-refusal achieved |
+|---|---|---|---|
+| ≤ 5% | 0.8487 | 4.7% | 13.3% |
+| ≤ 10% (target) | 0.8640 | 10.0% | 38.0% |
+| ≤ 15% | 0.8723 | 14.0% | 56.0% |
+| ≤ 20% | 0.8835 | 19.3% | 75.3% |
+| ≤ 30% | 0.8918 | 30.0% | 79.3% |
+
+At the target false-refusal rate (10%), correct-refusal is only 38% — nowhere near the 80% target.
+Reaching 75-79% correct-refusal needs false-refusal 2-3x over budget (19-30%). Full curve:
+`docs/assets/g3_calibration.png`.
+
+**Root cause, verified not assumed:** in-domain top1 scores (min=0.822, max=0.961, mean=0.904) and
+out-of-domain top1 scores (min=0.829, max=0.949, mean=0.873) heavily overlap — 128/150 (85%) of
+out-of-domain queries score above 0.85, squarely inside in-domain's range. Inspected the actual
+retrieved passages for several out-of-domain queries to understand why, rather than accepting the
+number blind: MSMARCO-XI's passages are **not unique per query_id** — a query about "one billion's
+definition" (row >10,000, gold passage not indexed) retrieved a passage that *is* actually about the
+number one billion, almost certainly because near-duplicate general-knowledge content recurs under
+many different query_ids across the full ~780k-row dataset, not just the one it's "officially" linked
+to. Other cases were topically-adjacent near-misses (a "Madrid weather" query's top hit was about
+"Prague weather" — same topic, wrong city) rather than random noise. Both patterns mean "outside the
+indexed 10k-row pool" is a real but imperfect proxy for "no genuine answer exists" — dense cosine
+similarity is measuring semantic closeness, which a broad general-knowledge corpus can often satisfy
+even for a query whose *specific* answer isn't indexed.
+**Decision:** Do **not** unilaterally change `TAU`/`MARGIN` in `g3_confidence.py`. This data makes a
+strong case that the `EVAL_PROTOCOL.md` targets (<10%/>80%) are not achievable with pure top1-cosine
+gating on this corpus, which is a genuine product tradeoff (how often is it acceptable to refuse a
+real, answerable question, versus how often is it acceptable to confidently answer with no real
+match?) — not a pure data question R can settle alone. `docs/TEAM_SPLIT.md` §5 reserves the actual
+G3 threshold pick as Day-3/Day-4 joint work ("P: guardrail G3/G4 calibration (joint)" /
+"finalize the G3 calibration curve"); this ADR is R's contribution to that joint decision (the
+curve, the data, the root cause), not the final call.
+**Rationale for not shipping a value now:** `g3_confidence.py`'s constants are explicitly joint
+ownership (`docs/TEAM_SPLIT.md` §2: "Guardrails G3/G4 — JOINT — calibration needs both"), unlike the
+purely-P-owned `test_api.py` fix in R-013 which needed the user's explicit override to touch. Here
+the file ownership itself already permits R to edit it — the reason to hold off is that picking a
+point on this curve is a value judgment with no data-only right answer, and the schedule explicitly
+names this as a joint checkpoint rather than either track's unilateral call.
+**Consequences:** `eval/calibration.json` (300 queries) and `docs/assets/g3_calibration.png` are
+committed and reusable — re-running `scripts/eval_g3_calibration.py` after any retrieval-side change
+(a new embedder, a larger corpus, a reranker that changes score semantics) costs nothing but a few
+seconds. G3's current `TAU=0.35`/`MARGIN=0.05` stay as explicitly-marked uncalibrated placeholders.
+Also strengthens the case for G4's hot-path checks (citation-ID validation + lexical overlap,
+already implemented by Workstream P) as a necessary second line of defense: the "Prague vs. Madrid"
+near-miss example is exactly the kind of plausible-but-wrong match G3 alone can't reliably catch, but
+a generated answer asserting the wrong city should fail G4's groundedness check once compared against
+what was actually retrieved.
