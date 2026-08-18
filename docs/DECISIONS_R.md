@@ -758,3 +758,101 @@ their own decisions for joint sign-off rather than picking alone.
 **Consequences:** `docs/RISKS.md` R4 escalated to 🔴 high and marked confirmed-real, cross-referenced
 from R-R21 — whoever attempts R-R21's deploy fix should read this first, or risk an OOM crash that
 looks like an unrelated deploy failure. No code changes in this ADR.
+
+## R-021 — Prototyped the "leaner chunk_lookup format" option from R-020: real win, not sufficient alone
+
+**Date:** 2026-08-18
+**Status:** Accepted — prototype built, tested, measured; **not wired into production** (see
+Consequences)
+**Context:** R-020 named a leaner `chunk_lookup.json` format as one of three real fix directions for
+the confirmed memory-budget overrun, explicitly "R-ownable, not yet designed" and not requiring a
+cost/quality tradeoff decision to attempt (unlike the other two options). Built it to turn that from
+a vague possibility into real, measured data for whoever makes the final call.
+**What was built:** `SQLiteChunkLookup` (`src/vrag/index/sqlite_chunk_lookup.py`) — same read
+interface every real call site already uses (`__getitem__`, `.get`, `__contains__`, `__len__`,
+`.items()`, `.values()`, verified against actual usage across `hybrid.py` and every eval script
+before writing this, not assumed), backed by SQLite instead of one live dict of ~100k Pydantic
+`Chunk` instances. Only `chunk_id -> doc_id` stays fully in memory (cheap: two short strings ×
+99,767 rows) — every eval script's bulk `chunk_to_doc_id` mapping needs exactly that, not full text;
+full chunk *text* (the actual memory cost) is fetched lazily, one row at a time, matching how
+production's hot path actually uses it (`hybrid.py` only ever needs text for a request's top-k
+results, never all 99,767 chunks at once). `scripts/convert_chunk_lookup_sqlite.py` builds the
+`.sqlite3` file from the existing `chunk_lookup.json` (125MB on disk, vs. JSON's 113MB — the B-tree
+index costs a little more on disk in exchange for not needing everything in RAM).
+
+**Measured (not assumed), same `tasklist` RSS methodology as R-020:**
+
+| Config | RSS | vs. R-020's dict-based baseline |
+|---|---|---|
+| Index only, dict `chunk_lookup` (R-020) | 591MB | — |
+| Index only, `SQLiteChunkLookup` | 339MB | **-252MB (-43%)** |
+| + `ONNXE5Embedder`, dict `chunk_lookup` (R-020) | 1,539MB | — |
+| + `ONNXE5Embedder`, `SQLiteChunkLookup` | 1,321MB | **-218MB (-14%)** |
+
+**Real win, confirms `chunk_lookup`'s in-memory dict was a genuine major contributor to R-020's
+finding — but not sufficient alone.** Even at 339MB, the index-only figure is now comfortably under
+Render's 512MB free-tier budget on its own — but the full stack (1,321MB) is still 258% over budget,
+because the embedder's own import footprint (`torch`/`transformers`, loaded regardless of inference
+backend — R-019's own finding) is ~980MB and is now the clearly dominant remaining cost, not the
+index. Fixing `chunk_lookup` alone would not have closed the gap.
+**Decision:** Keep `SQLiteChunkLookup` as a real, tested, measured option — not wired in as the
+default `load_built_index()` path yet. Doing so now would be a partial fix presented as if it
+solved the problem, when the embedder import overhead is the larger remaining piece; wiring it in
+makes most sense as part of whatever combined fix gets chosen for R4 (e.g. alongside a torch-free
+inference path, see below), not as a standalone change.
+**Consequences:** `eval/heldout_queries.json`-driven eval scripts still use the original
+dict-based `load_built_index()` — `SQLiteChunkLookup` is additive infrastructure, not yet the
+default, so nothing downstream changed. **Follow-up idea, not attempted this session:** a torch-free
+inference path (raw `onnxruntime.InferenceSession` + a lightweight tokenizer, bypassing
+`sentence-transformers`'s Python wrapper, which imports `torch` as a hard dependency regardless of
+which backend actually does inference) could plausibly close most of the remaining ~980MB gap —
+untested, real engineering effort, would need its own validation pass the same way R-019/R-021 did.
+`docs/RISKS.md` R4 updated to reflect the full combined picture (index fixed, embedder still the
+open problem) rather than treating this as a full resolution.
+
+## R-022 — Torch-free embedder: -580MB more, from 1,321MB to 741MB — real, major, still not under budget
+
+**Date:** 2026-08-18
+**Status:** Accepted — built, tested (byte-identical output verified), measured; **not yet wired
+into production** (default embedder unchanged); explicit user direction: no paid Render plan, must
+fit the free tier, keep shrinking
+**Context:** R-021 confirmed `chunk_lookup`'s in-memory dict was a real contributor but not
+sufficient alone — the embedder's own `torch`/`transformers` import footprint (~980MB) was the
+larger remaining cost, present regardless of inference backend because `sentence-transformers`
+imports `torch` unconditionally. Measured `import torch` alone in isolation: **~383MB RSS**, most
+of that ~980MB, confirming the hypothesis directly rather than assuming it.
+**What was built:** `LiteE5Embedder` (`src/vrag/index/embedder.py`) — same ONNX int8 model as
+`ONNXE5Embedder`, but bypasses `sentence-transformers` entirely: raw `onnxruntime.InferenceSession`
++ the `tokenizers` library's Rust tokenizer (already installed transitively, no new dependency),
+mean-pooling and L2-normalisation done by hand in numpy (matching the model's own
+`1_Pooling`/`2_Normalize` config, read directly from the exported model directory, not guessed).
+**Verified byte-identical to `ONNXE5Embedder`'s output before trusting it**, not assumed: cosine
+similarity 1.0, max absolute difference ~1.5e-8 (pure float32 rounding noise) on a real query —
+same model, same math, just without `torch` in the import graph.
+
+**Measured (same `tasklist` methodology as R-020/R-021):**
+
+| Config | RSS | Δ from previous step |
+|---|---|---|
+| SQLite index + `ONNXE5Embedder` (R-021, via sentence-transformers) | 1,321MB | — |
+| SQLite index + `LiteE5Embedder` (torch-free) | 741MB | **-580MB (-44%)** |
+| `import torch` alone, isolated | 383MB | (explains most of the above) |
+
+Tried two further `onnxruntime`-level tunings on `LiteE5Embedder`, both measured, neither helped:
+disabling the memory arena/mem-pattern/limiting threads (738MB, no change) and disabling graph
+optimisation at session-creation time (432MB for model+numpy+tokenizer alone, same as with
+optimisation on — the ~380MB delta over bare `onnxruntime`'s ~49MB import is inherent to loading
+this model's weights/graph into an active session, not tunable via session options).
+**Decision:** Ship `LiteE5Embedder` as real, tested, measured infrastructure — not yet the default.
+741MB is a massive, real reduction from where this started (1,860MB on this dev machine's GPU,
+1,474MB FP32-CPU, R-020) but is still 145% of Render's free-tier 512MB budget — user explicitly
+ruled out a paid plan, so this alone doesn't close the gap yet.
+**Rationale:** Same reasoning as R-021 — presenting 741MB as "fixed" when it's still over budget
+would be misleading. Recording it as real, substantial, verified progress toward the target, with
+the honest remaining gap stated plainly.
+**Consequences:** Combined with R-021, the two together take the full stack from 1,539MB → 741MB
+(-52%) using only R-owned engineering changes, no cost and no quality tradeoff yet. The remaining
+~230MB gap to fit under 500MB most plausibly needs the one option R-020 flagged as having a real
+quality cost — shrinking the working pool/chunk count — since e5-small is already A2's smallest
+viable model and further `onnxruntime`-level tuning showed no further headroom. `eval_chunking.py`'s
+`EMBED_BACKEND_BY_NAME` and `tests/test_embedder.py`'s registry tests updated for the new class.

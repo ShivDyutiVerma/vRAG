@@ -83,6 +83,7 @@ def _percentile(values: list[float], pct: float) -> float:
 EMBED_BACKEND_BY_NAME = {
     "multilingual-e5-small": "sentence-transformers",
     "multilingual-e5-small-onnx-int8": "sentence-transformers-onnx",
+    "multilingual-e5-small-lite-onnx-int8": "onnxruntime-raw",
     "potion-multilingual-128M": "sentence-transformers",
     "bge-m3": "sentence-transformers",
     "vyakyarth": "sentence-transformers",

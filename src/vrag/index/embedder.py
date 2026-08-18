@@ -18,7 +18,7 @@ inner-product search equals cosine similarity, AGENT_BUILD_SPEC.md §5.2 gotcha)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -116,6 +116,81 @@ class ONNXE5Embedder:
         prefixed = [format_passage(t) for t in texts]
         vectors = self._model_instance().encode(prefixed, normalize_embeddings=True)
         return vectors.tolist()
+
+
+class LiteE5Embedder:
+    """Same ONNX int8 model as `ONNXE5Embedder`, but bypasses `sentence-transformers` entirely
+    (docs/DECISIONS_R.md R-022) — raw `onnxruntime.InferenceSession` + the `tokenizers` library's
+    Rust tokenizer, with mean-pooling and L2-normalisation done by hand in numpy. Verified
+    byte-identical output to `ONNXE5Embedder` (cosine similarity 1.0, max abs diff ~1.5e-8, pure
+    float32 rounding noise) — this is the exact same model and pipeline, not an approximation.
+
+    The reason this class exists: `sentence-transformers` imports `torch` as a hard dependency
+    regardless of which backend actually does inference (R-020's finding) — `import torch` alone
+    measured at ~383MB RSS, the dominant cost in `ONNXE5Embedder`'s ~980MB embedder footprint. This
+    class needs only `onnxruntime` (already a `retrieval` extra dependency) and `tokenizers`
+    (already installed transitively via `transformers`/`sentence-transformers` — no new
+    dependency), neither of which touches `torch` at import time.
+
+    Same interface, same query:/passage: prefix requirement as `E5Embedder`/`ONNXE5Embedder` — a
+    drop-in replacement at the embedding layer.
+    """
+
+    name = "multilingual-e5-small-lite-onnx-int8"
+
+    def __init__(
+        self,
+        model_dir: str = DEFAULT_ONNX_MODEL_DIR,
+        file_name: str = DEFAULT_ONNX_FILE_NAME,
+        max_length: int = 512,
+    ) -> None:
+        self._model_dir = model_dir
+        self._file_name = file_name
+        self._max_length = max_length
+        self._session: Any = None
+        self._tokenizer: Any = None
+
+    def _ensure_loaded(self) -> tuple[Any, Any]:
+        if self._session is None:
+            import onnxruntime as ort
+            from tokenizers import Tokenizer
+
+            self._tokenizer = Tokenizer.from_file(f"{self._model_dir}/tokenizer.json")
+            self._tokenizer.enable_padding(pad_id=1, pad_token="<pad>")
+            self._tokenizer.enable_truncation(max_length=self._max_length)
+            self._session = ort.InferenceSession(f"{self._model_dir}/{self._file_name}")
+        return self._session, self._tokenizer
+
+    def _embed(self, texts: list[str]) -> list[list[float]]:
+        import numpy as np
+
+        session, tokenizer = self._ensure_loaded()
+        if not texts:
+            return []
+
+        encodings = tokenizer.encode_batch(texts)
+        input_ids = np.array([e.ids for e in encodings], dtype=np.int64)
+        attention_mask = np.array([e.attention_mask for e in encodings], dtype=np.int64)
+        token_type_ids = np.zeros_like(input_ids)
+
+        (last_hidden_state,) = session.run(
+            None,
+            {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "token_type_ids": token_type_ids,
+            },
+        )
+        mask = attention_mask[..., None].astype(np.float32)
+        mean_pooled = (last_hidden_state * mask).sum(axis=1) / mask.sum(axis=1)
+        normalized = mean_pooled / np.linalg.norm(mean_pooled, axis=1, keepdims=True)
+        return normalized.tolist()
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        return self._embed([format_query(t) for t in texts])
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        return self._embed([format_passage(t) for t in texts])
 
 
 class Model2VecEmbedder:
@@ -232,6 +307,7 @@ class VyakyarthEmbedder:
 EMBEDDER_REGISTRY: dict[str, type] = {
     E5Embedder.name: E5Embedder,
     ONNXE5Embedder.name: ONNXE5Embedder,
+    LiteE5Embedder.name: LiteE5Embedder,
     Model2VecEmbedder.name: Model2VecEmbedder,
     BGEM3Embedder.name: BGEM3Embedder,
     VyakyarthEmbedder.name: VyakyarthEmbedder,
