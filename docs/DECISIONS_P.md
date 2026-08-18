@@ -492,3 +492,24 @@ itself being stubbed, because the stub's output shape is deliberately identical 
 correctly end-to-end" and "the pipeline is running the real retrieval implementation" are different
 claims, and I was only directly checking the first. Worth remembering for any future "verified
 live" claim: know specifically what a given live check can and cannot distinguish.
+
+**Update, same day — first deploy attempt failed, real environment-specific bug found:**
+triggering the Render deploy with the staged `Dockerfile` change failed at the exact download/
+extract step, despite building and running correctly on this machine (Docker Desktop, macOS) not
+30 minutes earlier. Fetched the real build logs via Render's `/v1/logs` API rather than guessing:
+`tar: metadata_aware/chunk_lookup.json: Cannot change ownership to uid 197609, gid 197609: Invalid
+argument`. Root cause: R's tarball preserves the original file ownership metadata from their build
+machine (uid/gid 197609, consistent with a WSL2/Windows dev environment), and `tar`'s default
+behavior tries to `chown` extracted files to match that during extraction — Render's build
+environment rejects the `chown` syscall for that UID (likely a sandboxed/user-namespaced builder),
+while Docker Desktop's local build VM does not, which is exactly why this didn't surface locally.
+**Fix:** added `--no-same-owner` to the `tar` invocation — standard flag for exactly this class of
+"container build environment doesn't allow arbitrary chown" problem, tells tar to extract as the
+current user rather than the archive's original owner (we only care about file *contents*, never
+the original uid/gid). Rebuilt and re-ran locally to confirm the fix doesn't change anything else
+(still builds, still serves `/healthz` correctly). Redeployed.
+**Consequences:** A concrete reminder that "builds and runs locally" and "builds and runs on the
+actual target platform" are different claims when the build environments genuinely differ (sandbox
+restrictions, not just OS/arch) — the CI pipeline doesn't build the Docker image at all, only runs
+`pytest`/`ruff`/`mypy` directly, so this class of failure is only ever caught by actually deploying,
+not by CI passing. Worth remembering going forward for any Docker-level change.

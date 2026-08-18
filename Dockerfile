@@ -26,7 +26,7 @@ COPY frontend/ ./frontend/
 RUN mkdir -p data/index \
     && curl -fsSL "https://github.com/ShivDyutiVerma/vRAG/releases/download/index-metadata_aware-v1/metadata_aware_index.tar.gz" \
        -o /tmp/index.tar.gz \
-    && tar -xzf /tmp/index.tar.gz -C data/index \
+    && tar --no-same-owner -xzf /tmp/index.tar.gz -C data/index \
     && rm /tmp/index.tar.gz
 
 # Hugging Face Spaces (Docker SDK) expects the app to listen on $PORT, default 7860.
