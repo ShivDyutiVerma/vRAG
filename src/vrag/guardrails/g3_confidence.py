@@ -1,16 +1,19 @@
 """G3 — retrieval confidence gate. Hot path, target <1ms. See AGENT_BUILD_SPEC.md §7.3.
 
-Mechanism: `top1_score < tau` OR `(top1 - top5) < margin`. Both thresholds are **UNCALIBRATED
-placeholders** — real calibration (150 in-domain + 150 out-of-domain queries, sweep tau and
-margin, pick the operating point from the false-refusal/correct-refusal tradeoff curve) is joint
-work with Workstream R per docs/TEAM_SPLIT.md §5, blocked on a calibration set neither track has
-built yet. The mechanism here is real and wired into the live request path; the numbers are a
-documented guess, not a result.
+Mechanism: `top1_score < tau` OR `(top1 - top5) < margin`.
 
-Literature prior (docs/EVAL_PROTOCOL.md, docs/TECH_MENU.md §S3): query-document cosine similarity
-typically runs ~0.30-0.55, systematically lower than query-query similarity — a threshold guessed
-at 0.5+ would refuse almost everything. These placeholders are chosen with that prior in mind, not
-picked out of thin air, but they are still a guess until swept against real data.
+Calibrated 2026-08-18 against real data: 300 queries (150 in-domain + 150 out-of-domain, drawn
+from ai4bharat/MSMARCO-XI past the indexed 10k-row cutoff) scored against the real production
+index (dense-only, e5-small, efSearch=64). Full sweep, root-cause analysis and reference-point
+table: docs/DECISIONS_R.md R-015, docs/DECISIONS_P.md P-015, docs/assets/g3_calibration.png.
+
+Headline finding: docs/EVAL_PROTOCOL.md's original targets (false-refusal<10% AND
+correct-refusal>80%) are **not simultaneously reachable** via top1-cosine TAU gating on this
+corpus — MSMARCO-XI passages recur across many query_ids, so even genuinely out-of-index queries
+often retrieve a topically-close or coincidentally-correct passage. TAU=0.8835 is the operating
+point weighing both EVAL_PROTOCOL.md targets equally (joint P/R decision, see P-015): 19.3%
+false-refusal, 75.3% correct-refusal. MARGIN is carried over unchanged from the pre-calibration
+placeholder — not yet independently swept at this TAU (see P-015 "Not done").
 """
 
 from __future__ import annotations
@@ -19,8 +22,8 @@ from pydantic import BaseModel
 
 from vrag.retrieval.interface import RetrievedChunk
 
-TAU = 0.35  # UNCALIBRATED placeholder
-MARGIN = 0.05  # UNCALIBRATED placeholder
+TAU = 0.8835  # Calibrated 2026-08-18, see P-015 / R-015. Not re-verified after retrieval changes.
+MARGIN = 0.05  # Carried over from pre-calibration placeholder, not independently swept at this TAU.
 
 
 class GuardrailVerdict(BaseModel):

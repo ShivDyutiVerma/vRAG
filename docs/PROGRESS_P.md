@@ -41,6 +41,9 @@ lands.
 - [x] Every request writes a trace with per-stage ms timings
 - [x] All five guardrail layers (G1–G5) implemented, unit-tested, and — for G4 — now verified
       against a real generated answer, not just synthetic test cases
+- [x] G3 calibrated against real data (300 queries, R's sweep): `TAU=0.8835`, the balanced
+      operating point the user chose after the data showed EVAL_PROTOCOL.md's two targets can't
+      both be hit on this corpus (P-015). `MARGIN=0.05` still uncalibrated at this TAU (follow-up).
 
 ## What works right now (verified, not assumed)
 
@@ -69,8 +72,11 @@ lands.
   response, which is why it rarely clears any realistic budget even though raw TTFT (452ms P50)
   is much more reasonable. Documented as an accepted, deliberate gap (P-014), not hidden.
 - No `search_corpus` tool for Track B.
-- G3/G4 thresholds are still uncalibrated placeholders (P-010) — today's testing exercised them
-  against real data and they behaved sensibly, but that's not the same as a calibration sweep.
+- G3's `TAU` is now calibrated (P-015, `TAU=0.8835`); `MARGIN` is not — carried over unchanged,
+  never independently swept at the new TAU. G4's threshold (`MIN_OVERLAP_RATIO=0.15`) is still an
+  uncalibrated placeholder — today's testing exercised it against a real generated answer and it
+  behaved sensibly (correctly failed a wrong-language answer, correctly passed a fixed one), but
+  that's not the same as a calibration sweep.
 - Retry policy (`tenacity`) tested correct in isolation, not attached to a live stage.
 - Real browser mic click-through — still not done. Genuinely just needs a human with a phone.
 - efSearch curve, A4/A5 ablations — Workstream R's queue (A4 next per their side).

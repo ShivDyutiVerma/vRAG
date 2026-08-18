@@ -248,3 +248,40 @@ audio that will never come, with no signal to finalize the Sarvam session.
 **Consequences:** Every real interaction now closes its STT session promptly instead of relying on
 the client eventually disconnecting. Interacts with P-R12 (Render close-frame lag) but doesn't
 depend on it being fixed.
+
+## P-015 — G3 calibration applied: TAU=0.8835, balanced operating point (joint decision with R)
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** R gathered real G3 calibration data (`docs/DECISIONS_R.md` R-015) — 300 queries scored
+against the real production index — and found `docs/EVAL_PROTOCOL.md`'s two targets (false-refusal
+<10% in-domain, correct-refusal >80% out-of-domain) are **not simultaneously reachable** via
+top1-cosine TAU gating on this corpus: at 10% false-refusal, correct-refusal is only 38%; reaching
+75-79% correct-refusal costs 19-30% false-refusal. R deliberately did not pick an operating point
+despite `g3_confidence.py` being joint-owned, correctly treating the pick as a value judgment (how
+often is refusing a real question acceptable vs. confidently answering with a weak match), not a
+data question either track can settle alone (`docs/RISKS.md` R-R19).
+**Decision:** Asked the user directly, since this is exactly the kind of product tradeoff neither
+track's engineering judgment should silently resolve — presented three real reference points from
+R's sweep (favor-answering: TAU=0.8487, 4.7%/13.3%; balanced: TAU≈0.8835, 19.3%/75.3%;
+favor-refusing: TAU=0.8918, 30.0%/79.3%) plus the option to leave it uncalibrated. User chose
+**balanced**, explicitly weighing both `EVAL_PROTOCOL.md` targets equally rather than favoring
+either failure mode — the same tie-break principle R's own `pick_operating_point()` in
+`scripts/eval_g3_calibration.py` implements. Applied `TAU=0.8835` to `src/vrag/guardrails/
+g3_confidence.py`; `MARGIN` left at `0.05` (not independently re-swept at this TAU — R's sweep held
+MARGIN=0 while varying TAU; the interaction between MARGIN and the new TAU is real work still open).
+**Verification:** Checked the Day-1 stub's fallback path (`src/vrag/retrieval/interface.py`, used
+whenever no real index is present on disk — every fresh clone, CI) still clears the new TAU: stub
+top1=0.91 > 0.8835, margin 0.91-0.52=0.39 > 0.05, so `test_api.py` and all other tests that exercise
+`/ask` end-to-end against the stub are unaffected. Two `test_g3_confidence.py` cases used score
+ranges written against the old TAU=0.35 placeholder and would have silently changed which branch
+they exercised (or started failing outright) under the real value — updated both to realistic
+0.88-0.92-range scores that still test the same TAU-pass/margin-fail and TAU-pass/single-chunk
+paths. 62/62 tests green (my scope; R's `retrieval`/`index`/`chunking` extras not installed
+locally, not run). `ruff`/`mypy` clean.
+**Consequences:** G3 is no longer a silent no-op on the TAU check in production — previously
+TAU=0.35 never fired against real cosine scores (0.82-0.96 range), so only the untested MARGIN
+check was doing any real refusing. Now ~1-in-5 real in-domain questions will be wrongly refused,
+and ~3-in-4 genuinely out-of-scope questions will be correctly caught — an explicit, chosen
+tradeoff, not an accident. `docs/RISKS.md` R-R19 closed as resolved. Re-sweep MARGIN independently
+at TAU=0.8835 flagged as follow-up work, not done today (needs R's index locally, which I don't
+have — R's sweep script and calibration set are reusable for this without new data collection).

@@ -27,10 +27,11 @@ def test_low_top1_confidence_fails():
 def test_ambiguous_close_scores_fail_margin_check():
     # top1 clears tau but is barely distinguishable from the rest — should be treated as
     # ambiguous even though no individual score is "low"
-    verdict = g3_confidence.check([_chunk(0.40, "c1"), _chunk(0.39, "c2"), _chunk(0.38, "c3")])
+    verdict = g3_confidence.check([_chunk(0.90, "c1"), _chunk(0.89, "c2"), _chunk(0.88, "c3")])
     assert not verdict.passed
+    assert "ambiguous" in (verdict.reason or "").lower()
 
 
 def test_single_chunk_above_tau_passes_no_margin_check_possible():
-    verdict = g3_confidence.check([_chunk(0.60, "c1")])
+    verdict = g3_confidence.check([_chunk(0.92, "c1")])
     assert verdict.passed
