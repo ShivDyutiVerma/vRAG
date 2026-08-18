@@ -338,3 +338,74 @@ override) from hammering a genuinely down provider; its value grows directly wit
 P-014's gap (real token streaming), since that's what would bring ordinary request budgets close
 enough to Track B's real completion time for the breaker's fair-chance window to matter on the
 normal request path.
+
+## P-017 — Track B switched to streaming; found and mitigated a second, more common Sarvam bug
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** Started this session's next item — real token streaming for Track B, flagged
+repeatedly (P-014, P-016) as the actual unlock for Track B mattering under a real budget. Before
+writing any client-facing streaming code, probed the live API with our exact schema/prompt to
+measure how long until the `answer` field's content actually starts appearing (not just raw
+TTFT), since the schema's reasoning-before-answer field order (a documented invariant, CLAUDE.md)
+means the model must write out `reasoning` before any of `answer` streams in.
+**What the probe actually found, which changed the scope of this work:** with a single-chunk
+context, streaming worked and completed correctly. With a realistic 5-chunk context (closer to a
+real k=5 retrieval, forcing the model to discriminate between a correct passage and 4
+topically-adjacent distractors), 2 of 3 initial live runs never even reached the `answer` key: the
+model wrote a long, unbounded chain-of-thought into our own schema's `reasoning` field (which
+`reasoning_effort: null` does NOT constrain — that flag only disables Sarvam's separate hidden CoT
+mechanism, not verbosity in a field we defined ourselves) and exhausted `max_tokens=512` before
+ever reaching `answer`. Fixed by adding an explicit instruction to `_SYSTEM_PROMPT`: keep
+`reasoning` to one short sentence. Verified on retest: reasoning field dropped from ~250-300 chars
+to ~30-50 chars, and successful calls dropped from ~2.2-2.7s to ~1.0-1.2s.
+**That fix exposed a second, distinct bug, more consequential than the first:** with the brief-
+reasoning prompt, several runs still failed — but differently: the model correctly completed
+`reasoning` *and* `answer`, then never continued to `cited_chunk_ids_csv` — instead padding pure
+whitespace/near-empty tokens toward `max_tokens` (finish_reason: `length`) instead of emitting the
+final field and closing the JSON object. This is the same *symptom* as P-R15 (array-field bug)
+but confirmed to be a **distinct** cause: `cited_chunk_ids_csv` has been a plain string since
+P-013, not an array, and the bug still occurs — P-R15's original diagnosis ("removing the array
+field alone flips finish_reason to stop") was a correct but incomplete fix; Sarvam's `strict:
+true` json_schema mode has a broader reliability problem with continuing past a completed
+substantial field, not one specific to arrays.
+**Decision:** Switched `_call_once` to `_call_once_streaming` (`stream: true`, SSE), and added
+stall detection: track consecutive whitespace-only/empty content deltas; if
+`STALL_THRESHOLD_CHUNKS` (20) is reached, raise `_GenerationStalled(partial_content)` and abort
+the connection immediately rather than waiting for `max_tokens` to be exhausted. Chose 20 from
+real data: legitimate JSON formatting whitespace (the newline+indent between fields) never
+exceeded 2 consecutive whitespace-only chunks in any successful streamed run observed; the padding
+bug produces hundreds. `generate()`'s existing repair-retry loop (previously only for JSON parse
+failures) now also catches `_GenerationStalled` and retries once with the partial content
+included, same "2 attempts total" shape as before — this required no new retry infrastructure,
+just widening what the existing loop catches.
+**Verification:** 6 new unit tests (`tests/generation/test_sarvam_llm.py`) using
+`httpx.MockTransport` to fabricate SSE responses — no live network, deterministic: reconstructs
+content correctly from chunked deltas, tolerates a couple of legitimate whitespace chunks without
+false-triggering, raises `_GenerationStalled` at the threshold, empty deltas count the same as
+whitespace, and `generate()`'s retry-then-succeed / retry-then-give-up paths both work correctly
+against a mocked `_call_once_streaming`. Then 3 live runs against the real Sarvam API (5-chunk
+context, 15s budget): 2/3 stalled on **both** attempts (confirming the bug is not rare) but were
+each detected and handled in ~2.2-2.6s — down from what would have been ~8-14s+ for two full
+non-streaming attempts hitting `max_tokens`, or up to 60s+ observed in earlier P-R13-era testing;
+the 3rd run hit a genuine network-level hang (zero SSE chunks arrived at all — stall detection
+can't help here since there's no content to observe) and was correctly bounded by the existing
+outer timeout at exactly the 15s budget. In every case, including both stall failures, the
+pipeline correctly fell back to Track A (`status="answered"`, `track="extractive"`) — the
+two-track design held throughout. 83/83 tests green (77 pre-existing + 6 new). `ruff`/`mypy` clean.
+**Consequences:** This is a **mitigation, not a fix** for the underlying provider reliability
+issue — worth stating plainly rather than overclaiming: Track B's success rate under a realistic
+multi-chunk context still looks concerning in this small live sample (1/3 succeeded outright, 2/3
+failed on both attempts). What changed is the *cost* of a failure: previously slow (4-60s+,
+discovered only via the eventual `max_tokens`/read-timeout cutoff), now fast (a few hundred ms to
+~2-3s including one repair attempt) — directly improves p95/p99 latency variance (P-R17) and makes
+Track A's fallback path meaningfully cheaper to reach when Track B can't deliver. This also
+supersedes P-R15's root-cause framing (documented here rather than editing R's own ADR): the array
+type was A cause, not THE cause — the deeper issue is `strict: true` json_schema mode's general
+reliability continuing generation past a completed field. `docs/RISKS.md` P-R15/P-R16 updated;
+P-R20 added for the still-open, broader continuation-reliability question. Real client-facing
+token-by-token display (the WS `/voice` endpoint streaming partial text to the browser as it
+arrives) is a separate, still-undone piece — this session's streaming work is server-side only
+(buffer-then-validate-then-respond, same external contract as before), deliberately, since G4's
+groundedness check needs the complete answer and citations before it's safe to show anything to
+the user (see P-014's discussion of why client-facing streaming has its own separate design
+tension with the G4 gate). Flagged as a distinct follow-up, not done today.

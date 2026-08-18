@@ -6,9 +6,15 @@ Uses Sarvam's OpenAI-compatible chat completions endpoint with provider-native J
 engineered JSON + manual parsing — docs/TECH_MENU.md §S11 ranks this the top choice when the
 provider supports it, and Sarvam does.
 
-Non-streaming for now: a real, structured, grounded answer, correctly parsed and repaired on one
-failure, is worth more today than a token-streaming version that isn't built yet. Streaming is a
-follow-up (docs/DECISIONS_P.md).
+Streaming (`stream: true`), not a single blocking POST — built after live probing
+(docs/DECISIONS_P.md P-017) found a real Sarvam bug distinct from P-R15's array-field issue: with
+a multi-chunk (k=5-ish) context, the model sometimes completes `reasoning` and `answer` correctly
+but then pads pure whitespace toward `max_tokens` instead of continuing to `cited_chunk_ids_csv`
+and closing the object — a genuine failure, not budget starvation, but one that (non-streaming)
+took 4-7s+ to even detect, since the only signal was the eventual `max_tokens` cutoff. Streaming
+lets `_call_once_streaming` watch for that specific pattern (many consecutive whitespace/empty
+content deltas with no forward progress) and abort in a few hundred ms instead of waiting out the
+full token budget — see STALL_THRESHOLD_CHUNKS below for the evidence behind the threshold.
 """
 
 from __future__ import annotations
@@ -39,15 +45,39 @@ _SYSTEM_PROMPT = (
     "CRITICAL: the `answer` field MUST be written in the same script and language as the "
     "context passages (Hindi/Devanagari) — never answer in English even if you reason in "
     "English internally. An answer in the wrong language is treated as a failure. "
-    "Cite only chunk_ids that were actually given to you — never invent one."
+    "Cite only chunk_ids that were actually given to you — never invent one. "
+    "Keep the `reasoning` field to at most one short sentence (under 20 words) — it exists to "
+    "nudge you to check the context before answering, not to record a full chain of thought. "
+    "Spend your token budget on the answer, not on reasoning."
 )
+
+# Evidence: docs/DECISIONS_P.md P-017. Real streamed runs against the live API never showed more
+# than 2 consecutive whitespace-only/empty content deltas during genuine JSON formatting (e.g. the
+# newline+indent between fields) in any successful completion. The real bug this guards against
+# (see module docstring) produces runs of hundreds of such chunks. 20 gives a large (10x) safety
+# margin above legitimate formatting gaps while aborting within roughly a few hundred ms of the
+# stall starting, not after the full max_tokens budget.
+STALL_THRESHOLD_CHUNKS = 20
+
+
+class _GenerationStalled(Exception):
+    """Internal signal that a streamed response stopped making forward progress (see
+    STALL_THRESHOLD_CHUNKS). Caught by generate()'s repair loop — never escapes this module."""
+
+    def __init__(self, partial_content: str) -> None:
+        super().__init__("generation stalled: too many consecutive empty/whitespace-only chunks")
+        self.partial_content = partial_content
 
 
 def _build_context_block(chunks: list[RetrievedChunk]) -> str:
     return "\n".join(f"[chunk_id={c.chunk_id}] {c.text}" for c in chunks)
 
 
-async def _call_once(client: httpx.AsyncClient, messages: list[dict]) -> str:
+async def _call_once_streaming(client: httpx.AsyncClient, messages: list[dict]) -> str:
+    """Streams the completion and reconstructs the full content string, same contract as a
+    non-streaming call's `choices[0].message.content` — except it can fail fast via
+    `_GenerationStalled` when the response stops making forward progress (see module docstring
+    and STALL_THRESHOLD_CHUNKS)."""
     payload = {
         "model": _MODEL,
         "messages": messages,
@@ -68,15 +98,37 @@ async def _call_once(client: httpx.AsyncClient, messages: list[dict]) -> str:
         # latency-sensitive/live-call use (docs/DECISIONS_P.md) and is essential here regardless
         # of latency, since 512 tokens of reasoning would otherwise starve the answer itself.
         "reasoning_effort": None,
+        "stream": True,
     }
     headers = {
         "api-subscription-key": settings.sarvam_api_key,
         "Content-Type": "application/json",
     }
-    resp = await client.post(_CHAT_URL, headers=headers, json=payload)
-    resp.raise_for_status()
-    data = resp.json()
-    return data["choices"][0]["message"]["content"]
+
+    accumulated = ""
+    consecutive_stall_chunks = 0
+    async with client.stream("POST", _CHAT_URL, headers=headers, json=payload) as resp:
+        resp.raise_for_status()
+        async for line in resp.aiter_lines():
+            if not line or not line.startswith("data:"):
+                continue
+            data_str = line[len("data:") :].strip()
+            if data_str == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data_str)
+                choices = chunk.get("choices") or []
+                delta = choices[0]["delta"].get("content", "") if choices else ""
+            except (json.JSONDecodeError, KeyError, IndexError):
+                continue
+            if delta and delta.strip():
+                consecutive_stall_chunks = 0
+            else:
+                consecutive_stall_chunks += 1
+                if consecutive_stall_chunks >= STALL_THRESHOLD_CHUNKS:
+                    raise _GenerationStalled(accumulated)
+            accumulated += delta
+    return accumulated
 
 
 async def generate(
@@ -98,8 +150,25 @@ async def generate(
 
     try:
         async with httpx.AsyncClient(timeout=timeout_s) as client:
-            for attempt in range(2):  # one repair attempt on parse failure
-                raw = await _call_once(client, messages)
+            for attempt in range(2):  # one repair attempt on parse failure or stall
+                try:
+                    raw = await _call_once_streaming(client, messages)
+                except _GenerationStalled as exc:
+                    if attempt == 0:
+                        logger.info("Track B: generation stalled, retrying once")
+                        messages.append({"role": "assistant", "content": exc.partial_content})
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "That response stalled before completing valid JSON. Reply "
+                                    "again with ONLY valid, complete JSON matching the schema."
+                                ),
+                            }
+                        )
+                        continue
+                    logger.error("Track B: repair attempt also stalled")
+                    return None
                 try:
                     parsed = json.loads(raw)
                     return GeneratedAnswer.model_validate(parsed)
