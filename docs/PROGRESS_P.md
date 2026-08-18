@@ -2,7 +2,7 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-18 (Day 2, session 07 — same-day continuation)
+**Last updated:** 2026-08-18 (Day 2, session 08 — same-day continuation)
 **Current phase:** P4/P5 done; **critical deployment gap found (R-R21/R4) — live demo has been
 running the Day-0 stub this whole session, real retrieval blocked on a cross-team memory fix**
 
@@ -69,7 +69,27 @@ was present but unloadable, breaking `retrieve()`'s "never raises" contract), th
 `Dockerfile` to download R's published index artifact — built and ran the image locally to verify
 it's genuinely inert until R's leaner embedder lands (confirmed: missing-dependency failure is now
 caught and logged, falls back to the stub cleanly, current deploy behavior unchanged). R's half
-(lean `embedder.py`, corpus resize) is real, undesigned work, not started yet.
+(lean `embedder.py`, corpus resize) is real, undesigned work, not started yet. First deploy attempt
+hit a real environment-specific bug (`tar` rejected by Render's build sandbox trying to `chown` to
+the artifact's original uid/gid — didn't reproduce locally); fixed with `--no-same-owner`,
+redeployed, verified live.
+
+Seventh same-day session: built `search_corpus` (P-019) — the tool-calling capability
+AGENT_BUILD_SPEC.md §7.2 item 5 names explicitly, tied to graded requirement C5. Live-probed first
+(same methodology as P-017): confirmed Sarvam supports real tool-calling, and confirmed combining
+it with strict structured output in one request doesn't work reliably (same whitespace-padding
+bug). Designed around that: the existing structured call now also signals `needs_more_context`,
+and only then does `generate()` escalate to a real tool-calling round + one final re-answer over
+the expanded context — common case unchanged at one round trip. Caught a real G4 integration bug
+before shipping (tool-fetched citations would've been wrongly flagged as invented against the
+stage's original chunk list) and fixed it via a new `GenerationResult` return type carrying the
+full chunk set used. 17 new tests, all green. Live end-to-end testing of the full chain then
+surfaced something more important than the feature itself: **12/12 attempts failed via the same
+stall bug, and it correlates strongly with "insufficient context" answers specifically** — not a
+random rate as P-017 first characterized it. Verified this predates today's schema change (same
+failure with the old 3-field schema). This means Track B's own "I don't know" branch — exactly
+where a generative answer would matter most — is the case most likely to hit this provider bug.
+The mechanism itself is proven correct; live success is currently gated on Sarvam's reliability.
 
 ## Phase exit criteria — P4/P5
 
@@ -86,7 +106,14 @@ caught and logged, falls back to the stub cleanly, current deploy behavior uncha
       timeout is the two-track design's expected outcome, not a health signal (see the module's
       `should_count_as_health_signal()` docstring for why treating every timeout as a failure
       would have made the breaker actively harmful).
-- [ ] `search_corpus` tool for Track B — not started
+- [x] `search_corpus` tool for Track B (P-019, satisfies graded requirement C5's "tool calls") —
+      real native OpenAI-style tool-calling, depth capped at 1, correct G4 integration for
+      tool-fetched citations, 17 new tests. Live E2E success of the full escalation chain is
+      currently blocked by a sharper P-R20 finding: the stall bug correlates strongly with
+      "insufficient context" answers specifically (12/12 failures in today's testing) — the
+      mechanism is proven correct (mocks + an isolated live tool-calling probe), same "ready the
+      moment the provider issue clears" position Track B itself shipped in under earlier this
+      session.
 - [x] Retry policy tested correct in isolation, not attached to a live stage (P-009)
 - [x] Every request writes a trace with per-stage ms timings
 - [x] All five guardrail layers (G1–G5) implemented, unit-tested, and — for G4 — now verified
@@ -167,7 +194,9 @@ enough runway before Aug 22.
   instead. Live-observed rate is concerning (2/3 test runs stalled on both attempts under a
   realistic 5-chunk context) — today's fix bounds the *cost* of this failure, it does not fix the
   underlying rate. Worth reporting to Sarvam with the reproduction case.
-- No `search_corpus` tool for Track B.
+- `search_corpus` tool is built (P-019) but not yet observed succeeding end-to-end live — blocked
+  on P-R20's sharpened finding (stalls correlate strongly with insufficient-context answers, the
+  exact case that triggers `needs_more_context`). Worth re-testing once P-R20 is reported/improves.
 - G3's `TAU`/`MARGIN` are both now calibrated (P-015/R-017). G4's threshold
   (`MIN_OVERLAP_RATIO=0.15`) is still an uncalibrated placeholder — today's testing exercised it
   against a real generated answer and it behaved sensibly (correctly failed a wrong-language
@@ -193,12 +222,14 @@ enough runway before Aug 22.
    trust "should be deployed" without checking the actual URL again).
 2. If R's fix hasn't landed and the deadline is getting close, execute the fallback: switch Render
    to the Standard plan ($25/mo), install `[retrieval]` with today's stack as-is, redeploy, verify.
-3. Report the P-R20 stall pattern to Sarvam (reproduction: 5-chunk context, `strict: true`,
-   3-field all-string schema, model completes 2/3 fields then pads whitespace) — provider-side bug,
-   not ours to fix, but worth flagging with real repro steps now that we have them.
-4. Consider real client-facing token-by-token display for Track B (the WS `/voice` endpoint
+3. Report P-R20 to Sarvam — now has a much sharper, highly reproducible repro case (P-019: 12/12
+   failures on insufficient-context queries, any chunk count, with or without the extra schema
+   field) rather than a vague "sometimes stalls." Worth writing up properly and sending.
+4. Re-test `search_corpus`'s full live escalation chain periodically — the mechanism is proven
+   correct, just gated on Sarvam's reliability for insufficient-context completions specifically.
+5. Consider real client-facing token-by-token display for Track B (the WS `/voice` endpoint
    streaming partial text as it arrives) — separate from today's server-side streaming, and has
    its own design tension: G4's groundedness check needs the *complete* answer + citations before
    it's safe to show anything, so this needs either a redesign (e.g. an incremental/best-effort G4
    check) or accepting a "commit point" partway through the stream. Not scoped yet.
-5. Click through the real mic UI on a phone. Still. Genuinely just do this one.
+6. Click through the real mic UI on a phone. Still. Genuinely just do this one.

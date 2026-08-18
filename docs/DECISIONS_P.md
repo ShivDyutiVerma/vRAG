@@ -518,3 +518,65 @@ not by CI passing. Worth remembering going forward for any Docker-level change.
 index-download step is genuinely inert in production exactly as designed, not just in local
 testing. This P-side prep is done; real retrieval activates the moment R's leaner embedder lands
 and the corresponding extras get added to the Dockerfile's install line.
+
+## P-019 — `search_corpus` tool: real native tool-calling, and a sharper P-R20 finding
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** `docs/AGENT_BUILD_SPEC.md` §7.2 item 5 names a real `search_corpus(query, k) ->
+list[Passage]` tool as a required harness capability, and `docs/AGENT_BUILD_SPEC.md` §2 explicitly
+ties this to graded requirement C5 ("Must run inside a harness: tool calls, retries, structured
+I/O, error recovery"). Not started until now.
+**Live-probed before designing** (same methodology as P-017): confirmed `sarvam-105b` supports
+real OpenAI-style function calling — offered a `search_corpus` tool, the model correctly returned
+`finish_reason: "tool_calls"` with well-formed JSON arguments. Then tested the natural next
+question — can `tools` and `response_format: json_schema` (strict) be combined in one request, so
+the model could choose to answer OR call the tool within the existing structured flow? **No**:
+live-tested, the model ignores the tool option entirely and tries to force an answer into the
+schema, hitting the same whitespace-padding bug P-017 already found.
+**Decision:** Kept the two capabilities in separate requests. Added `needs_more_context: bool` to
+`GeneratedAnswer` (positioned after `reasoning`, before `answer` — same "decide before answering"
+rationale as the reasoning-before-answer invariant) so the *existing* single structured call
+(unchanged cost) signals when a follow-up is needed. Only then does `generate()` escalate: a
+tool-decision call (`tool_choice: "required"`, non-streaming — live-observed responses here are
+short, ~30 tokens, low stall risk), execute `search_corpus` (a thin wrapper over `retrieve()`, the
+R/P seam, with `k` clamped to [1, 10] against an adversarial/runaway value), then one final
+structured re-answer over the expanded context. Tool depth capped at 1 by construction — the
+follow-up call never offers the tool again. The common case (context already sufficient) costs
+exactly one round trip, unchanged from before this feature.
+**A genuine G4 integration bug caught during design, before it shipped:** if the tool fetches new
+chunks and the model cites one of them, `GenerateStage`'s original code built `valid_chunks_by_id`
+from `ctx.data["chunks"]` — RetrieveStage's original list, which wouldn't include anything
+`search_corpus` fetched. G4 would have wrongly flagged a genuinely tool-fetched citation as
+invented. Fixed by changing `generate()`'s return type to `GenerationResult` (a `NamedTuple` of
+`answer` + the full `chunks` set actually used, original ∪ tool-fetched) — `GenerateStage`
+validates G4 against that, not the stage's starting list.
+**Live end-to-end verification found something more important than a UX detail:** tried to run the
+full 3-call escalation live against a genuinely-insufficient-context query. 12/12 attempts across
+several context shapes failed — every single one via the *same* whitespace-padding stall P-R20
+already documented, but with a much sharper, previously-unknown correlation: **the stall
+correlates strongly with "insufficient context" (`needs_more_context: true` / "I don't know"-style)
+answers specifically**, not a generic random rate. Verified this predates and is independent of
+today's schema change: re-ran the exact same insufficient-context query against the *old* 3-field
+schema (no `needs_more_context` field at all) — same result, 4/4 failures, `finish_reason:
+"length"` immediately after a correctly-reasoned "the context doesn't contain this" answer, every
+time. This means Track A's abstention path and Track B's own "insufficient context" branch —
+exactly the case where a nuanced generative answer would matter most — are the *most* likely to
+hit this provider bug, not a random subset of calls.
+**Verification:** 17 new tests (`tests/generation/test_search_corpus_tool.py`,
+`tests/harness/test_generate_stage_search_corpus.py`) covering `search_corpus`'s real integration
+with `retrieve()`'s stub path, `k` clamping, tool-decision parsing (well-formed, missing `k`, no
+tool call, malformed arguments), and `generate()`'s full orchestration (skip when sufficient,
+escalate and expand chunks, three distinct fallback-to-first-answer paths), plus the G4-against-
+expanded-chunks integration fix. 97/97 tests green (85 pre-existing + 12 new — 11 in the tool test
+file + 1 integration test). `ruff`/`mypy` clean. The happy path (context sufficient,
+`needs_more_context: false`) was separately live-verified stable: 5/5 clean successes against a
+realistic 5-chunk context right after adding the new field, before this insufficient-context
+testing began.
+**Consequences:** The `search_corpus` mechanism is built correctly and thoroughly tested — real
+native tool-calling (satisfies C5's letter, not a simulated equivalent), correct depth-1 capping,
+correct G4 integration for tool-fetched citations. It is genuinely ready to fire the moment
+Sarvam's completion succeeds on the triggering call, same "proven correct, not yet reliably
+observed end-to-end live" position Track B itself shipped in earlier this session (P-013/P-017).
+`docs/RISKS.md` P-R20 sharpened with this finding, not treated as a new separate risk — same root
+cause, better characterized. Also strengthens the case for reporting P-R20 to Sarvam with a much
+more precise, highly reproducible repro case than was available before today.
