@@ -12,6 +12,7 @@ from vrag.index.embedder import (
     BGEM3Embedder,
     E5Embedder,
     Model2VecEmbedder,
+    ONNXE5Embedder,
     VyakyarthEmbedder,
     format_passage,
     format_query,
@@ -39,9 +40,12 @@ def test_empty_text_still_gets_prefixed() -> None:
     assert format_passage("") == PASSAGE_PREFIX
 
 
-def test_embedder_registry_has_all_four_a2_candidates() -> None:
+def test_embedder_registry_has_all_four_a2_candidates_plus_onnx() -> None:
+    # multilingual-e5-small-onnx-int8 (docs/DECISIONS_R.md R-019, P6) isn't an A2 candidate --
+    # it's a quantised variant of A2's winner, added after A2 concluded.
     assert set(EMBEDDER_REGISTRY.keys()) == {
         "multilingual-e5-small",
+        "multilingual-e5-small-onnx-int8",
         "potion-multilingual-128M",
         "bge-m3",
         "vyakyarth",
@@ -50,6 +54,7 @@ def test_embedder_registry_has_all_four_a2_candidates() -> None:
 
 def test_embedder_registry_maps_to_correct_classes() -> None:
     assert EMBEDDER_REGISTRY["multilingual-e5-small"] is E5Embedder
+    assert EMBEDDER_REGISTRY["multilingual-e5-small-onnx-int8"] is ONNXE5Embedder
     assert EMBEDDER_REGISTRY["potion-multilingual-128M"] is Model2VecEmbedder
     assert EMBEDDER_REGISTRY["bge-m3"] is BGEM3Embedder
     assert EMBEDDER_REGISTRY["vyakyarth"] is VyakyarthEmbedder
