@@ -3,7 +3,7 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); ONNX embedder built+validated (R-019); memory issue confirmed (R-020) and **partially fixed** (R-021 — SQLite chunk_lookup, -43% index-only, -14% combined) — embedder's own torch/transformers footprint is now the dominant remaining cost, still needs a direction decision
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); memory issue confirmed (R-020) and **substantially fixed, no cost/quality tradeoff** (R-021 SQLite chunk_lookup + R-022 torch-free `LiteE5Embedder`: 1,539MB → 741MB, -52%) — user ruled out a paid Render plan, ~230MB still short of the 512MB free-tier target, next lever likely needs a real quality tradeoff (shrink chunk count)
 **Build status:** 🟢 green — 182/182 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
@@ -143,18 +143,27 @@ SQLite instead of one live dict of ~100k Pydantic `Chunk` objects. **Real win: i
 591MB → 339MB (-43%, now under budget on its own); full stack with the ONNX embedder drops
 1,539MB → 1,321MB (-14%).** But confirms this isn't sufficient alone — the embedder's own
 `torch`/`transformers` import footprint (~980MB) is now the clearly dominant remaining cost, not the
-index. Not wired into production as the default yet — deliberately: doing so now would present a
-partial fix as if it solved the problem. `docs/RISKS.md` R4 updated to reflect the full picture
-(index fixed, embedder still open).
+index.
+
+**User gave explicit direction: no paid Render plan, keep shrinking under 500MB.** Isolated
+`import torch` alone: ~383MB, most of that ~980MB. Built `LiteE5Embedder`
+(`docs/DECISIONS_R.md` R-022) — same ONNX int8 model, but bypasses `sentence-transformers` entirely:
+raw `onnxruntime.InferenceSession` + `tokenizers`' Rust tokenizer, mean-pooling/normalisation done by
+hand in numpy. Verified byte-identical to `ONNXE5Embedder`'s output before trusting it (cosine sim
+1.0, diff ~1.5e-8, float32 noise) — same model, same math, no `torch` in the import graph.
+**Result: full stack drops 1,321MB → 741MB (-44% more).** Combined with R-021: **1,539MB → 741MB,
+-52% total, zero quality cost.** Tried further `onnxruntime` tuning (memory arena, graph
+optimisation) — measured, no further headroom. Still 145% of the 512MB budget; the remaining
+~230MB gap most plausibly needs the one option with a real quality cost (shrink the chunk count) —
+e5-small is already A2's smallest viable model.
 
 ## Blockers
 
 - **R-R21 (live deployment stub) needs Workstream P** — Dockerfile/render.yaml are their ownership.
   The index artifact is ready; three small steps remain on their side.
-- **R4/R-020/R-021 (embedder import footprint, now the dominant remaining memory cost) needs a
-  direction decision** — upgrade Render's plan, shrink the chunk count, or investigate a torch-free
-  inference path (untested idea, real engineering effort, R-021's flagged follow-up). Not something
-  to guess at alone given the real cost/quality/effort tradeoffs involved.
+- **R4 (still ~230MB over the 512MB free-tier target after R-021+R-022's no-cost fixes)** — the
+  remaining lever most likely needs a real quality tradeoff (shrinking the chunk count), which
+  needs a real re-ablation pass to quantify honestly, not a guess.
 
 ## Next session should start by
 

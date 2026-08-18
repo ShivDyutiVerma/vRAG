@@ -11,6 +11,7 @@ from vrag.index.embedder import (
     QUERY_PREFIX,
     BGEM3Embedder,
     E5Embedder,
+    LiteE5Embedder,
     Model2VecEmbedder,
     ONNXE5Embedder,
     VyakyarthEmbedder,
@@ -40,12 +41,13 @@ def test_empty_text_still_gets_prefixed() -> None:
     assert format_passage("") == PASSAGE_PREFIX
 
 
-def test_embedder_registry_has_all_four_a2_candidates_plus_onnx() -> None:
-    # multilingual-e5-small-onnx-int8 (docs/DECISIONS_R.md R-019, P6) isn't an A2 candidate --
-    # it's a quantised variant of A2's winner, added after A2 concluded.
+def test_embedder_registry_has_all_four_a2_candidates_plus_onnx_variants() -> None:
+    # multilingual-e5-small-onnx-int8 (R-019) and -lite-onnx-int8 (R-022) aren't A2 candidates --
+    # both are quantised/re-implemented variants of A2's winner, added after A2 concluded.
     assert set(EMBEDDER_REGISTRY.keys()) == {
         "multilingual-e5-small",
         "multilingual-e5-small-onnx-int8",
+        "multilingual-e5-small-lite-onnx-int8",
         "potion-multilingual-128M",
         "bge-m3",
         "vyakyarth",
@@ -55,6 +57,7 @@ def test_embedder_registry_has_all_four_a2_candidates_plus_onnx() -> None:
 def test_embedder_registry_maps_to_correct_classes() -> None:
     assert EMBEDDER_REGISTRY["multilingual-e5-small"] is E5Embedder
     assert EMBEDDER_REGISTRY["multilingual-e5-small-onnx-int8"] is ONNXE5Embedder
+    assert EMBEDDER_REGISTRY["multilingual-e5-small-lite-onnx-int8"] is LiteE5Embedder
     assert EMBEDDER_REGISTRY["potion-multilingual-128M"] is Model2VecEmbedder
     assert EMBEDDER_REGISTRY["bge-m3"] is BGEM3Embedder
     assert EMBEDDER_REGISTRY["vyakyarth"] is VyakyarthEmbedder
@@ -66,4 +69,8 @@ def test_every_embedder_has_a_name_and_does_not_load_a_model_on_construction() -
     for cls in EMBEDDER_REGISTRY.values():
         instance = cls()
         assert instance.name
-        assert instance._model is None
+        if isinstance(instance, LiteE5Embedder):
+            assert instance._session is None
+            assert instance._tokenizer is None
+        else:
+            assert instance._model is None

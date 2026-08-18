@@ -809,3 +809,50 @@ which backend actually does inference) could plausibly close most of the remaini
 untested, real engineering effort, would need its own validation pass the same way R-019/R-021 did.
 `docs/RISKS.md` R4 updated to reflect the full combined picture (index fixed, embedder still the
 open problem) rather than treating this as a full resolution.
+
+## R-022 — Torch-free embedder: -580MB more, from 1,321MB to 741MB — real, major, still not under budget
+
+**Date:** 2026-08-18
+**Status:** Accepted — built, tested (byte-identical output verified), measured; **not yet wired
+into production** (default embedder unchanged); explicit user direction: no paid Render plan, must
+fit the free tier, keep shrinking
+**Context:** R-021 confirmed `chunk_lookup`'s in-memory dict was a real contributor but not
+sufficient alone — the embedder's own `torch`/`transformers` import footprint (~980MB) was the
+larger remaining cost, present regardless of inference backend because `sentence-transformers`
+imports `torch` unconditionally. Measured `import torch` alone in isolation: **~383MB RSS**, most
+of that ~980MB, confirming the hypothesis directly rather than assuming it.
+**What was built:** `LiteE5Embedder` (`src/vrag/index/embedder.py`) — same ONNX int8 model as
+`ONNXE5Embedder`, but bypasses `sentence-transformers` entirely: raw `onnxruntime.InferenceSession`
++ the `tokenizers` library's Rust tokenizer (already installed transitively, no new dependency),
+mean-pooling and L2-normalisation done by hand in numpy (matching the model's own
+`1_Pooling`/`2_Normalize` config, read directly from the exported model directory, not guessed).
+**Verified byte-identical to `ONNXE5Embedder`'s output before trusting it**, not assumed: cosine
+similarity 1.0, max absolute difference ~1.5e-8 (pure float32 rounding noise) on a real query —
+same model, same math, just without `torch` in the import graph.
+
+**Measured (same `tasklist` methodology as R-020/R-021):**
+
+| Config | RSS | Δ from previous step |
+|---|---|---|
+| SQLite index + `ONNXE5Embedder` (R-021, via sentence-transformers) | 1,321MB | — |
+| SQLite index + `LiteE5Embedder` (torch-free) | 741MB | **-580MB (-44%)** |
+| `import torch` alone, isolated | 383MB | (explains most of the above) |
+
+Tried two further `onnxruntime`-level tunings on `LiteE5Embedder`, both measured, neither helped:
+disabling the memory arena/mem-pattern/limiting threads (738MB, no change) and disabling graph
+optimisation at session-creation time (432MB for model+numpy+tokenizer alone, same as with
+optimisation on — the ~380MB delta over bare `onnxruntime`'s ~49MB import is inherent to loading
+this model's weights/graph into an active session, not tunable via session options).
+**Decision:** Ship `LiteE5Embedder` as real, tested, measured infrastructure — not yet the default.
+741MB is a massive, real reduction from where this started (1,860MB on this dev machine's GPU,
+1,474MB FP32-CPU, R-020) but is still 145% of Render's free-tier 512MB budget — user explicitly
+ruled out a paid plan, so this alone doesn't close the gap yet.
+**Rationale:** Same reasoning as R-021 — presenting 741MB as "fixed" when it's still over budget
+would be misleading. Recording it as real, substantial, verified progress toward the target, with
+the honest remaining gap stated plainly.
+**Consequences:** Combined with R-021, the two together take the full stack from 1,539MB → 741MB
+(-52%) using only R-owned engineering changes, no cost and no quality tradeoff yet. The remaining
+~230MB gap to fit under 500MB most plausibly needs the one option R-020 flagged as having a real
+quality cost — shrinking the working pool/chunk count — since e5-small is already A2's smallest
+viable model and further `onnxruntime`-level tuning showed no further headroom. `eval_chunking.py`'s
+`EMBED_BACKEND_BY_NAME` and `tests/test_embedder.py`'s registry tests updated for the new class.
