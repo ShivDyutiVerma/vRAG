@@ -3,8 +3,8 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); ONNX embedder built+validated (R-019), blocked on R-R21; **real index alone already exceeds Render free-tier memory (R-020/R4), needs a joint fix-direction decision**
-**Build status:** 🟢 green — 172/172 tests pass, ruff/mypy clean
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); ONNX embedder built+validated (R-019); memory issue confirmed (R-020) and **partially fixed** (R-021 — SQLite chunk_lookup, -43% index-only, -14% combined) — embedder's own torch/transformers footprint is now the dominant remaining cost, still needs a direction decision
+**Build status:** 🟢 green — 182/182 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
 
@@ -132,28 +132,37 @@ against the full test suite before committing.
 `docs/RISKS.md` R4, escalated to 🔴 high) — good thing: the persisted index *alone*, no embedder
 loaded, already uses 591MB RSS, 115% of Render free tier's 512MB limit. With the FP32 embedder the
 total is 1.47GB (288% of budget). `ONNXE5Embedder` (R-019) gave no memory relief, only latency —
-`torch`/`transformers` load either way regardless of inference backend. `chunk_lookup.json` (full
-chunk text for all 99,767 chunks, in one live Python dict) is the likely largest single contributor,
-not yet isolated further. Three real fix directions identified, none applied — genuine cost/quality/
-engineering tradeoffs, not an R-only call: upgrade Render's plan, shrink the chunk count (real
-quality cost against A1-A4's numbers), or a leaner `chunk_lookup.json` format (R-ownable, not yet
-designed). Flagged via PR #5 (merged) for a joint decision on direction before either track spends
-time on a fix that turns out to be the wrong one.
+`torch`/`transformers` load either way regardless of inference backend. Three real fix directions
+identified: upgrade Render's plan, shrink the chunk count (real quality cost against A1-A4's
+numbers), or a leaner `chunk_lookup.json` format — the last one explicitly R-ownable and not needing
+a cost/quality tradeoff decision to attempt, unlike the other two.
+
+**Built and measured that one** (`docs/DECISIONS_R.md` R-021) — `SQLiteChunkLookup`
+(`src/vrag/index/sqlite_chunk_lookup.py`), same read interface every real call site uses, backed by
+SQLite instead of one live dict of ~100k Pydantic `Chunk` objects. **Real win: index-only RSS drops
+591MB → 339MB (-43%, now under budget on its own); full stack with the ONNX embedder drops
+1,539MB → 1,321MB (-14%).** But confirms this isn't sufficient alone — the embedder's own
+`torch`/`transformers` import footprint (~980MB) is now the clearly dominant remaining cost, not the
+index. Not wired into production as the default yet — deliberately: doing so now would present a
+partial fix as if it solved the problem. `docs/RISKS.md` R4 updated to reflect the full picture
+(index fixed, embedder still open).
 
 ## Blockers
 
 - **R-R21 (live deployment stub) needs Workstream P** — Dockerfile/render.yaml are their ownership.
   The index artifact is ready; three small steps remain on their side.
-- **R4/R-020 (real index exceeds free-tier memory) needs a joint decision on fix direction** before
-  either track spends implementation time — not something to guess at alone given the real cost/
-  quality tradeoffs involved.
+- **R4/R-020/R-021 (embedder import footprint, now the dominant remaining memory cost) needs a
+  direction decision** — upgrade Render's plan, shrink the chunk count, or investigate a torch-free
+  inference path (untested idea, real engineering effort, R-021's flagged follow-up). Not something
+  to guess at alone given the real cost/quality/effort tradeoffs involved.
 
 ## Next session should start by
 
-1. **Check whether the memory-fix direction has been decided** (`docs/RISKS.md` R4) — if it's "a
-   leaner `chunk_lookup.json` format," that's R's to design and build; if it's "upgrade Render's
-   plan" or "shrink the chunk count," R's role shifts (the latter would need a real re-ablation
-   pass, not just a config change).
+1. **Check whether the memory-fix direction has been decided** (`docs/RISKS.md` R4) — `SQLiteChunkLookup`
+   (R-021) is built and measured, ready to wire in as part of whatever combined fix gets chosen; the
+   embedder's own torch/transformers footprint is the still-open piece (torch-free inference path,
+   upgrade Render's plan, or shrink the chunk count — the last needs a real re-ablation pass, not
+   just a config change).
 2. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
    against the live URL, the same way this was found, before trusting "deployed and working" claims
    again for anything beyond local testing.
