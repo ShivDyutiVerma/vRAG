@@ -79,6 +79,8 @@ percentage points — is **5–7x the measured noise floor**. That gap is real, 
   metadata for later retrieval filtering/boosting (`TECH_MENU.md` S5 #5 — flagged as the most
   dataset-specific strategy, worth highlighting).
 
+![Chunking strategy comparison](assets/chunking_comparison.png)
+
 ### Decision — shipping `metadata_aware`
 
 **Status: accepted, no longer provisional** (`docs/DECISIONS_R.md` R-004, updated after the
@@ -86,6 +88,17 @@ noise-floor run above). `metadata_aware` is tied with `passage_native`/`fixed_ov
 and measurably ahead of `hierarchical`/`semantic` beyond noise — ships as the production strategy
 because it costs nothing over the cheapest tied option and adds metadata other stages can use for
 free. Already wired into `retrieve()` via `HybridRetriever` (`src/vrag/retrieval/hybrid.py`).
+
+**`docs/BUILD_PLAN.md` P2's exit criterion "winner's Recall@5 ≥ 0.75" is not met, acknowledged
+explicitly rather than left silent.** The best Recall@5 found across every R-side lever tried this
+project — 6 chunking strategies, 4 embedders, 3 retrieval modes, 3 rerankers, a 5-point efSearch
+sweep — tops out at 0.656 (`docs/DECISIONS_R.md` R-014, efSearch=256), with the shipped config at
+0.652. The spec's own guard anticipates this exact outcome ("if not, that's a P3 retrieval problem —
+note it, proceed," not a hard blocker), and it was: A2-A4 and the efSearch sweep are precisely that
+P3 retrieval follow-up, and none of them closed the gap — the ceiling looks like a genuine property
+of this corpus (short, already-atomic passages; MSMARCO-XI's machine-translation artifacts, R-003)
+rather than a fixable configuration choice among the levers R owns. Noted here rather than
+re-litigated; not a blocker for shipping, per the spec's own framing.
 
 ### `fixed_overlap` hyperparameter sweep — overlap has no measurable effect on this corpus
 
