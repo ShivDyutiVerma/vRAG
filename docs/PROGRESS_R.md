@@ -3,7 +3,7 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; found a real deployment gap (R-018/R-R21, artifact prepared, P-side fix still needed); ONNX int8 embedder built + validated (R-019), not yet wired in — deliberately blocked on R-R21 landing first
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); ONNX embedder built+validated (R-019), blocked on R-R21; **real index alone already exceeds Render free-tier memory (R-020/R4), needs a joint fix-direction decision**
 **Build status:** 🟢 green — 172/172 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
@@ -128,23 +128,38 @@ stay isolated and easy to verify. New dependencies (`onnx`, `optimum`, `optimum-
 `transformers`'s floor and adding a ceiling (`optimum-onnx` hard-pins `<4.58.0`), verified safe
 against the full test suite before committing.
 
+**Measured real RSS before P attempted the R-R21 deploy fix** (`docs/DECISIONS_R.md` R-020,
+`docs/RISKS.md` R4, escalated to 🔴 high) — good thing: the persisted index *alone*, no embedder
+loaded, already uses 591MB RSS, 115% of Render free tier's 512MB limit. With the FP32 embedder the
+total is 1.47GB (288% of budget). `ONNXE5Embedder` (R-019) gave no memory relief, only latency —
+`torch`/`transformers` load either way regardless of inference backend. `chunk_lookup.json` (full
+chunk text for all 99,767 chunks, in one live Python dict) is the likely largest single contributor,
+not yet isolated further. Three real fix directions identified, none applied — genuine cost/quality/
+engineering tradeoffs, not an R-only call: upgrade Render's plan, shrink the chunk count (real
+quality cost against A1-A4's numbers), or a leaner `chunk_lookup.json` format (R-ownable, not yet
+designed). Flagged via PR #5 (merged) for a joint decision on direction before either track spends
+time on a fix that turns out to be the wrong one.
+
 ## Blockers
 
-- **The live deployment gap (`docs/RISKS.md` R-R21) needs Workstream P** before ONNX can actually
-  ship — Dockerfile/render.yaml are their ownership. The artifact is ready; three small steps remain
-  (install `[retrieval]` in the image, download+extract the release asset at boot/build,
-  redeploy+reverify) — not something R should do unilaterally on shared deploy infra.
+- **R-R21 (live deployment stub) needs Workstream P** — Dockerfile/render.yaml are their ownership.
+  The index artifact is ready; three small steps remain on their side.
+- **R4/R-020 (real index exceeds free-tier memory) needs a joint decision on fix direction** before
+  either track spends implementation time — not something to guess at alone given the real cost/
+  quality tradeoffs involved.
 
 ## Next session should start by
 
-1. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
+1. **Check whether the memory-fix direction has been decided** (`docs/RISKS.md` R4) — if it's "a
+   leaner `chunk_lookup.json` format," that's R's to design and build; if it's "upgrade Render's
+   plan" or "shrink the chunk count," R's role shifts (the latter would need a real re-ablation
+   pass, not just a config change).
+2. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
    against the live URL, the same way this was found, before trusting "deployed and working" claims
    again for anything beyond local testing.
-2. Once R-R21 is fixed, wiring `ONNXE5Embedder` into `interface.py`'s production path is a one-line
-   change (`docs/DECISIONS_R.md` R-019 has the numbers already) — the natural next R task.
-3. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014 for the full
-   A3/A4/efSearch story before touching retrieval code again — the production default is now
-   dense-only, no reranker, efSearch=64, and all three are deliberate, data-driven, documented
-   choices, not oversights
-4. Read `docs/DECISIONS_R.md` R-015/R-017 for the G3 calibration story before touching TAU/MARGIN
-   again — both are now live-verified, not placeholders
+3. Once R-R21 is fixed (and the memory question resolved), wiring `ONNXE5Embedder` into
+   `interface.py`'s production path is a one-line change (`docs/DECISIONS_R.md` R-019 has the
+   numbers already).
+4. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014/R-015/R-017 for the
+   full A3/A4/efSearch/G3-calibration story before touching retrieval code again — all of it is
+   deliberate, data-driven, and documented, not oversights.
