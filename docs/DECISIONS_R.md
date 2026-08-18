@@ -856,3 +856,73 @@ the honest remaining gap stated plainly.
 quality cost — shrinking the working pool/chunk count — since e5-small is already A2's smallest
 viable model and further `onnxruntime`-level tuning showed no further headroom. `eval_chunking.py`'s
 `EMBED_BACKEND_BY_NAME` and `tests/test_embedder.py`'s registry tests updated for the new class.
+
+## R-023 — Wired R-021/R-022 into the actual real-retriever path; produced the runtime artifacts; deploy step still needed (P)
+
+**Date:** 2026-08-18
+**Status:** Accepted — code wired, real-index smoke-tested in an isolated torch-free venv (727MB
+RSS, matching R-022's isolated measurement), runtime artifacts published as GitHub Releases. Deploy
+step (Dockerfile) intentionally not touched — that's P's module (`docs/TEAM_SPLIT.md` §2).
+**Context:** R-021 and R-022 built and measured `SQLiteChunkLookup` and `LiteE5Embedder` as
+standalone prototypes, but `src/vrag/retrieval/interface.py::_get_real_retriever()` — the one place
+that actually constructs the production retriever — still hardcoded `E5Embedder()` (FP32,
+`sentence-transformers`, unconditional `torch` import) and `load_built_index()` (eager
+`chunk_lookup.json` dict). Confirmed via `git log` that this was correctly called out as "not
+started" in P's P-018/P-R21 fix (`docs/DECISIONS_P.md`) — the prototypes existed, the wiring didn't.
+**What changed (all R-owned or the interface.py seam, not Dockerfile):**
+- `src/vrag/index/embedder.py`: added `EmbedderProtocol` (structural type for "any embedder with
+  `embed_queries`/`embed_passages`") so `HybridRetriever` isn't hard-typed to `E5Embedder`.
+- `src/vrag/retrieval/hybrid.py`: `HybridRetriever.__init__`'s `embedder` param now typed
+  `EmbedderProtocol`; `chunk_lookup` param now typed `Mapping[str, Chunk] | SQLiteChunkLookup`
+  (tried a narrower custom Protocol first — mypy couldn't cleanly match it against `dict.get`'s
+  overloaded signature, so used the concrete union instead; simpler and it typechecks).
+- `src/vrag/index/persistence.py`: added `load_built_index_lean()` — loads `chunk_lookup.sqlite3`
+  via `SQLiteChunkLookup` when present, falls back to the eager JSON dict otherwise (so it's a
+  drop-in replacement for index artifacts built before R-021, e.g. the original
+  `index-metadata_aware-v1` release).
+- `src/vrag/retrieval/interface.py`: `_get_real_retriever()` now constructs `LiteE5Embedder()` +
+  `load_built_index_lean()` instead of `E5Embedder()` + `load_built_index()`. The `retrieve()`
+  function's own signature/contract is untouched — this is an internal implementation swap, not a
+  change to the R/P seam itself.
+**Verification, not assumption:** built a real index (`data/index/metadata_aware/`, 99,767 chunks)
+into a **fresh, throwaway venv with only the new `retrieval-lean` pyproject.toml extra installed**
+(no torch, no transformers — confirmed via the install log) and called `retrieve()` end-to-end
+through `interface.py`. Got 5 real (non-stub) hits back, correct Devanagari text, plausible cosine
+scores (0.818–0.835) — confirmed `IS_STUB=False`. Measured RSS via the same `tasklist` methodology
+as R-020/R-021/R-022: **727MB**, matching R-022's isolated 741MB measurement closely (small
+variance expected — different process, different measurement instant).
+**New dependency grouping (`pyproject.toml`):** added a `retrieval-lean` extra — `numpy`,
+`faiss-cpu`, `bm25s`, `onnxruntime`, `tokenizers` — deliberately excluding
+`torch`/`transformers`/`sentence-transformers`/`optimum`/`optimum-onnx`/`rerankers`/`flashrank`.
+The existing `retrieval` extra (all of the above) stays for dev machines running ablations/ONNX
+export; `retrieval-lean` is what the deployed container should install. No new PyPI packages were
+added — every package in `retrieval-lean` was already a `retrieval` dependency, just regrouped —
+so no separate ADR needed under the "never add a dependency without an ADR" rule.
+**Runtime artifacts published (GitHub Releases, same pattern as R-018's index release,
+`AGENT_BUILD_SPEC.md` §5.3):**
+- `embedder-lite-onnx-v1` — `multilingual-e5-small-lite-onnx.tar.gz` (87.6MB compressed): just the
+  two files `LiteE5Embedder` actually reads (`tokenizer.json` + `onnx/model_quint8_avx2.onnx`), not
+  the full `sentence-transformers` export directory (579MB — most of it an unused FP32
+  `model.onnx` and HF metadata files `LiteE5Embedder` never opens).
+- `index-metadata_aware-v2` — same dense/sparse index as v1, plus `chunk_lookup.sqlite3`
+  (`chunk_lookup.json` kept alongside for backward compatibility with `load_built_index()`/local
+  dev extraction).
+**What P's Dockerfile still needs to do** (deployment is P's module — deliberately not done here):
+1. `pip install --no-cache-dir -e ".[retrieval-lean]"` instead of the current plain
+   `pip install --no-cache-dir -e .` (still no torch/transformers pulled in — verified above).
+2. Download+extract `index-metadata_aware-v2` (not `-v1`) from the URL pattern already in the
+   Dockerfile, just the new tag.
+3. Download+extract `embedder-lite-onnx-v1`'s asset to `data/onnx/multilingual-e5-small/` (the
+   `LiteE5Embedder`/`ONNXE5Embedder` default `model_dir` — no code/env-var change needed if
+   extracted to exactly that path).
+4. That's the complete list — no other interface.py/Dockerfile coordination needed; `retrieve()`'s
+   contract is unchanged, and `_get_real_retriever()`'s existing try/except-and-fall-back-to-stub
+   still covers any partial/missing artifact the same way it already does today.
+**Consequences:** This is the difference between "741MB measured in isolation" and "741MB is what
+production actually uses" — without this wiring, R-021/R-022's real work would never reach the live
+URL regardless of how good the numbers were. Once P's Dockerfile change lands, expected production
+RSS is ~727-741MB (measured, not projected) — still ~215-230MB over Render free tier's 512MB, so
+`docs/RISKS.md` R4 stays open; the corpus-shrink lever (real quality cost, needs re-ablation) is
+still the most plausible remaining path to close that gap, unless the team decides 741MB is close
+enough to reconsider paid-tier economics (explicitly the user's/team's call, not mine — see R4's
+current framing on the paid-fallback question).

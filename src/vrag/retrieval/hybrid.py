@@ -22,13 +22,15 @@ that doesn't need to be.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 
 from vrag.chunking.base import Chunk
 from vrag.index.dense import DenseIndex
-from vrag.index.embedder import E5Embedder
+from vrag.index.embedder import EmbedderProtocol
 from vrag.index.fusion import DEFAULT_K, reciprocal_rank_fusion
 from vrag.index.sparse import SparseIndex
+from vrag.index.sqlite_chunk_lookup import SQLiteChunkLookup
 from vrag.retrieval.interface import RetrievedChunk
 
 
@@ -37,8 +39,10 @@ class HybridRetriever:
         self,
         dense: DenseIndex,
         sparse: SparseIndex,
-        embedder: E5Embedder,
-        chunk_lookup: dict[str, Chunk],
+        embedder: EmbedderProtocol,
+        # Mapping[str, Chunk] covers plain dicts (offline build/eval); SQLiteChunkLookup (R-021)
+        # isn't a Mapping (no __iter__, deliberately — see its docstring) so it's named explicitly.
+        chunk_lookup: Mapping[str, Chunk] | SQLiteChunkLookup,
         fusion_k: int = DEFAULT_K,
         executor: ThreadPoolExecutor | None = None,
         retrieval_mode: str = "dense",

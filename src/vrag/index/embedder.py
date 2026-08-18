@@ -18,7 +18,7 @@ inner-product search equals cosine similarity, AGENT_BUILD_SPEC.md §5.2 gotcha)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -27,6 +27,19 @@ QUERY_PREFIX = "query: "
 PASSAGE_PREFIX = "passage: "
 
 DEFAULT_MODEL_NAME = "intfloat/multilingual-e5-small"
+
+
+class EmbedderProtocol(Protocol):
+    """The shape every class in EMBEDDER_REGISTRY already shares structurally (duck-typed there
+    too — the registry is `dict[str, type]`, not `dict[str, type[EmbedderProtocol]]`). Exists so
+    consumers outside this module (src/vrag/retrieval/hybrid.py) can type-hint "any embedder"
+    without hard-importing a specific class — added when R-023 needed HybridRetriever to accept
+    LiteE5Embedder as well as E5Embedder."""
+
+    name: str
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]: ...
+    def embed_passages(self, texts: list[str]) -> list[list[float]]: ...
 
 
 def format_query(text: str) -> str:

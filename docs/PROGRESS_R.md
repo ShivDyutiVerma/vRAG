@@ -2,9 +2,9 @@
 
 > Mine, edited freely, any time. Never edited by Workstream P.
 
-**Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; deployment gap found (R-R21, artifact ready, P-side fix pending); memory issue confirmed (R-020) and **substantially fixed, no cost/quality tradeoff** (R-021 SQLite chunk_lookup + R-022 torch-free `LiteE5Embedder`: 1,539MB → 741MB, -52%) — user ruled out a paid Render plan, ~230MB still short of the 512MB free-tier target, next lever likely needs a real quality tradeoff (shrink chunk count)
-**Build status:** 🟢 green — 182/182 tests pass, ruff/mypy clean
+**Last updated:** 2026-08-18, Session 03
+**Current phase:** P3 exit criteria fully met; G3 calibration complete; memory fix **built, prototyped, AND now wired into the real production code path + published as GitHub Release artifacts** (R-023) — 727MB measured end-to-end in an isolated torch-free venv, real (non-stub) retrieval confirmed working. Still ~215-230MB over Render free tier's 512MB; P's Dockerfile change is now precisely specified (3 steps, `docs/DECISIONS_R.md` R-023) but not yet made — that's the one remaining piece before this reaches the live URL
+**Build status:** 🟢 green — 197/197 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
 
@@ -157,27 +157,41 @@ optimisation) — measured, no further headroom. Still 145% of the 512MB budget;
 ~230MB gap most plausibly needs the one option with a real quality cost (shrink the chunk count) —
 e5-small is already A2's smallest viable model.
 
+**Wired R-021/R-022 into production and shipped the runtime artifacts** (`docs/DECISIONS_R.md`
+R-023) — until now the standalone prototypes existed but `interface.py::_get_real_retriever()`
+still hardcoded the old `E5Embedder()`+JSON-dict path, so none of the 52% RSS cut would have
+actually reached production even once P's Dockerfile fix landed. Added `EmbedderProtocol`
+(`embedder.py`) and widened `HybridRetriever`'s type hints (`hybrid.py`) so it accepts
+`LiteE5Embedder`/`SQLiteChunkLookup`, not just the original `E5Embedder`/`dict`. Added
+`load_built_index_lean()` (`persistence.py`) and a new `retrieval-lean` pyproject.toml extra
+(numpy/faiss-cpu/bm25s/onnxruntime/tokenizers — no torch/transformers). **Verified in a fresh
+throwaway venv with only `retrieval-lean` installed** (confirmed torch-free via the pip install
+log): built the real index, ran `retrieve()` end-to-end through `interface.py`, got 5 real
+(non-stub) hits with correct Devanagari text and plausible scores — **727MB RSS measured**,
+matching R-022's isolated 741MB number. Published two new GitHub Release artifacts so P's
+Dockerfile has something to point at: `embedder-lite-onnx-v1` (87.6MB — just the two files
+`LiteE5Embedder` reads, not the full 579MB export dir) and `index-metadata_aware-v2` (adds
+`chunk_lookup.sqlite3` to the existing index archive). Full 3-step Dockerfile change P needs is
+spelled out in R-023 — did not touch `Dockerfile` itself (P's module).
+
 ## Blockers
 
-- **R-R21 (live deployment stub) needs Workstream P** — Dockerfile/render.yaml are their ownership.
-  The index artifact is ready; three small steps remain on their side.
-- **R4 (still ~230MB over the 512MB free-tier target after R-021+R-022's no-cost fixes)** — the
+- **R-R21 (live deployment stub) needs Workstream P** — Dockerfile is their ownership. R's side is
+  now fully done: code wired, tested, artifacts published, exact 3-step change specified in
+  `docs/DECISIONS_R.md` R-023.
+- **R4 (still ~215-230MB over the 512MB free-tier target even with R-023 wired in)** — the
   remaining lever most likely needs a real quality tradeoff (shrinking the chunk count), which
-  needs a real re-ablation pass to quantify honestly, not a guess.
+  needs a real re-ablation pass to quantify honestly, not a guess. Not started.
 
 ## Next session should start by
 
-1. **Check whether the memory-fix direction has been decided** (`docs/RISKS.md` R4) — `SQLiteChunkLookup`
-   (R-021) is built and measured, ready to wire in as part of whatever combined fix gets chosen; the
-   embedder's own torch/transformers footprint is the still-open piece (torch-free inference path,
-   upgrade Render's plan, or shrink the chunk count — the last needs a real re-ablation pass, not
-   just a config change).
-2. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
-   against the live URL, the same way this was found, before trusting "deployed and working" claims
-   again for anything beyond local testing.
-3. Once R-R21 is fixed (and the memory question resolved), wiring `ONNXE5Embedder` into
-   `interface.py`'s production path is a one-line change (`docs/DECISIONS_R.md` R-019 has the
-   numbers already).
-4. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014/R-015/R-017 for the
-   full A3/A4/efSearch/G3-calibration story before touching retrieval code again — all of it is
-   deliberate, data-driven, and documented, not oversights.
+1. **Check whether P's Dockerfile change (R-023's 3 steps) has landed** — verify with a real `/ask`
+   call against the live URL (same discipline as R-018's original discovery: don't trust a
+   "deployed" claim without checking), and if it has, measure production RSS for real rather than
+   assuming the 727MB isolated-venv number transfers exactly.
+2. If the memory gap is still open after that, the remaining lever is corpus/chunk-count shrink —
+   needs a real re-ablation pass (quality cost against A1-A4's Recall@5 numbers), not a guess. This
+   has not been started.
+3. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014/R-015/R-017/R-023
+   for the full A3/A4/efSearch/G3-calibration/memory-fix story before touching retrieval code
+   again — all of it is deliberate, data-driven, and documented, not oversights.
