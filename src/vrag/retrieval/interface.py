@@ -50,6 +50,13 @@ if TYPE_CHECKING:
 
 _INDEX_DIR = Path(__file__).resolve().parents[3] / "data" / "index" / "metadata_aware"
 
+# A3 winner, docs/DECISIONS_R.md R-010 — single source of truth, not a literal repeated at each
+# call site below. Both load_built_index_lean() (which decides whether to load the BM25/sparse
+# index at all, docs/DECISIONS.md ADR-006) and HybridRetriever's own retrieval_mode must agree on
+# this value or construction raises immediately (see hybrid.py's __init__ guard) rather than
+# silently loading a sparse index that's never used, or skipping one that's needed.
+_RETRIEVAL_MODE = "dense"
+
 
 class RetrievedChunk(BaseModel):
     chunk_id: str
@@ -113,14 +120,15 @@ def _get_real_retriever() -> HybridRetriever | None:
         from vrag.index.persistence import load_built_index_lean
         from vrag.retrieval.hybrid import HybridRetriever
 
-        dense, sparse, chunk_lookup = load_built_index_lean(_INDEX_DIR)
+        dense, sparse, chunk_lookup = load_built_index_lean(
+            _INDEX_DIR, retrieval_mode=_RETRIEVAL_MODE
+        )
         _retriever = HybridRetriever(
             dense=dense,
             sparse=sparse,
             embedder=LiteE5Embedder(),
             chunk_lookup=chunk_lookup,
-            # A3 winner, docs/DECISIONS_R.md R-010 — explicit, not relying on the default
-            retrieval_mode="dense",
+            retrieval_mode=_RETRIEVAL_MODE,
         )
     except Exception:
         logger.exception(

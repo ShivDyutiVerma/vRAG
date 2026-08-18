@@ -38,7 +38,10 @@ class HybridRetriever:
     def __init__(
         self,
         dense: DenseIndex,
-        sparse: SparseIndex,
+        # None is only valid when retrieval_mode="dense" -- ADR-006 found the sparse/BM25 index
+        # was being loaded unconditionally (~105MB) even though dense-only mode never queries it.
+        # Callers that don't need "sparse"/"hybrid" can skip loading it entirely and pass None.
+        sparse: SparseIndex | None,
         embedder: EmbedderProtocol,
         # Mapping[str, Chunk] covers plain dicts (offline build/eval); SQLiteChunkLookup (R-021)
         # isn't a Mapping (no __iter__, deliberately — see its docstring) so it's named explicitly.
@@ -49,6 +52,11 @@ class HybridRetriever:
     ) -> None:
         if retrieval_mode not in ("dense", "sparse", "hybrid"):
             raise ValueError(f"unknown retrieval_mode: {retrieval_mode!r}")
+        if retrieval_mode in ("sparse", "hybrid") and sparse is None:
+            raise ValueError(
+                f"retrieval_mode={retrieval_mode!r} requires a real SparseIndex, got None -- "
+                "fail fast here rather than silently degrading to [] on first real query"
+            )
         self._dense = dense
         self._sparse = sparse
         self._embedder = embedder
@@ -62,6 +70,9 @@ class HybridRetriever:
         return self._dense.search(vector, k)
 
     def _search_sparse(self, query: str, k: int) -> list[tuple[str, float]]:
+        # __init__ already guarantees sparse is not None whenever this can be reached
+        # (retrieval_mode in ("sparse", "hybrid")) -- assert narrows the type for mypy.
+        assert self._sparse is not None
         return self._sparse.search(query, k)
 
     async def retrieve(self, query: str, k: int = 5) -> list[RetrievedChunk]:

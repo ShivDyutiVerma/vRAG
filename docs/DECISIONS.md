@@ -179,6 +179,50 @@ already at its measured floor (R-022), (c) corpus/chunk-count reduction remains 
 real headroom left, and R-024 already measured that its cost is severe (~83% cut needed to reach
 512MB). None of this was acted on in this session.
 
+## ADR-007 — Fixed the unconditional BM25 loading ADR-006 found: ~63MB real reduction, nothing else touched
+
+**Date:** 2026-08-19
+**Status:** Accepted. Scoped exactly to the user's instruction: fix only the unconditional BM25
+loading; no change to retrieval architecture, corpus size, embedding model, FAISS configuration,
+or deployment plan.
+**What changed, three files, minimally:**
+- `src/vrag/index/persistence.py`: `load_built_index_lean()` gained a `retrieval_mode` parameter
+  (default `"dense"`, matching production) — only calls `SparseIndex.load()` when
+  `retrieval_mode in ("sparse", "hybrid")`, returns `None` otherwise. `load_built_index()` (the
+  non-lean version used by offline ablation scripts, which always need both indexes) is
+  untouched, out of scope.
+- `src/vrag/retrieval/hybrid.py`: `HybridRetriever.__init__`'s `sparse` param is now
+  `SparseIndex | None`; added a fail-fast guard — constructing with `retrieval_mode in ("sparse",
+  "hybrid")` and `sparse=None` raises `ValueError` immediately, rather than silently returning `[]`
+  the first time a real query hits `_search_sparse()` and crashes on a `None` attribute access.
+- `src/vrag/retrieval/interface.py`: introduced a single `_RETRIEVAL_MODE = "dense"` module
+  constant so the `load_built_index_lean()` call and the `HybridRetriever(...)` construction can't
+  drift out of sync (previously the mode was a literal repeated at two call sites).
+**Test coverage added:** `tests/index/test_persistence.py` (dense mode returns `sparse=None`;
+sparse/hybrid modes still load a real `SparseIndex`), `tests/retrieval/test_hybrid.py` (dense mode
+accepts `sparse=None`; sparse/hybrid modes reject it with a clear error). 204/204 tests green,
+ruff/mypy clean.
+**Measured, not assumed — 3 runs, real spread:**
+
+| Run | Steady-state RSS (4 queries) |
+|---|---|
+| 1 | 715.42MB |
+| 2 | 715.60MB |
+| 3 | 716.23MB |
+
+**Before this fix: 778MB (ADR-006). After: ~715.7MB average — a real ~63MB (8.1%) reduction**,
+somewhat less than the ~105MB isolated BM25-only measurement suggested, because isolated
+single-component measurements each pay their own ~20-27MB Python interpreter baseline separately;
+the marginal cost of one component inside an already-loaded stack is smaller than its isolated
+number implies. Still a real, verified, zero-quality-cost win — dense-only retrieval quality is
+completely unaffected (A3's Recall@5=0.652 result used real dense search all along; nothing about
+*how retrieval scores* changed, only what's resident in memory).
+**Consequences:** Gap to Render's 512MB free tier narrows from ~266MB to ~204MB (778MB→512MB was
+the old gap; 715.7MB→512MB is the new one) — still open, still requires either the corpus-shrink
+lever (R-024: severe, ~83% cut, not attempted) or a paid tier, per the user's still-pending
+decision on `docs/RISKS.md` R4. No architecture, corpus, embedding, FAISS, or deployment change was
+made here — exactly as instructed.
+
 ---
 
 > Further shared ADRs (`retrieve()` contract changes if any, joint G3/G4 calibration decisions) land

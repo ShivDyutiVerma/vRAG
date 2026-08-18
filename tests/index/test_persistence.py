@@ -2,6 +2,10 @@
 chunk_lookup.sqlite3 is present, the plain dict fallback when it isn't (artifacts built before
 R-021). load_built_index()/save_built_index() themselves are exercised indirectly by every test that
 calls save_built_index as a fixture (e.g. tests/retrieval/test_interface_loading.py).
+
+Also covers the ADR-006 fix: the sparse/BM25 index must only load when retrieval_mode actually
+needs it ("sparse"/"hybrid"), not unconditionally -- it was previously always loaded even under
+the production default ("dense"), which never queries it, costing ~105MB RSS for nothing.
 """
 
 from __future__ import annotations
@@ -57,3 +61,22 @@ def test_uses_sqlite_lookup_when_present(tmp_path: Path) -> None:
     _, _, chunk_lookup = load_built_index_lean(index_path)
     assert isinstance(chunk_lookup, SQLiteChunkLookup)
     assert chunk_lookup["c1"].text == _CHUNK.text
+
+
+def test_dense_mode_does_not_load_sparse_index(tmp_path: Path) -> None:
+    _build(tmp_path / "index")
+    _, sparse, _ = load_built_index_lean(tmp_path / "index", retrieval_mode="dense")
+    assert sparse is None
+
+
+def test_sparse_mode_loads_a_real_sparse_index(tmp_path: Path) -> None:
+    _build(tmp_path / "index")
+    _, sparse, _ = load_built_index_lean(tmp_path / "index", retrieval_mode="sparse")
+    assert isinstance(sparse, SparseIndex)
+    assert len(sparse) == 1
+
+
+def test_hybrid_mode_loads_a_real_sparse_index(tmp_path: Path) -> None:
+    _build(tmp_path / "index")
+    _, sparse, _ = load_built_index_lean(tmp_path / "index", retrieval_mode="hybrid")
+    assert isinstance(sparse, SparseIndex)

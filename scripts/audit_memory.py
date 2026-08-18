@@ -244,9 +244,8 @@ def measure_full() -> dict:
         "rss_steady_state_after_4_queries_bytes": steady_state,
         "peak_rss_during_warmup_queries_bytes": peak_after_warmup,
         "n_results_first_query": len(results),
-        "retrieval_mode": "dense (A3 winner, R-010) -- NOTE: persistence.py's "
-        "load_built_index_lean() loads the BM25/sparse index unconditionally regardless of "
-        "mode; it's resident but never queried in dense-only mode -- see ADR-006",
+        "retrieval_mode": "dense (A3 winner, R-010) -- BM25/sparse index is None on this path "
+        "since ADR-006/ADR-007: load_built_index_lean() only loads it for sparse/hybrid modes",
     }
 
 

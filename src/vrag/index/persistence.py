@@ -50,11 +50,20 @@ def load_built_index(path: str | Path) -> tuple[DenseIndex, SparseIndex, dict[st
 
 def load_built_index_lean(
     path: str | Path,
-) -> tuple[DenseIndex, SparseIndex, SQLiteChunkLookup | dict[str, Chunk]]:
+    retrieval_mode: str = "dense",
+) -> tuple[DenseIndex, SparseIndex | None, SQLiteChunkLookup | dict[str, Chunk]]:
     """Runtime-optimised counterpart to load_built_index() (docs/DECISIONS_R.md R-023) — used by
     src/vrag/retrieval/interface.py's real-retriever loader, not by scripts/build_index.py or eval
     scripts (those build the dict fresh in memory anyway, so there's nothing to save by loading it
     lazily).
+
+    `retrieval_mode` controls whether the BM25/sparse index loads at all (docs/DECISIONS.md
+    ADR-006): it was previously loaded unconditionally, costing ~105MB RSS, even under the
+    production default `retrieval_mode="dense"` (A3 winner, R-010) which never calls
+    `sparse.search()`. Only "sparse"/"hybrid" need it — "dense" gets `None` back instead, and
+    `HybridRetriever` requires that whoever passes `retrieval_mode="dense"` also skip loading a
+    sparse index it will never touch, so this parameter has to match whatever's passed into
+    `HybridRetriever(retrieval_mode=...)` at the call site or construction raises immediately.
 
     Prefers `chunk_lookup.sqlite3` (R-021's SQLiteChunkLookup — chunk_id->doc_id kept in memory,
     full Chunk text fetched lazily per-row) when present in `path`, falling back to the eager
@@ -63,7 +72,7 @@ def load_built_index_lean(
     sqlite file)."""
     path = Path(path)
     dense = DenseIndex.load(path / "dense")
-    sparse = SparseIndex.load(path / "sparse")
+    sparse = SparseIndex.load(path / "sparse") if retrieval_mode in ("sparse", "hybrid") else None
     sqlite_path = path / "chunk_lookup.sqlite3"
     if sqlite_path.exists():
         return dense, sparse, SQLiteChunkLookup(sqlite_path)

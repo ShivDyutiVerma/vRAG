@@ -141,6 +141,33 @@ def test_unknown_retrieval_mode_raises_at_construction() -> None:
         )
 
 
+def test_dense_mode_accepts_sparse_none() -> None:
+    """ADR-006: dense mode (the shipped default) never touches sparse, so callers can skip
+    loading the BM25 index entirely (~105MB saved) and pass None instead of a real SparseIndex."""
+    retriever = HybridRetriever(
+        dense=_SlowDense(),
+        sparse=None,
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_lookup(),
+        retrieval_mode="dense",
+    )
+    assert retriever is not None  # construction alone must not raise
+
+
+@pytest.mark.parametrize("mode", ["sparse", "hybrid"])
+def test_sparse_or_hybrid_mode_rejects_sparse_none(mode: str) -> None:
+    """Fail fast at construction rather than silently returning [] the first time a real query
+    hits _search_sparse() and crashes on a None attribute access."""
+    with pytest.raises(ValueError, match="requires a real SparseIndex"):
+        HybridRetriever(
+            dense=_SlowDense(),
+            sparse=None,
+            embedder=_FakeEmbedder(),
+            chunk_lookup=_lookup(),
+            retrieval_mode=mode,
+        )
+
+
 @pytest.mark.asyncio
 async def test_score_is_clamped_into_zero_one_range() -> None:
     class _OutOfRangeDense:
