@@ -926,3 +926,68 @@ RSS is ~727-741MB (measured, not projected) — still ~215-230MB over Render fre
 still the most plausible remaining path to close that gap, unless the team decides 741MB is close
 enough to reconsider paid-tier economics (explicitly the user's/team's call, not mine — see R4's
 current framing on the paid-fallback question).
+
+## R-024 — Measured the corpus-shrink lever's real ceiling before running it: not a "no cost" fix, likely disqualifying at full budget
+
+**Date:** 2026-08-18
+**Status:** Investigation complete, **decision escalated to the user — not resolved here**. No
+ablation run, no chunk-count change made. This ADR exists to record why a real re-ablation pass
+wasn't started without checking first.
+**Context:** R-023's Consequences section named "shrink the corpus" as the remaining lever to close
+the ~215-230MB gap to Render's 512MB free tier, on the assumption (R-020's original framing) that
+it's a real-but-bounded quality cost, parallel to R-021/R-022's engineering fixes. Before spending a
+re-ablation pass on it (real time, and it touches Recall@5 — one of the graded C1-C6 requirements),
+measured what the lever can actually deliver.
+**Method:** Reused the real, already-persisted `data/index/metadata_aware` FAISS index's own
+computed vectors (via `faiss.Index.reconstruct()` — no re-embedding needed) to build two
+subsampled indices at N=20,000 and N=50,000 chunks (down from the full 99,767), converted each to
+`chunk_lookup.sqlite3` (R-021's format), and measured index-only RSS with the same `tasklist`
+methodology as R-020/R-021/R-023.
+**Measured (index-only, no embedder loaded, SQLite chunk lookup):**
+
+| N chunks | RSS |
+|---|---|
+| 20,000 | 131.0MB |
+| 50,000 | 209.5MB |
+| 99,767 (known, R-021) | 339MB |
+
+These three points are strongly linear: fitting N=20k/50k gives `RSS(N) ≈ 78.7MB + 0.00262MB/chunk
+× N`, and that fit predicts 339.8MB at N=99,767 — matching the independently-measured R-021 number
+to within 0.3%. High confidence this is genuine linear HNSW-graph scaling, not noise.
+**The problem: the embedder's fixed session cost, not the index, is now the dominant term.**
+R-023 measured full-stack (index + `LiteE5Embedder`) at 727MB for N=99,767; index-only at that N is
+339MB, so the embedder+Python-baseline overhead is a **fixed ~388MB regardless of corpus size**
+(confirmed independently by R-022's own isolated `onnxruntime` session measurement, ~432MB, and by
+R-022's finding that further `onnxruntime`-level tuning couldn't reduce it further — this is the
+cost of loading this specific model's weights/graph into an active session, not something corpus
+size touches at all).
+**Consequence, doing the arithmetic honestly:** `full_stack(N) ≈ 467MB + 0.00262MB/chunk × N`.
+Fitting a target of 512MB: **N ≈ 17,300 chunks — a cut to ~17% of the current corpus, an ~83%
+reduction.** Even N=0 (an empty index) would still cost ~467MB, already 91% of the entire budget,
+before a single chunk is added. There is no corpus size that reaches 512MB without a cut this
+severe.
+**Checked whether a smaller embedder model could remove the fixed ~388MB cost instead (Model2Vec's
+`potion-multilingual-128M` — no transformer/ONNX session at all, a static lookup+mean-pool
+embedding, which A2 already had real numbers for):** `eval/ablation_ledger.csv` row
+`metadata_aware_1787028710` — **Recall@5 = 0.266 vs. e5-small's 0.652 on the same full corpus,
+same querybase — less than half.** A2 already called this "decisive," and this confirms it's not a
+viable memory lever either: trading the embedder for one with near-zero session overhead costs far
+more quality than shrinking the corpus does.
+**Decision:** Did not run a real re-ablation pass or make any chunk-count change. An ~83% corpus
+cut is not the "real but bounded" cost R-020 originally framed this as — it is a severe change that
+would very likely fail Recall@5 by a wide margin (candidate pool shrinks 5.7x; MSMARCO-XI passages
+already recur across query_ids per R-015's calibration finding, so a much smaller pool plausibly
+loses genuine hits, not just easy ones) and risks the graded C1-C6 requirements. This is exactly the
+kind of call `CLAUDE.md`'s "When blocked" section reserves for the user, not something to guess on
+or spend a full re-ablation pass validating without checking direction first.
+**What the user/team should know making this call** (see `docs/RISKS.md` R4 for the live-updated
+version): 741MB (or 727MB measured in the actual production-wired code, R-023) is already a 60%
+cut from where this started (1,860MB on a GPU dev machine measurement, R-020) using only free
+R-owned engineering, zero quality cost paid so far. Getting the rest of the way to 512MB via corpus
+size alone requires an ~83% cut with a real, likely-severe Recall@5 hit — untested, but the
+magnitude of the required cut (not just "smaller," but keeping under a fifth of the corpus) makes a
+mild outcome unlikely. Real alternatives worth weighing, none of which are R's call alone: accept a
+smaller, quantified corpus cut and a correspondingly higher deploy target than exactly 512MB;
+revisit paid-tier economics now that the free-path number is 727MB vs. the original 1,474MB
+(a materially different cost-benefit than when the paid fallback was first discussed); or check
+whether a different free hosting tier offers more headroom (P's deployment domain).
