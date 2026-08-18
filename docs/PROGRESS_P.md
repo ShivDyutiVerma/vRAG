@@ -108,8 +108,11 @@ is deliberately identical to the real retriever's. `https://vrag-voice.onrender.
 serves the stub for every query. Fix direction decided (P-018): shrink the corpus (R) + drop
 `torch`/`transformers` at inference for a lean `onnxruntime`-only path (R, `embedder.py`) — a
 corpus-only fix was checked and confirmed insufficient alone. My half (Dockerfile prep, defensive
-fallback fix) is done, verified locally, and being deployed this session; R's half is real,
-undesigned engineering work, not started.
+fallback fix) is done and deployed live — hit a real environment-specific bug on the first deploy
+attempt (Render's build sandbox rejected `tar`'s attempt to `chown` to the artifact's original
+uid/gid, didn't reproduce locally; fixed with `--no-same-owner`), redeployed, verified: index
+download step is confirmed inert in production, same as local testing. R's half (lean
+`embedder.py`, corpus resize) is real, undesigned engineering work, not started.
 Paid Render Standard ($25/mo, 2GB RAM) is the pre-authorized fallback if R's half doesn't land with
 enough runway before Aug 22.
 

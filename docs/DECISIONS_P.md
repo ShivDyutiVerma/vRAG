@@ -513,3 +513,8 @@ actual target platform" are different claims when the build environments genuine
 restrictions, not just OS/arch) — the CI pipeline doesn't build the Docker image at all, only runs
 `pytest`/`ruff`/`mypy` directly, so this class of failure is only ever caught by actually deploying,
 not by CI passing. Worth remembering going forward for any Docker-level change.
+**Redeployed and verified live** after the fix: `/healthz` OK, `/ask` still returns
+`stub-chunk-001`/`stub-chunk-002` (unchanged from before this whole change) — confirms the staged
+index-download step is genuinely inert in production exactly as designed, not just in local
+testing. This P-side prep is done; real retrieval activates the moment R's leaner embedder lands
+and the corresponding extras get added to the Dockerfile's install line.
