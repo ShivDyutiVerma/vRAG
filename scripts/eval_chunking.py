@@ -80,21 +80,38 @@ def _percentile(values: list[float], pct: float) -> float:
     return s[min(int(len(s) * pct / 100), len(s) - 1)]
 
 
-def evaluate(strategy_name: str, strategy_kwargs: dict, top_k: int = 10) -> dict:
+EMBED_BACKEND_BY_NAME = {
+    "multilingual-e5-small": "sentence-transformers",
+    "potion-multilingual-128M": "sentence-transformers",
+    "bge-m3": "sentence-transformers",
+    "vyakyarth": "sentence-transformers",
+}
+
+
+def evaluate(
+    strategy_name: str,
+    strategy_kwargs: dict,
+    embedder_name: str = "multilingual-e5-small",
+    top_k: int = 10,
+) -> dict:
     heldout = json.loads(HELDOUT_PATH.read_text(encoding="utf-8"))
-    built = build_index.build(strategy_name, strategy_kwargs)
+    built = build_index.build(strategy_name, strategy_kwargs, embedder_name=embedder_name)
 
-    from vrag.index.embedder import E5Embedder
+    from vrag.index.embedder import EMBEDDER_REGISTRY
 
-    embedder = E5Embedder()
+    embedder = EMBEDDER_REGISTRY[embedder_name]()
 
     recalls_1, recalls_5, recalls_10, mrrs, ndcgs = [], [], [], [], []
     search_latencies_ms: list[float] = []
+    embed_latencies_ms: list[float] = []
     embed_dim = 0
 
     for query_row in heldout:
         relevant_doc_ids = {p["passage_id"] for p in query_row["relevant_passages"]}
+
+        t_embed0 = time.perf_counter()
         query_vec = embedder.embed_queries([query_row["query"]])[0]
+        embed_latencies_ms.append((time.perf_counter() - t_embed0) * 1000)
         embed_dim = len(query_vec)
 
         t0 = time.perf_counter()
@@ -125,8 +142,8 @@ def evaluate(strategy_name: str, strategy_kwargs: dict, top_k: int = 10) -> dict
     return {
         "chunk_strategy": strategy_name,
         "chunk_params": json.dumps(strategy_kwargs),
-        "embedder": "multilingual-e5-small",
-        "embed_backend": "sentence-transformers",
+        "embedder": embedder_name,
+        "embed_backend": EMBED_BACKEND_BY_NAME.get(embedder_name, "unknown"),
         "embed_dim": embed_dim,
         "index_type": "HNSW32",
         "retrieval_mode": "dense",
@@ -136,6 +153,7 @@ def evaluate(strategy_name: str, strategy_kwargs: dict, top_k: int = 10) -> dict
         "recall@10": statistics.mean(recalls_10),
         "mrr@10": statistics.mean(mrrs),
         "ndcg@10": statistics.mean(ndcgs),
+        "p50_embed_ms": _percentile(embed_latencies_ms, 50),
         "p50_search_ms": _percentile(search_latencies_ms, 50),
         "index_build_s": built.build_seconds,
         "n_chunks": built.n_chunks,
@@ -164,6 +182,7 @@ def append_to_ledger(result: dict, strategy_kwargs: dict) -> None:
             "recall@10": f"{result['recall@10']:.4f}",
             "mrr@10": f"{result['mrr@10']:.4f}",
             "ndcg@10": f"{result['ndcg@10']:.4f}",
+            "p50_embed_ms": f"{result['p50_embed_ms']:.3f}",
             "p50_search_ms": f"{result['p50_search_ms']:.3f}",
             "index_build_s": f"{result['index_build_s']:.2f}",
             "notes": (
@@ -183,6 +202,9 @@ def append_to_ledger(result: dict, strategy_kwargs: dict) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", required=True)
+    parser.add_argument(
+        "--embedder", default="multilingual-e5-small", choices=sorted(EMBED_BACKEND_BY_NAME)
+    )
     parser.add_argument("--size", type=int, default=None)
     parser.add_argument("--overlap", type=float, default=None)
     parser.add_argument("--window", type=int, default=None)
@@ -197,7 +219,7 @@ if __name__ == "__main__":
         if value is not None:
             kwargs[key] = value
 
-    result = evaluate(args.strategy, kwargs)
+    result = evaluate(args.strategy, kwargs, embedder_name=args.embedder)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     append_to_ledger(result, kwargs)
     print(f"\nAppended to {LEDGER_PATH}")

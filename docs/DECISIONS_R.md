@@ -195,3 +195,33 @@ so their originally-reported numbers were left as-is rather than re-run for a fi
 them). Corrected Recall@5 moved from 0.478 to 0.552 — still clearly the worst of the six, so R-004's
 decision is unaffected. `eval/ablation_ledger.csv`'s original buggy `sentence_window` row is
 annotated as invalid rather than deleted (ledger is append-only); the corrected re-run is a new row.
+
+## R-007 — New dependency: `model2vec` (for the A2 embedder ablation)
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** A2 (`docs/TECH_MENU.md` §A, `docs/BUILD_PLAN.md` P3) compares 4 embedders including
+`potion-multilingual-128M`, a Model2Vec static-embedding model flagged as "TEST — potentially the
+whole ballgame" for its sub-millisecond CPU query latency. It's loadable via plain
+`sentence_transformers.SentenceTransformer` too, but its own model card explicitly recommends the
+dedicated `model2vec` package as "the fastest and most lightweight way to run Model2Vec models" —
+using the slower path would misrepresent the one property (speed) that makes this model worth
+testing at all.
+**Decision:** Add `model2vec` to `pyproject.toml`'s `retrieval` extra. Verified real wheel
+availability via `pip install --dry-run` before adding (resolves cleanly: `model2vec-0.9.0`, all
+transitive deps already satisfied by the existing retrieval stack).
+**Consequences:** One more package to install for R's retrieval work; zero impact on Workstream P
+(not in the base `dependencies` list, and P never imports `vrag.index.embedder`'s Model2Vec class).
+
+**Update, 2026-08-18 — superseded: reverted to loading via `sentence-transformers`, `model2vec`
+dependency removed.** `model2vec.StaticModel.from_pretrained()` fetches the model repo's *entire*
+file list — including ~25 unrelated benchmark eval-result YAMLs
+(`.eval_results/BrightEconomicsLongRetrieval.yaml` and similar) — and repeatedly hung partway
+through on this network. Switched `Model2VecEmbedder` to load via
+`sentence_transformers.SentenceTransformer`, which only fetches the files actually needed for
+inference and completed reliably. The model's core speed property (no transformer forward pass — a
+static lookup + mean-pool) is architectural, not a property of the loading library, so this doesn't
+misrepresent what's being tested; `sentence-transformers`' own `StaticEmbedding` backend was added
+specifically to serve Model2Vec models natively. `model2vec` removed from `pyproject.toml` — nothing
+imports it anymore, and CLAUDE.md's conventions call for deleting confirmed-unused code rather than
+leaving it as documented dead weight.

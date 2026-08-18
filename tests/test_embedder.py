@@ -6,8 +6,13 @@ and scripts/build_index.py once those run for real, not by this fast unit suite.
 """
 
 from vrag.index.embedder import (
+    EMBEDDER_REGISTRY,
     PASSAGE_PREFIX,
     QUERY_PREFIX,
+    BGEM3Embedder,
+    E5Embedder,
+    Model2VecEmbedder,
+    VyakyarthEmbedder,
     format_passage,
     format_query,
 )
@@ -32,3 +37,28 @@ def test_query_and_passage_prefixes_are_different() -> None:
 def test_empty_text_still_gets_prefixed() -> None:
     assert format_query("") == QUERY_PREFIX
     assert format_passage("") == PASSAGE_PREFIX
+
+
+def test_embedder_registry_has_all_four_a2_candidates() -> None:
+    assert set(EMBEDDER_REGISTRY.keys()) == {
+        "multilingual-e5-small",
+        "potion-multilingual-128M",
+        "bge-m3",
+        "vyakyarth",
+    }
+
+
+def test_embedder_registry_maps_to_correct_classes() -> None:
+    assert EMBEDDER_REGISTRY["multilingual-e5-small"] is E5Embedder
+    assert EMBEDDER_REGISTRY["potion-multilingual-128M"] is Model2VecEmbedder
+    assert EMBEDDER_REGISTRY["bge-m3"] is BGEM3Embedder
+    assert EMBEDDER_REGISTRY["vyakyarth"] is VyakyarthEmbedder
+
+
+def test_every_embedder_has_a_name_and_does_not_load_a_model_on_construction() -> None:
+    """Constructing any embedder must be cheap (no download/model load) — only the first real
+    embed_queries/embed_passages call should trigger that."""
+    for cls in EMBEDDER_REGISTRY.values():
+        instance = cls()
+        assert instance.name
+        assert instance._model is None

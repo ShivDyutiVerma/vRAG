@@ -27,7 +27,7 @@ from vrag.chunking.strategies import (  # noqa: F401  — import registers every
     sentence_window,
 )
 from vrag.index.dense import DenseIndex
-from vrag.index.embedder import E5Embedder
+from vrag.index.embedder import EMBEDDER_REGISTRY, E5Embedder
 from vrag.index.persistence import load_built_index, save_built_index
 from vrag.index.sparse import SparseIndex
 
@@ -66,7 +66,9 @@ def _rows_to_documents(rows: list[dict]) -> list[Document]:
     return docs
 
 
-def build(strategy_name: str, strategy_kwargs: dict) -> BuiltIndex:
+def build(
+    strategy_name: str, strategy_kwargs: dict, embedder_name: str = E5Embedder.name
+) -> BuiltIndex:
     if not WORKING_SUBSET_PATH.exists():
         raise FileNotFoundError(
             f"{WORKING_SUBSET_PATH} doesn't exist — run scripts/build_dataset_subset.py first"
@@ -75,7 +77,13 @@ def build(strategy_name: str, strategy_kwargs: dict) -> BuiltIndex:
     rows = [json.loads(line) for line in WORKING_SUBSET_PATH.open(encoding="utf-8")]
     documents = _rows_to_documents(rows)
 
-    embedder = E5Embedder()
+    try:
+        embedder_cls = EMBEDDER_REGISTRY[embedder_name]
+    except KeyError:
+        raise KeyError(
+            f"Unknown embedder '{embedder_name}'. Registered: {sorted(EMBEDDER_REGISTRY)}"
+        ) from None
+    embedder = embedder_cls()
 
     registered = get_strategy(strategy_name)
     if strategy_name == "semantic":
@@ -127,12 +135,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", default="passage_native")
     parser.add_argument(
+        "--embedder", default=E5Embedder.name, choices=sorted(EMBEDDER_REGISTRY)
+    )
+    parser.add_argument(
         "--save-dir",
         default=None,
         help="if set, persist the built index here (e.g. data/index/metadata_aware)",
     )
     args = parser.parse_args()
-    result = build(args.strategy, {})
+    result = build(args.strategy, {}, embedder_name=args.embedder)
     print(
         f"Built '{args.strategy}' index: {result.n_chunks} chunks in {result.build_seconds:.1f}s"
     )
