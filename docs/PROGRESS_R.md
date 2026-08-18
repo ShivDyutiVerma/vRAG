@@ -2,63 +2,76 @@
 
 > Mine, edited freely, any time. Never edited by Workstream P.
 
-**Last updated:** 2026-08-17, Session 01
-**Current phase:** P0 — Foundations & Probes (P2/P3 code written ahead of schedule, not yet run against real data)
-**Build status:** 🟢 green — 89/89 tests pass, ruff/mypy clean
+**Last updated:** 2026-08-18, Session 02
+**Current phase:** P3 exit — full staged ablation (A1-A4) complete, production wiring applied
+**Build status:** 🟢 green — 148/149 tests pass (1 known local-only failure, CI-safe — see below), ruff/mypy clean
 
 ## Where I am, in one paragraph
 
-`.venv` set up on Python 3.13 (R-001), full `src/vrag/` skeleton scaffolded, `retrieve()` interface
-+ stub written for Workstream P to build against. All P2/P3 code is written and unit-tested even
-though no real data has flowed through it yet: all 6 chunking strategies, dense (FAISS)/sparse
-(BM25)/RRF-fusion index primitives, the E5 embedder wrapper, `HybridRetriever` (the real
-dense∥sparse concurrent implementation — concurrency itself is unit-tested, not just assumed),
-a reranker protocol + NoOp default + FlashRank candidate, retrieval metrics (Recall@k/MRR/nDCG),
-`build_index.py`, and `eval_chunking.py` (the A1 ablation runner). Two real corpus/model downloads
-are in progress in the background (detached OS processes, survive independently of any one tool
-session) — the Hindi MSMARCO-XI parquet (3.7GB, ~33% done) and the multilingual-e5-small model
-(~80% done). Once both land, the plan is: `build_dataset_subset.py` → `inspect_dataset.py` (real
-numbers + translation spot-check) → `eval_chunking.py` for all 6 strategies → `docs/EVAL_RESULTS.md`
-§1 → promote the winner → wire `HybridRetriever` into `interface.py`'s `retrieve()`.
+All four planned ablation stages are done and documented with real measured numbers, not assumptions:
+A1 chunking (`metadata_aware` wins, tied with `passage_native`/`fixed_overlap`, noise-floor
+validated), A2 embedder (`multilingual-e5-small` wins decisively), A3 retrieval mode (**dense-only
+wins — a genuine, verified surprise**: hybrid+RRF actually regresses quality on this corpus because
+BM25 is comparatively weak on machine-translated Hindi text and naive RRF has no way to discount it),
+A4 reranking (**`none` wins outright** — both FlashRank and a cross-encoder were measured to actively
+destroy quality on Hindi text, verified via query-level diagnostics as genuine model/language
+limitations, not bugs). Full tables and analysis: `docs/EVAL_RESULTS.md` §1-3. Full ADR trail:
+`docs/DECISIONS_R.md` R-001 through R-012.
 
-## Phase exit criteria I'm targeting (P0, my slice)
+Production wiring now matches the measured winners, not the originally-assumed architecture: after
+confirming the deviation with the user (it contradicts `AGENT_BUILD_SPEC.md`'s assumed Phase-3 exit
+criterion and CLAUDE.md's original hybrid-retrieval hot-path invariant, both now updated to reflect
+this), `HybridRetriever` defaults to `retrieval_mode="dense"` and skips BM25 on the hot path
+entirely; reranking stays off by default (already was). A real, verified side effect worth watching:
+this also fixed `RetrievedChunk.score`'s scale to match what G3's `TAU` placeholder was actually
+calibrated for (flagged for Workstream P in `docs/RISKS.md` P-R18, not touched since G3 is their
+module).
 
-- [~] Dataset subset on disk — script ready, download ~33% (background, detached process)
-- [ ] 500 held-out pairs frozen and committed (`eval/heldout_queries.json`) — same blocker
-- [x] `retrieve()` interface + stub written
-- [x] `pytest` green, `ruff` clean, `mypy` clean (89/89)
+## Phase exit criteria I'm targeting (P3, my slice)
+
+- [x] Dataset subset + 500 held-out pairs frozen and committed
+- [x] `retrieve()` wired to a real, persisted index (`data/index/metadata_aware/`)
+- [x] A1 chunking ablation — winner picked, noise-floor validated
+- [x] A2 embedder ablation — winner picked, decisively
+- [x] A3 retrieval-mode ablation — winner picked (dense-only, a real surprise), wired into production
+- [x] A4 reranker ablation — winner picked (none), already the default
+- [ ] efSearch recall-vs-latency curve (`docs/assets/efsearch_curve.png`) — not started
+- [x] `pytest` green (148/149 — the one failure is a known local-environment-only issue, CI-safe)
 
 ## What works right now (verified, not assumed)
 
-- All 6 `ChunkingStrategy` implementations registered, unit-tested, boundary-tested ✅
-- Dense/sparse/fusion index primitives unit-tested with synthetic vectors ✅
-- Devanagari tokenizer bug caught and fixed via the required unit test (see `docs/DECISIONS_R.md`) ✅
-- `HybridRetriever` concurrency directly proven by a timing-based unit test, not inferred ✅
-- `retrieve()` stub returns well-shaped fake data — contract tests pass ✅
-- E5 prefix logic unit-tested; actual model call untested pending model download (in progress)
+- Full ablation trail A1→A4, every run backed by a `eval/ablation_ledger.csv` row, every winner
+  backed by query-level diagnostics where the result was surprising enough to warrant one (A3, A4) ✅
+- `retrieve()` loads the real persisted index and returns real, measured-good results (dense-only,
+  Recall@5=0.652 on the frozen 500-query held-out set) ✅
+- `HybridRetriever` supports dense/sparse/hybrid modes, all three unit-tested including the
+  "unused modes never call the index they don't need" guarantee ✅
+- Shared `score_hits`/`dedupe_doc_ids` in `src/vrag/retrieval/metrics.py` — the R-006 dedup fix is
+  now a single tested fix point every eval script (A1-A4) routes through ✅
+- `CrossEncoderReranker`/`FlashRankReranker` both implemented, tested for wiring correctness (not
+  quality — their quality verdict is "actively harmful on Hindi," documented in R-012) ✅
 
 ## What is stubbed / faked / TODO
 
-- `retrieve()` (`src/vrag/retrieval/interface.py`) — still the Day-0 stub; `HybridRetriever` exists
-  but isn't wired in yet, because there's no built index to wire it to until data lands
-- `E5Embedder.embed_queries`/`embed_passages` — code written, never run against the real model
-- `FlashRankReranker` — code written, untested (needs the `rerankers` FlashRank model, not downloaded)
-- `data/working_subset.jsonl` and `eval/heldout_queries.json` — blocked on the dataset download
-- No chunking strategy has been run against real data yet — all 6 are eval-ready the moment the
-  data lands, but zero real Recall@k numbers exist yet. `docs/EVAL_RESULTS.md` §1 is still empty.
+- efSearch recall-vs-latency curve — Phase 3 deliverable, not started
+- `fixed_overlap`'s hyperparameter sweep (overlap ∈ {0, 0.1, 0.2}) — low priority, tied with the
+  winner already
+- A candidate RRF mitigation (larger per-lane candidate pool before fusion) — logged as an idea in
+  `docs/RISKS.md` R-R14, not tested; wouldn't change the shipped default without a fresh ablation run
+- A genuinely Hindi-capable reranker (e.g. `bge-reranker-v2-m3`) was never tried — A4 only tested the
+  three TECH_MENU-named candidates, all of which failed for either English-only training or model
+  saturation on Hindi
 
 ## Blockers
 
-- Two large downloads in progress (dataset ~33%, E5 model ~80%, both climbing steadily). One-time
-  cost, HF-cached after. See `docs/RISKS.md` for the two networking issues diagnosed along the way
-  (broken IPv6, HF's Xet transfer layer bypassing the IPv4 workaround).
-- API keys (Sarvam/Groq) still absent — blocks `scripts/probe_latency.py` from producing real numbers.
+- None currently blocking R's work. `docs/RISKS.md` P-R18 is a flag *for* Workstream P (G3 score
+  scale), not a blocker on my side.
 
 ## Next session should start by
 
-1. Check whether both downloads finished (`docs/RISKS.md` has the exact paths to check)
-2. Run `scripts/build_dataset_subset.py` to materialize the working subset + `eval/heldout_queries.json`
-3. Run `scripts/inspect_dataset.py` for the real passage-length distribution + chunk-count estimate,
-   record impressions on translation quality in `docs/DECISIONS_R.md`
-4. Run `scripts/eval_chunking.py --strategy <name>` for all 6 strategies, write `docs/EVAL_RESULTS.md` §1
-5. Promote the winner; wire `HybridRetriever` into `interface.py`'s `retrieve()`, replacing the stub
+1. Read `docs/EVAL_RESULTS.md` §3 and `docs/DECISIONS_R.md` R-010/R-012 for the full A3/A4 story
+   before touching retrieval code again — the production default is now dense-only, no reranker,
+   and that's a deliberate, data-driven, user-confirmed choice, not an oversight
+2. Run the efSearch recall-vs-latency curve (`docs/BUILD_PLAN.md` P3 task 9) if time allows
+3. Otherwise, move to whatever P3's exit criteria still name, or coordinate with Workstream P on the
+   G3 calibration flagged in `docs/RISKS.md` P-R18
