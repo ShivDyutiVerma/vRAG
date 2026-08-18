@@ -127,6 +127,19 @@ still leave `metadata_aware` as the right pick (cheapest-among-tied) but for a c
 wiring `HybridRetriever` into `retrieve()` now — both are cheap to revisit before Phase 7 lock-in if
 time allows, and reversing this ADR later costs one re-index, not a redesign.
 
+**Update, 2026-08-18 — noise floor run, status upgraded to Accepted.** `metadata_aware` run 3x total
+(GPU embedding, R-005): Recall@5 spread 0.652–0.654 (0.2pp), Recall@10 spread 0.750–0.754 (0.4pp) —
+tight, consistent with FAISS HNSW build-order randomness being the only source of variance (chunking
++ embedding + dataset are all deterministic). This tight noise floor changes the read on the other
+strategies too: `passage_native`/`fixed_overlap`/`metadata_aware` (0.650–0.654) are tied within their
+own noise band, but their gap to `hierarchical` (0.640) and `semantic` (0.644) — 1.0–1.4pp — is 5–7x
+the measured noise floor, so that gap is real, not noise. The original "all five statistically tied"
+framing above undersold the comparison; `metadata_aware`'s selection rationale (cheapest among the
+genuinely-tied top three) still holds, now on firmer footing. Full table: `docs/EVAL_RESULTS.md` §1.
+Separately, re-running `sentence_window` after the R-006 metric fix (below) confirmed it stays the
+clear loser (Recall@5 0.552, still well below the other five) — the fix changes its exact number,
+not the ranking. **Status: Accepted.**
+
 ## R-005 — Use the CUDA build of PyTorch for offline index-building (embedding), not CPU
 
 **Date:** 2026-08-18
@@ -156,3 +169,29 @@ CPU-only PyPI releases (2.13+), so a naive `torch>=2.13` floor would make pip "f
 Workstream P's machine and CI both stay CPU-only (no GPU there), which is fine — this only speeds up
 offline work on this one machine, and every persisted index artifact works identically regardless of
 which device built it.
+
+## R-006 — Fixed a metric bug affecting Recall@5 (not just nDCG) for multi-chunk-per-passage strategies
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** `sentence_window`'s original A1 run scored an nDCG@10 of 0.881 — higher than every other
+strategy — while simultaneously having the *worst* Recall@5 (0.478) and MRR@10 (0.379) of the six.
+That combination is not possible under a correct nDCG computation and was the tell that something
+was wrong, not an interesting finding.
+**Root cause:** `scripts/eval_chunking.py` mapped each retrieved FAISS *chunk* hit to its source
+*passage* id, but never deduplicated before computing metrics. Strategies producing multiple chunks
+per passage (`sentence_window` averages ~3.9 chunks/passage) can have the same relevant passage
+occupy several slots in one query's top-k results. `nDCG@10`'s occurrence-summed credit was the most
+visibly broken by this, but **`Recall@k` was affected too**: slicing the raw (non-deduped) hit list
+to `top_k` let duplicate chunks from one passage crowd out genuinely distinct passages that would
+otherwise have ranked within the window — `MRR@10` was the only metric actually immune (it only
+looks for the *first* occurrence, which duplicates can't change).
+**Decision:** Deduplicate retrieved chunks down to unique passage ids, preserving rank order
+(highest-ranked occurrence kept), *before* any metric slices to `k` — one fix point in
+`eval_chunking.py`, all three metrics correct afterward.
+**Consequences:** Re-ran `sentence_window` (the only strategy with material chunk-per-passage
+duplication — the other five average ~1.0–1.04 chunks/passage, where this bug had negligible effect,
+so their originally-reported numbers were left as-is rather than re-run for a fix that wouldn't move
+them). Corrected Recall@5 moved from 0.478 to 0.552 — still clearly the worst of the six, so R-004's
+decision is unaffected. `eval/ablation_ledger.csv`'s original buggy `sentence_window` row is
+annotated as invalid rather than deleted (ledger is append-only); the corrected re-run is a new row.
