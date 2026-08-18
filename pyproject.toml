@@ -77,6 +77,11 @@ dev = [
   "ruff>=0.16",
   "mypy>=2.3",
   "pre-commit>=4.6",
+  # In-process RSS sampling for scripts/audit_memory.py (see docs/DECISIONS.md) -- replaces the
+  # earlier external-tasklist-polling methodology (PID-matching was fragile under Git Bash's
+  # process launching, see docs/DECISIONS_R.md R-020's methodology notes). Diagnostic-only, never
+  # imported by application code.
+  "psutil>=6.0",
 ]
 
 [tool.ruff]

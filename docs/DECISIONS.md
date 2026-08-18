@@ -117,6 +117,68 @@ need to re-synthesize or re-sample. `tests/test_latency_regression.py` guards Tr
 cost (not the wall-clock-with-Track-B-wait number) against future regression, skipping cleanly on a
 fresh checkout without the local index artifact rather than failing or faking a pass.
 
+## ADR-006 — Component-by-component memory audit, before any architectural change
+
+**Date:** 2026-08-19
+**Status:** Accepted — measurement only, per the user's explicit "do not modify the architecture
+yet, do not upgrade Render yet" instruction. `scripts/audit_memory.py`, one isolated subprocess per
+component (so one measurement's already-resident memory never pollutes another's), `psutil`-based
+in-process RSS sampling (added to the `dev` extra — diagnostic-only, never imported by application
+code). Real numbers, not projections; full detail in the chat response to the user, summarized here
+for the permanent record.
+
+**Measured (bytes rounded to MB):**
+
+| Component | RSS after load | Notes |
+|---|---|---|
+| Bare Python + FastAPI | 43MB | |
+| Embedder only (`LiteE5Embedder`, production choice) | 460MB | torch/transformers confirmed absent from `sys.modules` |
+| FAISS index only | 239MB | 99,767 vectors, dim 384, `IndexHNSWFlat`, float32, 180MB on disk |
+| BM25 index only | 125MB | Loaded with `load_corpus=False` — never holds raw chunk text |
+| Metadata/corpus only (`SQLiteChunkLookup`) | 58MB | Only `chunk_id->doc_id` resident; text fetched lazily per-row |
+| Reranker only (`FlashRankReranker`) | 871MB | **Not in production** (A4 chose `none`, R-012) |
+| **Full application** (production wiring, dense-only) | **778MB steady-state**, peak ~776MB during startup+first query | Stable across repeated queries (778MB after 1 query, 778MB after 4) |
+
+**Top 3 real sources of RAM in the production configuration, ranked:**
+1. **The embedder (~440MB net over baseline)** — the single largest cost, already minimized per
+   R-022 (torch-free, ONNX int8) with no further headroom found there.
+2. **The FAISS dense index (~219MB net)** — scales with chunk count (linear fit from R-024:
+   ~78.7MB + 0.00262MB/chunk).
+3. **The BM25/sparse index (~105MB net) — loaded but architecturally unused.** `persistence.py`'s
+   `load_built_index_lean()` unconditionally loads the sparse index regardless of
+   `retrieval_mode`, but production runs `retrieval_mode="dense"` (A3 winner, R-010) and never
+   calls `sparse.search()`. **This is pure waste under the current architecture — real, immediately
+   actionable, and does not require redesigning anything, just skipping unnecessary work** — but
+   per the user's explicit instruction, not changed in this session; flagged for a future,
+   deliberate decision.
+
+**Answers to the specific questions asked:**
+- Chunk count: 99,767. Embedding dim: 384. Vector dtype: float32.
+- FAISS index type: `IndexHNSWFlat`, efSearch=64 (M=32/efConstruction=200 at build time, not
+  re-queryable from a loaded index object but known from `docs/DECISIONS_R.md` R-001–R014).
+- FAISS index file size on disk: 180,399,222 bytes (~172MB).
+- BM25 memory: 125MB loaded (never holds raw text).
+- Torch/Transformers when ONNX embedder is used: confirmed absent (`"torch" in sys.modules` and
+  `"transformers" in sys.modules` both `False`).
+- Corpus/chunk text duplication: **no duplication found** — FAISS stores only vectors,
+  BM25 loads with `load_corpus=False`, only `SQLiteChunkLookup` holds text, and it's lazy per-row,
+  not resident in bulk.
+- Peak RSS during startup: ~776MB (first real query included, since that's when the embedder
+  session actually initializes under the current lazy-load design).
+- Steady-state RSS after warmup: 778MB, stable across repeated queries (no growth/leak observed
+  over 4 real calls).
+**Methodology caveat, stated honestly:** thread-based sampling under CPython's GIL can miss a true
+peak during a CPU-bound, GIL-holding deserialization step — observed once, for BM25's numpy/JSON
+load (`peak_rss_during_load` under-reported vs. the `after_load` reading by ~42MB). Where that gap
+appeared, the `after_load` reading is the more reliable number; noted per-component, not silently
+smoothed over.
+**Consequences:** No code changed as a result of this audit (per instruction). The three concrete,
+already-identified levers for anyone deciding what to do next: (a) stop loading the unused BM25
+index in dense-only mode (~105MB, no architecture change, no quality cost), (b) the embedder is
+already at its measured floor (R-022), (c) corpus/chunk-count reduction remains the only lever with
+real headroom left, and R-024 already measured that its cost is severe (~83% cut needed to reach
+512MB). None of this was acted on in this session.
+
 ---
 
 > Further shared ADRs (`retrieve()` contract changes if any, joint G3/G4 calibration decisions) land
