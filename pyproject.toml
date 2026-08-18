@@ -51,15 +51,19 @@ retrieval = [
 # Runtime-only subset of `retrieval`, for the deployed container (docs/DECISIONS_R.md R-023).
 # Deliberately excludes torch/transformers/sentence-transformers/optimum/optimum-onnx/rerankers/
 # flashrank — those are for offline work only (ablations, ONNX export); LiteE5Embedder
-# (src/vrag/index/embedder.py) does inference with just onnxruntime + tokenizers, and
+# (src/vrag/index/embedder.py) does inference with just onnxruntime + sentencepiece, and
 # `retrieve()`'s "dense" mode (the A3 winner) doesn't need a reranker. `retrieval` (above) stays
 # the group for dev machines running the actual ablation/export scripts.
+# `tokenizers` removed (was here for LiteE5Embedder's old tokenizer backend) and `sentencepiece`
+# added — R-029/R-030: sentencepiece reproduces the exact same token IDs at ~18% the RSS
+# (verified against 1,020 real strings, 100.0000% exact match) and is now what LiteE5Embedder
+# actually imports; nothing left in this extra's dependency graph needs `tokenizers` anymore.
 retrieval-lean = [
   "numpy>=2.5",
   "faiss-cpu>=1.15",
   "bm25s>=0.3",
   "onnxruntime>=1.28",
-  "tokenizers>=0.20",
+  "sentencepiece>=0.2",
 ]
 # Workstream P: generation, guardrails beyond regex/lexical, telemetry analysis extras.
 # Empty for now — G1/G2/G5 are pure-stdlib regex/lexical (docs/TECH_MENU.md §S3), no heavy deps
@@ -82,12 +86,6 @@ dev = [
   # process launching, see docs/DECISIONS_R.md R-020's methodology notes). Diagnostic-only, never
   # imported by application code.
   "psutil>=6.0",
-  # Comparison candidate for scripts/investigate_tokenizer.py (docs/DECISIONS_R.md R-029) -- tests
-  # whether Google's original sentencepiece library reproduces LiteE5Embedder's exact token IDs at
-  # lower memory than the `tokenizers` (Rust) library production currently uses. Diagnostic-only,
-  # never imported by application code; production keeps using `tokenizers` unless R-029 finds
-  # 100% exact token-ID equivalence.
-  "sentencepiece>=0.2",
 ]
 
 [tool.ruff]
@@ -107,7 +105,7 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 # Third-party libs with no type stubs / py.typed marker as of their current release.
-module = ["bm25s.*", "rerankers.*", "onnxruntime.*", "tokenizers.*"]
+module = ["bm25s.*", "rerankers.*", "onnxruntime.*", "tokenizers.*", "sentencepiece.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

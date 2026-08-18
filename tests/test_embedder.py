@@ -71,6 +71,6 @@ def test_every_embedder_has_a_name_and_does_not_load_a_model_on_construction() -
         assert instance.name
         if isinstance(instance, LiteE5Embedder):
             assert instance._session is None
-            assert instance._tokenizer is None
+            assert instance._sp is None
         else:
             assert instance._model is None

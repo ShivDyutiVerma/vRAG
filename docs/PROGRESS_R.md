@@ -2,9 +2,9 @@
 
 > Mine, edited freely, any time. Never edited by Workstream P.
 
-**Last updated:** 2026-08-18, Session 03
-**Current phase:** P3 exit criteria fully met; G3 calibration complete; memory fix wired into production (R-023, 727MB verified). P tried it live and hit a real OOM on first `/ask` (peak-load memory, not steady-state — P-020), rolled back cleanly; live URL is safe again, serving the stub. R-024 found the remaining corpus-shrink lever needs an ~83% cut to hit 512MB — escalated to the user, who chose to check alternative free hosts first (P's domain, flagged in RISKS.md R4). R-026 closed R-R14 (RRF candidate-pool mitigation tested, doesn't help). R4/R-R21 are both now blocked on P's hosting investigation / Render diagnosis, not on R
-**Build status:** 🟢 green — 197/197 tests pass, ruff/mypy clean
+**Last updated:** 2026-08-19, Session 05
+**Current phase:** Single-operator mode (P's collaborator out of credits, see `docs/PROGRESS.md`). P6 latency campaign done (real numbers, found+fixed a real Sarvam bug). Deep memory work: ADR-006 audit found BM25 loading unconditionally in dense-only mode → fixed (ADR-007, -63MB). R-027 corrected R-024's corpus-shrink estimate with real quality data (worse than thought, non-viable within spec). **R-028/R-029/R-030: found the tokenizer (not the ONNX model) was the dominant embedder cost, verified a sentencepiece replacement at 100.0000% exact token-ID equivalence on 1,020 real strings, implemented it, and full production RSS is now 493.8MB steady-state — under Render's 512MB free-tier budget for the first time.** Not yet verified in the real target environment (Docker `-m 512m` or live Render) — that's the honest next step. Retrieval quality confirmed unchanged (Recall@1/5/10, MRR@10 match R-027's baseline to full float precision)
+**Build status:** 🟢 green — 215/215 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
 

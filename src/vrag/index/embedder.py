@@ -131,19 +131,53 @@ class ONNXE5Embedder:
         return vectors.tolist()
 
 
+DEFAULT_SPM_FILE_NAME = "sentencepiece.bpe.model"
+
+# Special-token ID remap, verified byte-exact against 1,020 real strings + truncation/exotic-
+# script edge cases before being trusted (docs/DECISIONS_R.md R-029, R-030). Raw sentencepiece's
+# own vocab layout for this model is 0=<unk> 1=<s> 2=</s> 3=<first real piece>... (sentencepiece
+# has no native pad concept: SentencePieceProcessor.pad_id() == -1). The ONNX model was exported
+# via sentence-transformers' HF tokenizer.json conversion, which renumbers specials to
+# 0=<s> 1=<pad> 2=</s> 3=<unk> and shifts every real piece up by 1 to make room for <pad> — the
+# ONNX model's embedding table is indexed by *those* IDs, not sentencepiece's native ones, so this
+# remap is required for correctness, not an optional detail.
+_SPM_BOS_ID = 0  # HF <s> — prepended to every sequence, not present in sp.encode()'s own output
+_SPM_EOS_ID = 2  # HF </s> — appended to every sequence
+_SPM_PAD_ID = 1  # HF <pad> — matches tokenizers.Tokenizer.enable_padding(pad_id=1) exactly
+_SPM_UNK_HF_ID = 3  # HF <unk> — sentencepiece's own <unk> is raw id 0, remapped to this
+_SPM_NATIVE_UNK_ID = 0  # sentencepiece's own <unk>, per SentencePieceProcessor.unk_id()
+
+
+def _remap_spm_id(raw_id: int) -> int:
+    if raw_id == _SPM_NATIVE_UNK_ID:
+        return _SPM_UNK_HF_ID
+    return raw_id + 1
+
+
 class LiteE5Embedder:
     """Same ONNX int8 model as `ONNXE5Embedder`, but bypasses `sentence-transformers` entirely
-    (docs/DECISIONS_R.md R-022) — raw `onnxruntime.InferenceSession` + the `tokenizers` library's
-    Rust tokenizer, with mean-pooling and L2-normalisation done by hand in numpy. Verified
-    byte-identical output to `ONNXE5Embedder` (cosine similarity 1.0, max abs diff ~1.5e-8, pure
-    float32 rounding noise) — this is the exact same model and pipeline, not an approximation.
+    (docs/DECISIONS_R.md R-022) — raw `onnxruntime.InferenceSession` + Google's `sentencepiece`
+    library (R-029/R-030 — replaced the HF `tokenizers` Rust library, which cost ~262MB RSS for
+    this model's 250,002-token vocabulary, ~2x the ONNX session's own ~137MB), with padding,
+    truncation, attention-mask generation, and mean-pooling/L2-normalisation all done by hand in
+    numpy. Verified byte-identical output to `ONNXE5Embedder` (cosine similarity 1.0, max abs diff
+    ~1.5e-8, pure float32 rounding noise) — this is the exact same model and pipeline, not an
+    approximation.
 
-    The reason this class exists: `sentence-transformers` imports `torch` as a hard dependency
+    `sentencepiece` produces the exact same token IDs as `tokenizers` did, verified against 1,020
+    real strings (500 Hindi, 500 English, 20 mixed) plus truncation-boundary and exotic-script
+    edge cases — 100.0000% exact match, once the special-token remap above is applied (see the
+    module-level comment). `tests/index/test_lite_e5_embedder_tokenizer_regression.py` re-verifies
+    this live against the real `tokenizers` library on every test run, not just once at
+    implementation time, so any future drift (a re-exported model, a changed vocab) fails loudly
+    instead of silently producing wrong embeddings.
+
+    The reason this class avoids `sentence-transformers`: it imports `torch` as a hard dependency
     regardless of which backend actually does inference (R-020's finding) — `import torch` alone
     measured at ~383MB RSS, the dominant cost in `ONNXE5Embedder`'s ~980MB embedder footprint. This
-    class needs only `onnxruntime` (already a `retrieval` extra dependency) and `tokenizers`
-    (already installed transitively via `transformers`/`sentence-transformers` — no new
-    dependency), neither of which touches `torch` at import time.
+    class needs only `onnxruntime` (already a `retrieval` extra dependency) and `sentencepiece`
+    (added as a new `retrieval-lean` dependency, R-029/R-030 — small, ~a few MB, no `torch`), never
+    touching `torch` at import time.
 
     Same interface, same query:/passage: prefix requirement as `E5Embedder`/`ONNXE5Embedder` — a
     drop-in replacement at the embedding layer.
@@ -155,35 +189,78 @@ class LiteE5Embedder:
         self,
         model_dir: str = DEFAULT_ONNX_MODEL_DIR,
         file_name: str = DEFAULT_ONNX_FILE_NAME,
+        spm_file_name: str = DEFAULT_SPM_FILE_NAME,
         max_length: int = 512,
     ) -> None:
         self._model_dir = model_dir
         self._file_name = file_name
+        self._spm_file_name = spm_file_name
         self._max_length = max_length
         self._session: Any = None
-        self._tokenizer: Any = None
+        self._sp: Any = None
 
     def _ensure_loaded(self) -> tuple[Any, Any]:
         if self._session is None:
             import onnxruntime as ort
-            from tokenizers import Tokenizer
+            import sentencepiece as spm
 
-            self._tokenizer = Tokenizer.from_file(f"{self._model_dir}/tokenizer.json")
-            self._tokenizer.enable_padding(pad_id=1, pad_token="<pad>")
-            self._tokenizer.enable_truncation(max_length=self._max_length)
+            self._sp = spm.SentencePieceProcessor(
+                model_file=f"{self._model_dir}/{self._spm_file_name}"
+            )
             self._session = ort.InferenceSession(f"{self._model_dir}/{self._file_name}")
-        return self._session, self._tokenizer
+        return self._session, self._sp
+
+    def _tokenize_batch(self, texts: list[str]) -> tuple[Any, Any]:
+        """Reproduces exactly what `tokenizers.Tokenizer.enable_padding(pad_id=1)` +
+        `enable_truncation(max_length=...)` + `encode_batch()` did: right-pad every sequence in
+        the batch to the batch's own longest sequence (not always `max_length` — verified against
+        the old tokenizer's real behavior, docs/DECISIONS_R.md R-029), truncate to `max_length`
+        keeping BOS+EOS, attention_mask=0 on pad positions."""
+        import numpy as np
+
+        _session, sp = self._ensure_loaded()
+        # sp.encode() handles this model's own normalizer (Precompiled charsmap) and pre-tokenizer
+        # (Metaspace "▁") internally, exactly as tokenizer.json's config specifies — verified
+        # directly against tokenizer.json's config before assuming, not guessed (R-029).
+        batch_core_ids = sp.encode(texts, out_type=int)
+
+        # Genuine divergence found by regression testing (R-030), not assumed away: the old
+        # tokenizer's Metaspace pre-tokenizer emits one trailing "▁" piece when the input ends in
+        # whitespace (any amount — one space or many, always exactly one token); raw
+        # sentencepiece's own encode() silently strips trailing whitespace instead. Verified this
+        # is the *entire* discrepancy via a systematic sweep (leading/internal whitespace never
+        # differs; only a non-empty string ending in whitespace does) before patching narrowly
+        # rather than broadly. `piece_to_id` looked up dynamically, not hardcoded, so this stays
+        # correct even if the metaspace piece's ID ever shifts in a future model export.
+        trailing_space_id = sp.piece_to_id("▁")
+
+        wrapped = []
+        for text, core_ids in zip(texts, batch_core_ids, strict=True):
+            if text and text != text.rstrip():
+                core_ids = [*core_ids, trailing_space_id]
+            # Truncate core tokens to leave room for BOS+EOS, keeping EOS as the true last token
+            # — verified against the real tokenizer's truncation behavior on a >512-token string
+            # (R-029's edge-case test), not assumed from a general HF convention.
+            truncated_core = core_ids[: self._max_length - 2]
+            ids = [_SPM_BOS_ID, *(_remap_spm_id(i) for i in truncated_core), _SPM_EOS_ID]
+            wrapped.append(ids)
+
+        max_len_in_batch = max((len(ids) for ids in wrapped), default=0)
+        input_ids = np.full((len(wrapped), max_len_in_batch), _SPM_PAD_ID, dtype=np.int64)
+        attention_mask = np.zeros((len(wrapped), max_len_in_batch), dtype=np.int64)
+        for row, ids in enumerate(wrapped):
+            input_ids[row, : len(ids)] = ids
+            attention_mask[row, : len(ids)] = 1
+        return input_ids, attention_mask
 
     def _embed(self, texts: list[str]) -> list[list[float]]:
         import numpy as np
 
-        session, tokenizer = self._ensure_loaded()
+        session, _sp = self._ensure_loaded()
         if not texts:
             return []
 
-        encodings = tokenizer.encode_batch(texts)
-        input_ids = np.array([e.ids for e in encodings], dtype=np.int64)
-        attention_mask = np.array([e.attention_mask for e in encodings], dtype=np.int64)
+        input_ids, attention_mask = self._tokenize_batch(texts)
         token_type_ids = np.zeros_like(input_ids)
 
         (last_hidden_state,) = session.run(

@@ -1316,3 +1316,87 @@ R-023+R-021's combined memory work) and latency (faster, not a tradeoff) if adop
 itself (embedder.py changes, padding/truncation logic, dependency promotion, release artifact
 update, full test-suite re-verification) was explicitly out of scope for this investigation and
 not done here.
+
+## R-030 — Implemented the sentencepiece tokenizer swap: production RSS now under 512MB for the first time
+
+**Date:** 2026-08-19
+**Status:** Accepted — implemented, tested, verified. `src/vrag/index/embedder.py`'s
+`LiteE5Embedder` now uses `sentencepiece` instead of `tokenizers`. FAISS index, corpus, embedding
+model weights, retrieval architecture, and API behavior are all unchanged — verified, not just
+claimed (retrieval eval below reproduces R-027's baseline to full float precision).
+
+**Implementation:** `_ensure_loaded()` now loads `sentencepiece.bpe.model` via
+`spm.SentencePieceProcessor` instead of `tokenizer.json` via `Tokenizer.from_file()`. New
+`_tokenize_batch()` method replicates, by hand in numpy, everything `tokenizers` did internally:
+the verified special-token remap (R-029: `hf_id = raw_id + 1` for real pieces, raw `<unk>`→HF id
+3), truncation to `max_length` keeping BOS+EOS (`core_ids[:max_length-2]`, verified against a
+>512-token string), and right-padding to the batch's own longest sequence with `pad_id=1` and a
+matching `attention_mask` (verified empirically against the old tokenizer's real batch behavior
+before implementing, not assumed). `pyproject.toml`: `sentencepiece>=0.2` replaces
+`tokenizers>=0.20` in `retrieval-lean` (nothing left in that extra's dependency graph needs
+`tokenizers` — confirmed via `grep` before removing it, not assumed); `sentencepiece.*` added to
+mypy's `ignore_missing_imports` overrides.
+
+**A real bug found and fixed by the regression tests, not by manual review:** the first
+implementation passed all 1,020 corpus strings but failed on `""` and whitespace-only edge cases —
+`tokenizers`' Metaspace pre-tokenizer emits exactly one trailing "▁" token when input ends in
+whitespace (any amount, always exactly one token); raw `sentencepiece.encode()` silently strips
+trailing whitespace instead. Root-caused via a systematic sweep (leading/internal whitespace never
+differs; only trailing does) before patching: `_tokenize_batch()` now appends
+`sp.piece_to_id("▁")` (looked up dynamically, not hardcoded, so it stays correct if a future model
+export shifts that piece's ID) whenever the input text is non-empty and ends in whitespace. This
+is exactly the scenario `tests/index/test_lite_e5_embedder_tokenizer_regression.py` was written to
+catch — and it did, on the very first run, before this ever had a chance to reach production.
+
+**Regression tests** (`tests/index/test_lite_e5_embedder_tokenizer_regression.py`, 11 tests): all
+1,020 real strings from R-029's corpus (live-compared against the real `tokenizers` library, not a
+frozen fixture, so future drift fails loudly); 8 additional edge cases (empty, whitespace-only,
+single word x2, pure digits, exotic mixed-script, >512-token truncation, realistic long passage);
+real batch-padding equivalence; and an end-to-end sanity check (384-dim, L2-normalized output).
+**All pass. Full suite: 215/215** (204 previous + 11 new), ruff clean, mypy clean.
+
+**Retrieval evaluation — reproduces R-027's baseline exactly, to full float precision, not just
+"close":**
+
+| Metric | R-027 baseline (old tokenizer) | This run (new tokenizer) |
+|---|---|---|
+| Recall@1 | 0.330 | 0.330 |
+| Recall@5 | 0.644 | 0.644 |
+| Recall@10 | 0.750 | 0.750 |
+| MRR@10 | 0.4562706349206349 | 0.4562706349206349 |
+
+Exact match to 16 significant figures on MRR@10 — not approximately equal, bit-for-bit identical,
+exactly as the 100% token-ID equivalence proof predicted (identical tokenizer output → identical
+ONNX inputs → identical outputs, same deterministic computation). Same real production FAISS
+index, unchanged, used throughout — the passage embeddings baked into it were never touched;
+only which library computes *query*-time embeddings changed, and R-019/R-022 already established
+that chain (`E5Embedder`→`ONNXE5Embedder`→`LiteE5Embedder`) produces byte-identical output at
+every step.
+
+**Production memory audit, rerun in full (3 runs, `scripts/audit_memory.py --component full`):**
+
+| Run | Steady-state RSS | Peak (startup + first query) |
+|---|---|---|
+| 1 | 494.4MB | 493.1MB |
+| 2 | 492.4MB | 492.4MB |
+| 3 | 494.5MB | 493.2MB |
+| **Average** | **493.8MB** | **492.9MB** |
+
+**Before (ADR-007): 715.7MB. After: 493.8MB — a real 221.9MB (31.0%) reduction**, closely matching
+R-029's predicted -215.5MB (small variance from cross-run/cross-session measurement noise, fully
+expected). **This is the first time production RSS has measured under Render's 512MB free-tier
+budget** — both steady-state (493.8MB) and, critically, the peak during startup+first-query
+(492.9MB), which is what P-020 found actually broke the earlier live deploy attempt (peak-during-
+load exceeding steady-state). Total reduction across the full memory-fix arc: 1,860MB (R-020's
+original GPU-machine baseline) → 493.8MB, a **73.4% cut**, entirely from R-owned engineering with
+zero quality cost — confirmed zero, not assumed, by the exact-match retrieval numbers above.
+
+**Consequences, not yet done:** this measurement is local, not the actual Render container — P-020
+already found local-vs-Render can differ for peak-during-load specifically, so a real deploy
+attempt (or at minimum a Docker `-m 512m` local test, matching P-020's own methodology) is the
+honest next step before declaring R4 resolved, not this local number alone. `docs/RISKS.md` R4
+updated to reflect this real, substantial, but not-yet-fully-verified-in-the-target-environment
+progress. Deployment itself remains parked per the user's earlier "run everything locally first"
+direction — this finding doesn't change that, it just means the eventual deploy attempt (whenever
+it happens) now has real, current, favorable numbers to work with, and a corpus cut may no longer
+be necessary at all if a live Render (or Docker-simulated) test confirms this number holds.
