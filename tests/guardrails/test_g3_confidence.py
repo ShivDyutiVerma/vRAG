@@ -24,13 +24,26 @@ def test_low_top1_confidence_fails():
     assert "threshold" in (verdict.reason or "").lower()
 
 
-def test_ambiguous_close_scores_fail_margin_check():
-    # top1 clears tau but is barely distinguishable from the rest — should be treated as
-    # ambiguous even though no individual score is "low"
-    verdict = g3_confidence.check([_chunk(0.40, "c1"), _chunk(0.39, "c2"), _chunk(0.38, "c3")])
+def test_margin_zero_means_clustered_scores_pass(monkeypatch):
+    # MARGIN=0.0 is the current, deliberately-calibrated value at TAU=0.8835 (see module
+    # docstring: a fine sweep found no useful non-zero MARGIN at this TAU on this corpus -- even
+    # MARGIN=0.01 pushed false-refusal to 28.7%). Confirms the gate is intentionally a no-op here,
+    # not silently broken -- clustered-but-all-above-tau scores now pass.
+    monkeypatch.setattr(g3_confidence, "MARGIN", 0.0)
+    verdict = g3_confidence.check([_chunk(0.90, "c1"), _chunk(0.89, "c2"), _chunk(0.88, "c3")])
+    assert verdict.passed
+
+
+def test_margin_mechanism_still_catches_ambiguous_scores_when_nonzero(monkeypatch):
+    # The margin-gate mechanism itself is still correct -- verified independently of the current
+    # calibrated MARGIN=0.0, since a future recalibration (e.g. after a retrieval change) could
+    # find a nonzero MARGIN useful again at a different TAU.
+    monkeypatch.setattr(g3_confidence, "MARGIN", 0.05)
+    verdict = g3_confidence.check([_chunk(0.90, "c1"), _chunk(0.89, "c2"), _chunk(0.88, "c3")])
     assert not verdict.passed
+    assert "ambiguous" in (verdict.reason or "").lower()
 
 
 def test_single_chunk_above_tau_passes_no_margin_check_possible():
-    verdict = g3_confidence.check([_chunk(0.60, "c1")])
+    verdict = g3_confidence.check([_chunk(0.92, "c1")])
     assert verdict.passed

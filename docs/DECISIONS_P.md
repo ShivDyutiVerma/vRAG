@@ -248,3 +248,93 @@ audio that will never come, with no signal to finalize the Sarvam session.
 **Consequences:** Every real interaction now closes its STT session promptly instead of relying on
 the client eventually disconnecting. Interacts with P-R12 (Render close-frame lag) but doesn't
 depend on it being fixed.
+
+## P-015 — G3 calibration applied: TAU=0.8835, balanced operating point (joint decision with R)
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** R gathered real G3 calibration data (`docs/DECISIONS_R.md` R-015) — 300 queries scored
+against the real production index — and found `docs/EVAL_PROTOCOL.md`'s two targets (false-refusal
+<10% in-domain, correct-refusal >80% out-of-domain) are **not simultaneously reachable** via
+top1-cosine TAU gating on this corpus: at 10% false-refusal, correct-refusal is only 38%; reaching
+75-79% correct-refusal costs 19-30% false-refusal. R deliberately did not pick an operating point
+despite `g3_confidence.py` being joint-owned, correctly treating the pick as a value judgment (how
+often is refusing a real question acceptable vs. confidently answering with a weak match), not a
+data question either track can settle alone (`docs/RISKS.md` R-R19).
+**Decision:** Asked the user directly, since this is exactly the kind of product tradeoff neither
+track's engineering judgment should silently resolve — presented three real reference points from
+R's sweep (favor-answering: TAU=0.8487, 4.7%/13.3%; balanced: TAU≈0.8835, 19.3%/75.3%;
+favor-refusing: TAU=0.8918, 30.0%/79.3%) plus the option to leave it uncalibrated. User chose
+**balanced**, explicitly weighing both `EVAL_PROTOCOL.md` targets equally rather than favoring
+either failure mode — the same tie-break principle R's own `pick_operating_point()` in
+`scripts/eval_g3_calibration.py` implements. Applied `TAU=0.8835` to `src/vrag/guardrails/
+g3_confidence.py`; `MARGIN` left at `0.05` (not independently re-swept at this TAU — R's sweep held
+MARGIN=0 while varying TAU; the interaction between MARGIN and the new TAU is real work still open).
+**Verification:** Checked the Day-1 stub's fallback path (`src/vrag/retrieval/interface.py`, used
+whenever no real index is present on disk — every fresh clone, CI) still clears the new TAU: stub
+top1=0.91 > 0.8835, margin 0.91-0.52=0.39 > 0.05, so `test_api.py` and all other tests that exercise
+`/ask` end-to-end against the stub are unaffected. Two `test_g3_confidence.py` cases used score
+ranges written against the old TAU=0.35 placeholder and would have silently changed which branch
+they exercised (or started failing outright) under the real value — updated both to realistic
+0.88-0.92-range scores that still test the same TAU-pass/margin-fail and TAU-pass/single-chunk
+paths. 62/62 tests green (my scope; R's `retrieval`/`index`/`chunking` extras not installed
+locally, not run). `ruff`/`mypy` clean.
+**Consequences:** G3 is no longer a silent no-op on the TAU check in production — previously
+TAU=0.35 never fired against real cosine scores (0.82-0.96 range), so only the untested MARGIN
+check was doing any real refusing. Now ~1-in-5 real in-domain questions will be wrongly refused,
+and ~3-in-4 genuinely out-of-scope questions will be correctly caught — an explicit, chosen
+tradeoff, not an accident. `docs/RISKS.md` R-R19 closed as resolved. Re-sweep MARGIN independently
+at TAU=0.8835 flagged as follow-up work, not done today (needs R's index locally, which I don't
+have — R's sweep script and calibration set are reusable for this without new data collection).
+
+## P-016 — Circuit breaker for Track B: only "fair-chance" outcomes move it, not every timeout
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** `docs/PROGRESS_P.md`'s own "next session should start by" list flagged the circuit
+breaker as the clearest remaining gap, motivated by directly observed Sarvam latency variance
+(10x+ call to call, P-R13/P-R17) — every request during the P-R13 outage paid the full
+remaining-budget timeout cost probing an endpoint that was going to fail anyway.
+**The obvious design has a real bug, caught before writing any code:** a breaker that counts every
+`GenerateStage` timeout/failure as a provider-health signal would trip open almost immediately
+under completely ordinary, healthy-Sarvam production traffic — not because Sarvam is unhealthy,
+but because P-014 already established Track B's real non-streaming completion time (1.4s-15s+)
+exceeds almost any realistic per-request budget (~200ms total, often less by the time
+`GenerateStage` runs) regardless of provider health. That's the two-track design's normal,
+expected shedding behavior, not evidence of an outage. Counting it as a failure would (a) add no
+real protection beyond the budget/timeout mechanism already in place (P-011/P-013), since the
+breaker would just be permanently open in steady state anyway, and (b) actively break generous-
+budget calls made for real testing (e.g. a manual `/ask` with a large `budget_ms`, exactly how
+Track B was verified working in the previous session) by rejecting them outright during the open
+window, for a reason unrelated to those specific calls.
+**Decision:** Built `src/vrag/generation/circuit_breaker.py` — a standard closed/open/half-open
+state machine (`CircuitBreaker`), plus `should_count_as_health_signal(timeout_s,
+min_fair_timeout_s)`: an outcome only counts toward the breaker if the call was given at least
+`MIN_FAIR_TIMEOUT_S=2.0` seconds — comfortably (>2x) above Sarvam chat's measured P95 TTFT (858ms,
+P-012), enough that the provider had a fair chance to at least start responding or fail fast.
+Below that floor, the outcome is inconclusive (could be either "provider is fine, budget was just
+tight" or "provider is actually struggling") and is ignored either way. A completed call (success)
+is always recorded regardless of how much time it was given — success is unambiguous evidence of
+health no matter the allowance. Wired into `GenerateStage` in `src/vrag/harness/stages.py`:
+`allow_request()` gates the network call entirely (skip reason: "circuit breaker open..."),
+`record_failure()`/`record_success()` fire on the two existing failure branches (outer
+`TimeoutError`, `result is None`) and the success path respectively, all gated by
+`should_count_as_health_signal` except the unconditional success recording. A module-level
+singleton (`TRACK_B_BREAKER`) holds state, since `GenerateStage` is instantiated fresh per request
+via `default_stages()` — a per-instance breaker would reset every request and never accumulate
+anything.
+**Verification:** 15 new tests: `tests/generation/test_circuit_breaker.py` (10, pure state-machine
+tests against an injectable fake clock — no real `time.sleep`, deterministic) and
+`tests/harness/test_generate_stage_circuit_breaker.py` (5, proving `GenerateStage` actually
+consults the breaker — an open breaker skips without calling `generate_track_b` at all; a
+tight-budget failure does *not* move a fresh breaker; a fair-chance failure does; success closes
+an open one). Then a real end-to-end run against the live Sarvam API (not mocked) with a 15s
+budget: `track="generative"`, `stages_skipped=[]`, breaker state `CLOSED` after — confirms the
+closed-state passthrough works in the real async pipeline, not just against mocks. 77/77 tests
+green (62 pre-existing + 15 new). `ruff check .` (repo-wide) and `mypy` on changed files clean.
+**Consequences:** Given the `MIN_FAIR_TIMEOUT_S=2.0` gate, most default-budget (~200ms) production
+requests today don't move the breaker either way — it's real, correct, tested infrastructure that
+is currently under-exercised by design, not a limitation to fix. Its practical value today is
+protecting repeated generous-budget calls (manual testing, or any future per-request budget
+override) from hammering a genuinely down provider; its value grows directly with whatever closes
+P-014's gap (real token streaming), since that's what would bring ordinary request budgets close
+enough to Track B's real completion time for the breaker's fair-chance window to matter on the
+normal request path.
