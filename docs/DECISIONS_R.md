@@ -244,3 +244,30 @@ trade for a one-time offline index build (AGENT_BUILD_SPEC.md §3.2), not a hot-
 **Consequences:** If BGE-M3 wins A2 and needs a production embedding pass at a larger scale later,
 revisit whether 8 is still necessary or whether it was specific to this ablation's GPU/driver state.
 Doesn't affect the other three embedders' batch sizes (left at the library default, no OOM observed).
+
+## R-009 — Embedder: keeping `multilingual-e5-small`
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** A2 ablation (`docs/TECH_MENU.md` §S4) — 3 alternative embedders run against the A1
+winner's chunking (`metadata_aware`), same held-out set. Full table: `docs/EVAL_RESULTS.md` §2.
+Headline: `potion-multilingual-128M` (Recall@5=0.266) and `vyakyarth` (Recall@5=0.274) both lost to
+`multilingual-e5-small` (Recall@5=0.653) by 38+ points — not a close call. `bge-m3` was excluded
+after ~1 hour of runtime on this machine's 6GB GPU (vs. 1-13 min for the others), confirmed not
+hung, cause not fully diagnosed but not worth pursuing given the other three already settle the
+question decisively.
+**Decision:** Keep `multilingual-e5-small` as the production embedder — no change from A1's
+default.
+**Rationale:** The gap between e5-small and the two completed alternatives is an order of magnitude
+larger than any noise floor could explain (contrast with A1's chunking strategies, several of which
+needed an actual noise-floor run to distinguish). `potion`'s speed advantage doesn't offset a
+39-point quality loss when the eventual hot-path embed cost is expected to be single-digit
+milliseconds after ONNX quantisation anyway (Phase 6) — there's no latency crisis this trade would
+be solving. `vyakyarth` underperforming despite being Indic-specialised is a genuine, verified
+(not assumed) finding: correct dims, correct normalisation, no missing prefix — being trained for
+Indic language tasks generally doesn't imply being trained for retrieval specifically, which is
+what E5's large-scale contrastive training targets directly.
+**Consequences:** No index rebuild needed — `data/index/metadata_aware/` (already built with
+e5-small) remains the live index `retrieve()` loads. A3 (retrieval mode: dense vs. sparse vs.
+hybrid) and A4 (rerank) proceed with e5-small + metadata_aware held fixed, per the staged-ablation
+design.

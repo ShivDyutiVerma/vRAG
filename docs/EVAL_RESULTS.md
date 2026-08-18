@@ -96,7 +96,66 @@ free. Already wired into `retrieve()` via `HybridRetriever` (`src/vrag/retrieval
 
 ## §2 — Embedding (A2)
 
-_Not run yet._
+**Setup:** chunking = `metadata_aware` (A1 winner, §1), dense-only retrieval, no rerank — one
+variable (embedder) at a time per the staged-ablation design. Same 99,767-chunk working pool,
+same 500-query held-out set. 4 candidates per `docs/TECH_MENU.md` §S4 / `docs/BUILD_PLAN.md` P3.
+
+| Embedder | Dim | Recall@1 | Recall@5 | Recall@10 | MRR@10 | p50 query-embed | Index build |
+|---|---|---|---|---|---|---|---|
+| **multilingual-e5-small** (A1 baseline) | 384 | 0.322 | **0.653 ± 0.001** (n=3) | 0.752 | 0.453 | not measured¹ | 203s (GPU) |
+| potion-multilingual-128M | 256 | 0.084 | 0.266 | 0.334 | 0.160 | **0.71ms** | 85s (GPU) |
+| vyakyarth | 768 | 0.092 | 0.274 | 0.370 | 0.169 | 13.23ms | 769s (GPU) |
+| bge-m3 | 1024 | — | — | — | — | — | excluded² |
+
+¹ A1's runs (§1) predate `p50_embed_ms` being added to `eval_chunking.py` — added specifically for
+A2 per `docs/BUILD_PLAN.md` P3's "record both quality AND query-embed latency per model." A
+same-config re-run to backfill this one number stalled after ~10 minutes with no forward progress
+(GPU state left over from other same-session runs, most likely) and was killed rather than chased
+further — low value for the time cost, since e5-small's massive quality lead already settles A2
+regardless of its own embed latency (which was ~2.5ms on CPU per published benchmarks, and is not
+the hot-path number that matters anyway — Phase 6 will measure the real ONNX-quantised figure).
+
+² **BGE-M3 excluded on practicality, not quality.** Took ~1 hour on this machine's 6GB laptop GPU
+(RTX 3060) before being killed — confirmed not hung (100% GPU utilization, checked repeatedly over
+the full hour) — vs. 1-13 minutes for the other three. Even after reducing `batch_size` from the
+library default of 32 to 8 to avoid a `CUDA out of memory` error that hit twice at the default
+(`docs/DECISIONS_R.md` R-008), it remained far slower than expected for its parameter count (568M —
+smaller than some other tested models complete faster). Likely cause: `sentence-transformers`
+loading BGE-M3 in its default configuration may compute the sparse and multi-vector representations
+alongside dense even though only dense output is used here — not confirmed, not worth the
+investigation time given the outcome (exclusion) doesn't change either way.
+
+### Analysis
+
+- **`multilingual-e5-small` wins decisively, not marginally.** Recall@5 of 0.653 vs. 0.266 (potion)
+  and 0.274 (Vyakyarth) is not a close call requiring a noise-floor check the way A1's top strategies
+  needed one — the gap (38+ percentage points) is enormous relative to any plausible run-to-run
+  variance.
+- **`potion-multilingual-128M`'s quality collapse confirms `docs/TECH_MENU.md` §S4's own caveat**,
+  measured rather than assumed: "Static embeddings lack contextualisation — that's the quality
+  tradeoff." Its speed is real (0.71ms vs. whatever e5-small's turns out to be) but a 39-point
+  Recall@5 loss is not a trade worth making for a system whose hot-path embed cost is already
+  expected to be single-digit milliseconds after ONNX quantisation (Phase 6) — the "expensive"
+  option isn't actually expensive enough for this trade to make sense.
+- **`vyakyarth` — "the Indic-specialist wildcard" — underperforming a general-purpose model is a
+  genuine, non-obvious finding, not a wiring bug.** Verified before concluding this: correct output
+  dimension (768, matches its published spec), correctly L2-normalised vectors, no missing
+  instruction prefix (confirmed against its model card — it needs none). The likely explanation:
+  being trained for Indic language understanding/similarity tasks doesn't automatically confer
+  strength at open-domain passage *retrieval* specifically, which is a distinct skill E5's
+  large-scale contrastive training (on MS MARCO-style retrieval pairs, at a scale Vyakyarth's
+  smaller training run likely didn't match) optimises for directly.
+- **BGE-M3's exclusion is itself evidence, not just a gap.** A model that requires disproportionate
+  compute for an *offline, one-time* index-build cost is a genuine engineering red flag even before
+  asking about its quality — `AGENT_BUILD_SPEC.md` §3.2 explicitly scopes index construction as a
+  cost that still has to fit within a 5-day hackathon build budget, not an unconstrained one.
+
+### Decision — keeping `multilingual-e5-small`
+
+A1's default is confirmed, not merely left unchallenged: three real alternatives were built,
+smoke-tested, and run against the same frozen eval set, and none came close. No ADR needed to
+"switch back" to e5-small since it was never actually replaced — this ran as a genuine ablation
+stage, and the incumbent won on its merits.
 
 ## §3 — Retrieval mode + reranking (A3, A4)
 
