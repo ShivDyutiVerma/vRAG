@@ -271,3 +271,40 @@ what E5's large-scale contrastive training targets directly.
 e5-small) remains the live index `retrieve()` loads. A3 (retrieval mode: dense vs. sparse vs.
 hybrid) and A4 (rerank) proceed with e5-small + metadata_aware held fixed, per the staged-ablation
 design.
+
+## R-010 — Retrieval mode: dense-only, not hybrid (RRF regresses quality on this corpus)
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** A3 ablation (`docs/TECH_MENU.md` §A row A3) — chunking=`metadata_aware`,
+embedder=`multilingual-e5-small` (A1/A2 winners) held fixed, retrieval mode varied across
+dense/sparse/hybrid+RRF against the same 500-query held-out set, reusing the persisted
+`data/index/metadata_aware/` index. Full table and analysis: `docs/EVAL_RESULTS.md` §3. Headline,
+counter to `docs/TECH_MENU.md` §S8's "BM25 + dense + RRF + rerank is the 2026 production default":
+dense-only (Recall@5=0.652) beat hybrid (Recall@5=0.604), which beat sparse-only (Recall@5=0.428).
+**Root cause (verified, not assumed):** BM25 sparse search is markedly weaker than dense on this
+corpus (Recall@1 0.162 vs. 0.322). RRF fuses purely by rank position within each lane
+(`1/(k+rank)`), with no mechanism to discount a lane whose top ranks are less trustworthy — so
+sparse's weaker rank-1/2/3 guesses receive the same fusion weight as dense's stronger ones and
+displace genuine dense hits from the fused top-`k` (top_k=10 pulled per lane, matching
+`HybridRetriever`'s actual production shape, not a larger candidate pool). Confirmed the result
+wasn't a wiring bug before accepting it: both `DenseIndex.search`/`SparseIndex.search` return
+best-first as `reciprocal_rank_fusion` (`src/vrag/index/fusion.py`) requires, and all three modes
+score through the same `score_hits`/R-006-dedup path.
+**Decision:** Ship dense-only as the production retrieval mode. A4 (rerank) and beyond proceed
+against the dense-only lane, per the staged-ablation rule that each stage carries forward the prior
+stage's actual winner, not an assumed one.
+**Rationale:** The gap (4.8pp Recall@5 vs. hybrid, 22.4pp vs. sparse-only) is large relative to A1's
+noise floor (~0.2-0.4pp) and deterministic (no randomness in query embedding, FAISS HNSW search, or
+BM25 search once the index is already built) — not a candidate for a 3x noise-floor rerun.
+Dataset-specific explanation, not a general anti-hybrid claim: BM25 depends on literal token overlap
+between query and passage, which is weakened by this corpus's machine-translated Hindi text
+(inconsistent term translation, transliterated acronyms — `docs/DECISIONS_R.md` R-003) in exactly the
+way dense embeddings' semantic matching is not.
+**Consequences:** `HybridRetriever`'s RRF fusion path stays implemented (harmless, unused in the
+default config) but `retrieve()`'s production wiring should call dense search only going forward —
+tracked as a follow-up code change, not yet applied to `src/vrag/retrieval/interface.py`. A candidate
+mitigation (fuse over a larger per-lane pool, e.g. top-50, before truncating to top-10) was
+identified but deliberately not tested in this run — it changes candidate-pool size, a different
+ablation axis than retrieval mode, and would void this run under `CLAUDE.md`'s "never change two
+variables in one experiment" rule. Logged as a follow-up idea in `docs/RISKS.md`.

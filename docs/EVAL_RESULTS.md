@@ -159,7 +159,65 @@ stage, and the incumbent won on its merits.
 
 ## §3 — Retrieval mode + reranking (A3, A4)
 
-_Not run yet. Will include the efSearch recall-vs-latency curve (`docs/assets/efsearch_curve.png`)._
+### A3 — Retrieval mode (dense / sparse / hybrid+RRF)
+
+**Setup:** chunking = `metadata_aware`, embedder = `multilingual-e5-small` (A1/A2 winners, §1-2) —
+held fixed, only retrieval mode varies. Reused the already-persisted `data/index/metadata_aware/`
+index (no rebuild, no re-embedding of the corpus — only the 500 held-out queries get embedded/
+searched per mode). Each mode fetches `top_k=10` candidates per lane before scoring — for `hybrid`
+this matches production exactly: `HybridRetriever.retrieve()` (`src/vrag/retrieval/hybrid.py`) fetches
+`k` from dense and `k` from sparse, fuses via RRF (`k=60`), then truncates to `k` — the ablation
+script (`scripts/eval_retrieval_mode.py`) mirrors that shape rather than testing a larger fusion
+candidate pool, so this run measures what's actually deployed.
+
+| Mode | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 | p50 search |
+|---|---|---|---|---|---|---|
+| **dense** | **0.322** | **0.652** | **0.748** | **0.4523** | **0.5163** | 0.57ms |
+| sparse | 0.162 | 0.428 | 0.542 | 0.2729 | 0.3308 | 0.89ms |
+| hybrid (RRF, k=60) | 0.244 | 0.604 | 0.722 | 0.3924 | 0.4666 | 1.53ms |
+
+### Analysis
+
+- **The dense-only lane wins outright — hybrid is not an improvement here, it's a regression.**
+  This contradicts the common "hybrid always helps" assumption from `docs/TECH_MENU.md` §S8 (`BM25 +
+  dense + RRF + rerank` described there as "the 2026 production default"), so it was checked rather
+  than taken at face value: dense/sparse ordering (best-first) confirmed correct in both
+  `DenseIndex.search` and `SparseIndex.search`, `reciprocal_rank_fusion`'s assumption that both input
+  lists are already sorted best-first (`src/vrag/index/fusion.py`) holds for both callers, and the
+  same `score_hits`/dedup path (R-006) scores all three modes identically. The regression is real.
+- **Root cause: BM25 sparse search is comparatively weak on this corpus (Recall@5=0.428 vs. dense's
+  0.652), and equal-weight RRF has no way to know that.** RRF assigns credit purely by *rank
+  position* within each lane (`1/(k+rank)`), not by how trustworthy that lane's ranking is. Sparse's
+  own rank-1 hit is right only 16.2% of the time (Recall@1=0.162) vs. dense's 32.2% — but RRF gives
+  sparse's rank-1 hit the *same* fusion weight as dense's rank-1 hit. With only `top_k=10` candidates
+  pulled per lane before fusing (matching the real `HybridRetriever` shape, not a larger candidate
+  pool), a meaningful fraction of the fused top-10 ends up occupied by BM25's lower-quality guesses,
+  displacing dense hits that would have ranked in dense-only's own top-10.
+- **This is a genuine, dataset-specific finding, not a general claim that hybrid retrieval is bad.**
+  BM25 tends to lag dense embeddings specifically on *translated* text (per `docs/DECISIONS_R.md`
+  R-003's spot-check: inconsistent term translation, transliterated acronyms) where exact lexical
+  overlap between a Hindi query and its gold passage is less reliable than semantic similarity — the
+  exact scenario where sparse retrieval's core assumption (query and relevant passage share literal
+  tokens) is weakest. On a corpus where BM25 and dense are closer in quality, naive RRF would likely
+  behave as the literature predicts.
+- **Not tested here (separate axis, would violate "one variable per run"):** a larger candidate pool
+  per lane before fusion (e.g. top-50 from each, fused, then truncated to top-10) is a standard RRF
+  mitigation for exactly this failure mode, and might close some or all of the gap. Logged as a
+  follow-up idea in `docs/RISKS.md` rather than tested now, since it changes candidate-pool size, not
+  retrieval mode — a genuinely different ablation axis.
+
+### Decision — shipping dense-only, not hybrid (`docs/DECISIONS_R.md` R-010)
+
+**Status: Accepted.** `retrieve()` / `HybridRetriever`'s production configuration switches to
+dense-only for A4 (rerank) and beyond, per the staged-ablation rule that each stage carries forward
+the previous stage's actual winner. The "hybrid retrieval" story from `docs/TECH_MENU.md` §118
+(single embedder settling both A2 and a hybrid path) doesn't pan out on this corpus — recorded as a
+real result, not silently dropped.
+
+### A4 — Reranking (none / FlashRank / cross-encoder)
+
+_Not run yet. Will run against the A3 winner (dense-only). Will also include the efSearch
+recall-vs-latency curve (`docs/assets/efsearch_curve.png`)._
 
 ## §4 — Generation (A5)
 

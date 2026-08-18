@@ -19,7 +19,7 @@ from pathlib import Path
 
 import build_index
 
-from vrag.retrieval.metrics import ndcg_at_k, recall_at_k, reciprocal_rank
+from vrag.retrieval.metrics import score_hits
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HELDOUT_PATH = REPO_ROOT / "eval" / "heldout_queries.json"
@@ -100,6 +100,7 @@ def evaluate(
     from vrag.index.embedder import EMBEDDER_REGISTRY
 
     embedder = EMBEDDER_REGISTRY[embedder_name]()
+    chunk_to_doc_id = {chunk_id: c.doc_id for chunk_id, c in built.chunk_lookup.items()}
 
     recalls_1, recalls_5, recalls_10, mrrs, ndcgs = [], [], [], [], []
     search_latencies_ms: list[float] = []
@@ -118,24 +119,15 @@ def evaluate(
         hits = built.dense.search(query_vec, k=top_k)
         search_latencies_ms.append((time.perf_counter() - t0) * 1000)
 
-        raw_retrieved_doc_ids = [
-            built.chunk_lookup[chunk_id].doc_id
-            for chunk_id, _score in hits
-            if chunk_id in built.chunk_lookup
-        ]
-        # Dedupe by passage, keeping the first (highest-ranked) occurrence. Strategies that
-        # produce multiple chunks per passage (e.g. sentence_window) can otherwise return the
-        # same relevant passage several times in one top-k list, which inflates nDCG@10 (it sums
-        # credit per occurrence) without affecting Recall@k or MRR (both already dedupe by
-        # nature) — that mismatch is what surfaced this bug: sentence_window scored a nonsensical
-        # nDCG@10=0.88 alongside its worst-of-the-6 Recall@5=0.478.
-        retrieved_doc_ids = list(dict.fromkeys(raw_retrieved_doc_ids))
-
-        recalls_1.append(recall_at_k(retrieved_doc_ids, relevant_doc_ids, k=1))
-        recalls_5.append(recall_at_k(retrieved_doc_ids, relevant_doc_ids, k=5))
-        recalls_10.append(recall_at_k(retrieved_doc_ids, relevant_doc_ids, k=10))
-        mrrs.append(reciprocal_rank(retrieved_doc_ids, relevant_doc_ids, k=10))
-        ndcgs.append(ndcg_at_k(retrieved_doc_ids, relevant_doc_ids, k=10))
+        # score_hits dedupes chunk hits down to unique passages before scoring — see
+        # docs/DECISIONS_R.md R-006. Skipping that step is what let sentence_window score a
+        # nonsensical nDCG@10=0.88 alongside its worst-of-the-6 Recall@5=0.478.
+        scores = score_hits(hits, chunk_to_doc_id, relevant_doc_ids)
+        recalls_1.append(scores["recall@1"])
+        recalls_5.append(scores["recall@5"])
+        recalls_10.append(scores["recall@10"])
+        mrrs.append(scores["mrr@10"])
+        ndcgs.append(scores["ndcg@10"])
 
     chunk_lengths = [len(c.text.split()) for c in built.chunk_lookup.values()]
 
