@@ -4,6 +4,8 @@ AGENT_BUILD_SPEC.md §5.2/§7.1 — a Devanagari sentence must tokenise sensibly
 raising an error.
 """
 
+from pathlib import Path
+
 import pytest
 
 from vrag.index.sparse import SparseIndex, tokenize
@@ -57,3 +59,23 @@ def test_search_with_no_matching_tokens_does_not_error() -> None:
 def test_mismatched_lengths_rejected() -> None:
     with pytest.raises(ValueError, match="same length"):
         SparseIndex().build(["a", "b"], ["only one text"])
+
+
+def test_save_load_round_trip_preserves_search_behaviour(tmp_path: Path) -> None:
+    index = SparseIndex()
+    index.build(
+        ["a", "b"],
+        ["भारत की राजधानी नई दिल्ली है", "मुंबई भारत का सबसे बड़ा शहर है"],
+    )
+    index.save(tmp_path / "idx")
+
+    loaded = SparseIndex.load(tmp_path / "idx")
+    assert len(loaded) == len(index)
+    original = index.search("भारत की राजधानी क्या है", k=2)
+    restored = loaded.search("भारत की राजधानी क्या है", k=2)
+    assert [c for c, _ in original] == [c for c, _ in restored]
+
+
+def test_save_unbuilt_index_raises() -> None:
+    with pytest.raises(RuntimeError, match="unbuilt"):
+        SparseIndex().save(Path("unused"))

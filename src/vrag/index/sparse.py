@@ -17,7 +17,9 @@ keeps multi-codepoint grapheme clusters (base consonant + matra) intact.
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 import bm25s
 
@@ -61,3 +63,23 @@ class SparseIndex:
 
     def __len__(self) -> int:
         return len(self._chunk_ids)
+
+    def save(self, path: str | Path) -> None:
+        """AGENT_BUILD_SPEC.md §5.3: build offline, never at container start. `path` is a
+        directory; created if missing."""
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        if self._retriever is None:
+            raise RuntimeError("cannot save an unbuilt SparseIndex — call build() first")
+        self._retriever.save(str(path / "bm25s"))
+        (path / "chunk_ids.json").write_text(
+            json.dumps(self._chunk_ids, ensure_ascii=False), encoding="utf-8"
+        )
+
+    @classmethod
+    def load(cls, path: str | Path) -> SparseIndex:
+        path = Path(path)
+        instance = cls()
+        instance._retriever = bm25s.BM25.load(str(path / "bm25s"), load_corpus=False)
+        instance._chunk_ids = json.loads((path / "chunk_ids.json").read_text(encoding="utf-8"))
+        return instance

@@ -3,15 +3,32 @@ docs/API_CONTRACTS.md). Changing this signature after Day 0 is a joint decision 
 in docs/DECISIONS.md immediately if it ever needs to change.
 
 Workstream P's harness calls retrieve() and only retrieve(). Workstream R owns the real
-implementation. Currently stubbed — Workstream R replaces the body with the real hybrid
-dense+sparse retrieval pipeline (see src/vrag/retrieval/hybrid.py's HybridRetriever, built and
-tested, not yet wired in here pending the chunking ablation's winner); the signature does not
-change when that happens.
+implementation.
+
+Real path: loads the persisted `metadata_aware` index (docs/DECISIONS_R.md R-004 — the A1 ablation
+winner, chosen as "cheapest among five statistically-tied strategies") from `data/index/`, built
+offline by `scripts/build_index.py --save-dir` (AGENT_BUILD_SPEC.md §5.3 — never build the index at
+container start). Delegates to `HybridRetriever` (src/vrag/retrieval/hybrid.py), which is what
+actually does dense∥sparse concurrent search + RRF fusion.
+
+Fallback: if the persisted index isn't present on disk (e.g. a fresh clone, or CI, where the
+multi-GB corpus + model haven't been downloaded), falls back to the Day-1 stub instead of raising —
+this file's tests and Workstream P's harness both keep working either way; only the *content* of
+what comes back differs. The stub's shape is identical to the real path's output, so nothing
+downstream needs to know which one answered.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from vrag.retrieval.hybrid import HybridRetriever
+
+_INDEX_DIR = Path(__file__).resolve().parents[3] / "data" / "index" / "metadata_aware"
 
 
 class RetrievedChunk(BaseModel):
@@ -52,18 +69,45 @@ _STUB_CHUNKS: list[RetrievedChunk] = [
     ),
 ]
 
+_retriever: HybridRetriever | None = None
+_retriever_load_attempted = False
+
+
+def _get_real_retriever() -> HybridRetriever | None:
+    """Lazy singleton — loading the index (FAISS mmap + BM25 + ~100k-entry chunk lookup) costs
+    real time and memory, so it happens once, on first actual use, not at import time (every test
+    file that imports this module would otherwise pay that cost even when never calling
+    retrieve())."""
+    global _retriever, _retriever_load_attempted
+    if _retriever_load_attempted:
+        return _retriever
+    _retriever_load_attempted = True
+
+    if not (_INDEX_DIR / "chunk_lookup.json").exists():
+        return None
+
+    from vrag.index.embedder import E5Embedder
+    from vrag.index.persistence import load_built_index
+    from vrag.retrieval.hybrid import HybridRetriever
+
+    dense, sparse, chunk_lookup = load_built_index(_INDEX_DIR)
+    _retriever = HybridRetriever(
+        dense=dense, sparse=sparse, embedder=E5Embedder(), chunk_lookup=chunk_lookup
+    )
+    return _retriever
+
 
 async def retrieve(query: str, k: int = 5) -> list[RetrievedChunk]:
     """The one function Workstream P's harness calls to get retrieved context.
 
     Never raises. Returns [] on internal failure — the guardrail layer treats an empty list as
     "nothing relevant found" and routes to abstention (G3).
-
-    STUB (Day 1): ignores `query`, returns up to `k` hardcoded fake chunks so the rest of the
-    pipeline is testable end to end immediately. Swapped for Workstream R's real
-    HybridRetriever.retrieve at the Day 2 integration sync (docs/TEAM_SPLIT.md §5) — should be a
-    one-line import change.
     """
     if not query or not query.strip():
         return []
+
+    retriever = _get_real_retriever()
+    if retriever is not None:
+        return await retriever.retrieve(query, k)
+
     return _STUB_CHUNKS[:k]

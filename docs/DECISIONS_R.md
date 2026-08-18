@@ -93,3 +93,36 @@ range the spec asks for.
 `data/working_subset.jsonl` and `eval/heldout_queries.json`. Superseded, not silently changed, if a
 later phase needs the full 20,500-row pool (e.g. if 100k chunks proves too small once hierarchical
 chunking's child+parent expansion is measured for real).
+
+**Update, 2026-08-18 — the "minutes, not an hour" estimate above was wrong in practice.** Running
+the actual A1 ablation, index build (dominated by embedding ~100k passages via plain PyTorch
+`sentence-transformers`, no ONNX yet — per `docs/BUILD_PLAN.md` P1's own "PyTorch first, ONNX in P6"
+ordering) took 39-46 minutes per strategy for the five strategies near passage-native's chunk count,
+96 minutes for `semantic` (extra embedding calls during chunking itself, for boundary detection), and
+141 minutes for `sentence_window` (390k chunks, 3.9x passage-native's count). Total wall-clock for
+all 6: ~6.5 hours. Recorded here rather than silently revising the earlier estimate, since ONNX int8
+quantisation (Phase 6) should cut this dramatically and it's worth remembering *why* the P2 chunking
+lab took hours instead of "minutes" as originally hoped.
+
+## R-004 — Chunking strategy: provisionally shipping `metadata_aware`
+
+**Date:** 2026-08-18
+**Status:** Provisional — see caveats below, not yet run 3x for a noise floor
+**Context:** A1 ablation (all 6 strategies, dense-only e5-small, no rerank) run against the real
+10,000-query working pool + 500-pair held-out set. Full table and analysis: `docs/EVAL_RESULTS.md`
+§1. Headline: `sentence_window` is a clear loser (Recall@5 0.478 vs 0.640-0.654 for the other five);
+the other five are within a 1.4-point Recall@5 band — inside likely noise-floor territory.
+**Decision:** Ship `metadata_aware` as the production chunking strategy. It produces the *identical*
+chunk boundaries as `passage_native` (same 99,767 chunks, same text per chunk, same embedding/build
+cost — fastest of the six at 39min) but tags every chunk with `language`/`source_lang`/`query_type`,
+which is free now and may be useful later for G2 language filtering or A3 boosting experiments.
+**Rationale:** Per `docs/BUILD_PLAN.md` P2's own guard ("if strategies are statistically tied, ship
+the cheapest one and say they were tied") — `metadata_aware` costs nothing over the next-cheapest
+option and adds optionality other tied strategies don't.
+**Consequences — explicitly provisional, not final:** (1) no noise-floor run yet (winner run 3x,
+report spread, per `docs/EVAL_PROTOCOL.md`) — the "marginally highest Recall@5" observation is one
+run each, and a noise-floor check could show all five are genuinely indistinguishable, which would
+still leave `metadata_aware` as the right pick (cheapest-among-tied) but for a cleaner stated reason;
+(2) no hyperparameter sweep for `fixed_overlap` (overlap ∈ {0, 0.1, 0.2}) has run. Neither blocks
+wiring `HybridRetriever` into `retrieve()` now — both are cheap to revisit before Phase 7 lock-in if
+time allows, and reversing this ADR later costs one re-index, not a redesign.

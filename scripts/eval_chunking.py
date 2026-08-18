@@ -101,11 +101,18 @@ def evaluate(strategy_name: str, strategy_kwargs: dict, top_k: int = 10) -> dict
         hits = built.dense.search(query_vec, k=top_k)
         search_latencies_ms.append((time.perf_counter() - t0) * 1000)
 
-        retrieved_doc_ids = [
+        raw_retrieved_doc_ids = [
             built.chunk_lookup[chunk_id].doc_id
             for chunk_id, _score in hits
             if chunk_id in built.chunk_lookup
         ]
+        # Dedupe by passage, keeping the first (highest-ranked) occurrence. Strategies that
+        # produce multiple chunks per passage (e.g. sentence_window) can otherwise return the
+        # same relevant passage several times in one top-k list, which inflates nDCG@10 (it sums
+        # credit per occurrence) without affecting Recall@k or MRR (both already dedupe by
+        # nature) — that mismatch is what surfaced this bug: sentence_window scored a nonsensical
+        # nDCG@10=0.88 alongside its worst-of-the-6 Recall@5=0.478.
+        retrieved_doc_ids = list(dict.fromkeys(raw_retrieved_doc_ids))
 
         recalls_1.append(recall_at_k(retrieved_doc_ids, relevant_doc_ids, k=1))
         recalls_5.append(recall_at_k(retrieved_doc_ids, relevant_doc_ids, k=5))

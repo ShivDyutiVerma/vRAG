@@ -28,6 +28,7 @@ from vrag.chunking.strategies import (  # noqa: F401  — import registers every
 )
 from vrag.index.dense import DenseIndex
 from vrag.index.embedder import E5Embedder
+from vrag.index.persistence import load_built_index, save_built_index
 from vrag.index.sparse import SparseIndex
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -74,7 +75,13 @@ def build(strategy_name: str, strategy_kwargs: dict) -> BuiltIndex:
     rows = [json.loads(line) for line in WORKING_SUBSET_PATH.open(encoding="utf-8")]
     documents = _rows_to_documents(rows)
 
+    embedder = E5Embedder()
+
     registered = get_strategy(strategy_name)
+    if strategy_name == "semantic":
+        # SemanticChunker needs a real sentence embedder injected — it deliberately has no
+        # default (src/vrag/chunking/strategies/semantic.py) so this isn't a silent dependency.
+        strategy_kwargs = {**strategy_kwargs, "embed_fn": embedder.embed_passages}
     strategy = registered.__class__(**strategy_kwargs) if strategy_kwargs else registered
 
     t0 = time.perf_counter()
@@ -87,7 +94,6 @@ def build(strategy_name: str, strategy_kwargs: dict) -> BuiltIndex:
     indexable_chunks = [c for c in all_chunks if not c.metadata.get("is_parent", False)]
     chunk_lookup = {c.chunk_id: c for c in all_chunks}
 
-    embedder = E5Embedder()
     vectors = embedder.embed_passages([c.text for c in indexable_chunks])
 
     dense = DenseIndex(dim=len(vectors[0]) if vectors else 384)
@@ -106,11 +112,30 @@ def build(strategy_name: str, strategy_kwargs: dict) -> BuiltIndex:
     )
 
 
+def save(built: BuiltIndex, path: str | Path) -> None:
+    """Persists a BuiltIndex to disk so it can be loaded fast at API boot instead of rebuilt —
+    AGENT_BUILD_SPEC.md §5.3: never build FAISS at container start."""
+    save_built_index(built.dense, built.sparse, built.chunk_lookup, path)
+
+
+def load(path: str | Path) -> tuple[DenseIndex, SparseIndex, dict[str, Chunk]]:
+    """The fast-path counterpart to save() — no chunking, no embedding, just deserialisation."""
+    return load_built_index(path)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", default="passage_native")
+    parser.add_argument(
+        "--save-dir",
+        default=None,
+        help="if set, persist the built index here (e.g. data/index/metadata_aware)",
+    )
     args = parser.parse_args()
     result = build(args.strategy, {})
     print(
         f"Built '{args.strategy}' index: {result.n_chunks} chunks in {result.build_seconds:.1f}s"
     )
+    if args.save_dir:
+        save(result, args.save_dir)
+        print(f"Saved to {args.save_dir}")

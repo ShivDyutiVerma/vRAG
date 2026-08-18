@@ -1,6 +1,8 @@
 """Tests for DenseIndex using tiny synthetic vectors — no real embedder needed, just checks the
 FAISS wrapper's contract (add/search/length, dimension validation, empty-index behaviour)."""
 
+from pathlib import Path
+
 import pytest
 
 from vrag.index.dense import DenseIndex
@@ -53,3 +55,16 @@ def test_k_larger_than_index_size_does_not_error() -> None:
     index.add(["a"], [[1.0, 0.0]])
     results = index.search([1.0, 0.0], k=10)
     assert len(results) == 1
+
+
+def test_save_load_round_trip_preserves_search_behaviour(tmp_path: Path) -> None:
+    index = DenseIndex(dim=2)
+    index.add(["a", "b", "c"], [[1.0, 0.0], [0.0, 1.0], [0.9, 0.1]])
+    index.save(tmp_path / "idx")
+
+    loaded = DenseIndex.load(tmp_path / "idx")
+    assert len(loaded) == len(index)
+    assert loaded.dim == index.dim
+    original = index.search([1.0, 0.0], k=2)
+    restored = loaded.search([1.0, 0.0], k=2)
+    assert [c for c, _ in original] == [c for c, _ in restored]
