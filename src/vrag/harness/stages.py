@@ -1,15 +1,20 @@
-"""Concrete pipeline stages wiring guardrails + retrieval + Track A answer selection into the
+"""Concrete pipeline stages wiring guardrails + retrieval + Track A/B answer generation into the
 Stage/PipelineContext/Budget abstraction (stage.py/pipeline.py/budget.py).
 
 Maps onto docs/ARCHITECTURE.md's request-lifecycle diagram: stages 2 (InputGuard/G1), 2
 (ScopeGuard/G2 — same numbered stage in the diagram, split into two Stage objects here since
-they're independently testable and independently budgeted), 4 (Retrieve), 7a (ExtractAnswer,
-Track A), 8 (OutputGuard/G5), 9 (Assemble). Stages 0/1 (AudioIngest, Transcribe) happen before the
-pipeline runs at all — the t_pipeline clock (docs/EVAL_PROTOCOL.md) starts once a transcript is
-available, which is exactly when `run_pipeline` is invoked. Stage 6 (GroundGate/G3) and stage 8's
-groundedness half (G4) aren't implemented yet — joint work with Workstream R, scheduled Day 3 per
-docs/TEAM_SPLIT.md §5, since G3 calibration needs real retrieval scores and G4 needs a real answer
-to check groundedness against.
+they're independently testable and independently budgeted), 4 (Retrieve), 6 (GroundGate/G3),
+7a (ExtractAnswer, Track A), 7b (Generate, Track B — includes G4's citation/overlap check before
+accepting the generated answer), 8 (OutputGuard/G5), 9 (Assemble). Stages 0/1 (AudioIngest,
+Transcribe) happen before the pipeline runs at all — the t_pipeline clock
+(docs/EVAL_PROTOCOL.md) starts once a transcript is available, which is exactly when
+`run_pipeline` is invoked.
+
+G3 and G4's *mechanisms* are implemented and live on the request path — G3's threshold/margin and
+G4's overlap ratio are UNCALIBRATED placeholders, though (see
+src/vrag/guardrails/g3_confidence.py and g4_groundedness.py). Real calibration (150 in-domain +
+150 out-of-domain queries, sweep and pick an operating point) is still joint work with Workstream
+R, blocked on a calibration set neither track has built yet.
 
 Guardrail failures short-circuit via `ctx.data["refused"]`/`ctx.data["abstained"]` rather than
 raising — every downstream stage checks that flag first and marks itself skipped
@@ -18,19 +23,26 @@ raising — every downstream stage checks that flag first and marks itself skipp
 decision, and both end up in the same `stages_skipped` list because from the client's perspective
 "didn't run" is the fact that matters, regardless of why.
 
-No stage here is `optional = False` yet — every one of G1/G2/Retrieve/ExtractAnswer/G5/Assemble is
-load-bearing; there's nothing to shed. The spec's first genuinely optional stage is Track B
-generation (AGENT_BUILD_SPEC.md §4, row 8b) — that lands with generation on Day 3. See
-tests/test_harness_degradation.py for why the forced-tight-budget test still matters today even
-though nothing sheds yet: it proves the pipeline degrades to `degraded` rather than crashing when
-the mechanism has nothing to shed, which is the honest baseline Track B's optionality builds on.
+`GenerateStage` (Track B) is the first genuinely optional stage in this pipeline — every other
+stage is load-bearing. Under a tight budget, `run_pipeline` sheds it and Track A's
+already-computed answer stands as the response: this is the two-track design
+(AGENT_BUILD_SPEC.md §3.3) actually operating, not just proven in isolation
+(tests/harness/test_degradation.py).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
-from vrag.guardrails import g1_input_safety, g2_scope_language, g5_output_safety
+from vrag.generation.sarvam_llm import generate as generate_track_b
+from vrag.guardrails import (
+    g1_input_safety,
+    g2_scope_language,
+    g3_confidence,
+    g4_groundedness,
+    g5_output_safety,
+)
 from vrag.harness.pipeline import PipelineContext
 from vrag.harness.stage import Stage, StageResult
 from vrag.retrieval.interface import retrieve
@@ -100,11 +112,33 @@ class RetrieveStage(Stage):
         return StageResult(stage_name=self.name)
 
 
+class GroundGateStage(Stage):
+    """G3 — retrieval confidence gate. See AGENT_BUILD_SPEC.md §7.3.
+
+    UNCALIBRATED thresholds — see src/vrag/guardrails/g3_confidence.py and docs/DECISIONS_P.md.
+    The mechanism runs for real; the tau/margin numbers are a documented placeholder pending
+    joint calibration with Workstream R.
+    """
+
+    name = "ground_gate"
+    min_viable_ms = 1.0
+    optional = False
+
+    async def run(self, ctx: PipelineContext) -> StageResult:
+        if _upstream_refused(ctx):
+            return StageResult(stage_name=self.name, skipped=True, skip_reason="upstream refusal")
+        verdict = g3_confidence.check(ctx.data.get("chunks", []))
+        if not verdict.passed:
+            ctx.data["abstained"] = True
+            ctx.data["refusal_reason"] = verdict.reason
+        return StageResult(stage_name=self.name)
+
+
 class ExtractAnswerStage(Stage):
     """Track A — select the best-supporting span. See AGENT_BUILD_SPEC.md §3.3.
 
-    No G3 confidence gate yet (joint work, Day 3) — today, an empty retrieval result is the only
-    abstention trigger. A real G3 threshold-and-margin gate will sit here once calibrated.
+    G3 (GroundGateStage) already ran before this — an empty/failed-confidence retrieval never
+    reaches here, so this stage can assume `chunks` is non-empty whenever it actually runs.
     """
 
     name = "extract_answer"
@@ -127,11 +161,82 @@ class ExtractAnswerStage(Stage):
         return StageResult(stage_name=self.name)
 
 
+class GenerateStage(Stage):
+    """Track B — LLM synthesises a fluent, cited answer over the retrieved context. See
+    AGENT_BUILD_SPEC.md §3.3. The first genuinely optional stage in this pipeline: if the budget
+    can't afford it, it's shed and Track A's answer (already computed by ExtractAnswerStage)
+    stands as the response — never a missing answer, just a less polished one.
+
+    G4 groundedness (src/vrag/guardrails/g4_groundedness.py) gates the generated answer before
+    it's accepted: citation-ID validation catches an invented chunk_id, lexical overlap catches
+    an answer that's drifted from its cited context. Fails either check → Track A's
+    already-computed answer (from ExtractAnswerStage) stands unchanged, per
+    AGENT_BUILD_SPEC.md §7.3's G4 failure action ("drop to Track A, or abstained" — this always
+    has Track A to drop to, since it runs first).
+
+    `min_viable_ms` is only a pre-flight check (run_pipeline decides whether to *start* this
+    stage) — it does not by itself stop the stage from overrunning once started. Found this the
+    hard way: with Sarvam's chat endpoint hanging (docs/RISKS.md P-R13), an unguarded call here
+    blew a 200ms budget by 10+ real seconds. `asyncio.wait_for` against the *actual* remaining
+    budget closes that gap — deadline propagation has to hold during a stage, not just before it.
+    """
+
+    name = "generate"
+    min_viable_ms = 110.0  # AGENT_BUILD_SPEC.md §4 row 8b: Track B TTFT target
+    optional = True
+
+    async def run(self, ctx: PipelineContext) -> StageResult:
+        if _upstream_refused(ctx):
+            return StageResult(stage_name=self.name, skipped=True, skip_reason="upstream refusal")
+        chunks = ctx.data.get("chunks", [])
+        if not chunks:
+            return StageResult(
+                stage_name=self.name, skipped=True, skip_reason="no context to generate over"
+            )
+
+        timeout_s = ctx.budget.remaining_ms / 1000
+        try:
+            result = await asyncio.wait_for(
+                generate_track_b(ctx.query, chunks), timeout=max(timeout_s, 0.001)
+            )
+        except TimeoutError:
+            return StageResult(
+                stage_name=self.name,
+                skipped=True,
+                skip_reason=f"generation exceeded remaining budget ({timeout_s:.3f}s)",
+            )
+        if result is None:
+            return StageResult(
+                stage_name=self.name, skipped=True, skip_reason="generation failed, kept Track A"
+            )
+
+        valid_chunks_by_id = {c.chunk_id: c for c in chunks}
+        cited = [
+            valid_chunks_by_id[cid]
+            for cid in result.cited_chunk_ids
+            if cid in valid_chunks_by_id
+        ]
+
+        verdict = g4_groundedness.check(result.answer, cited, set(valid_chunks_by_id))
+        if not verdict.passed:
+            logger.info("Track B answer failed G4 (%s), keeping Track A", verdict.reason)
+            return StageResult(
+                stage_name=self.name,
+                skipped=True,
+                skip_reason=f"failed G4 groundedness ({verdict.reason}), kept Track A",
+            )
+
+        ctx.data["answer_text"] = result.answer
+        ctx.data["citations"] = cited
+        ctx.data["track"] = "generative"
+        return StageResult(stage_name=self.name)
+
+
 class OutputGuardStage(Stage):
     """G5 — output safety / PII redaction. See AGENT_BUILD_SPEC.md §7.3.
 
-    No G4 groundedness check yet (joint work, Day 3) — this stage only redacts, it doesn't verify
-    citation validity or lexical overlap yet.
+    G4 groundedness already ran inside GenerateStage (gating whether Track B's answer was
+    accepted at all) — this stage only redacts, it doesn't re-check groundedness.
     """
 
     name = "output_guard"
@@ -185,7 +290,7 @@ class AssembleStage(Stage):
             response = AnswerResponse(
                 status="answered",
                 answer=ctx.data.get("answer_text"),
-                track="extractive",
+                track=ctx.data.get("track", "extractive"),
                 citations=[
                     Citation(
                         chunk_id=c.chunk_id,
@@ -207,12 +312,16 @@ class AssembleStage(Stage):
 
 
 def default_stages() -> list[Stage]:
-    """The real Day-2 pipeline: G1 -> G2 -> Retrieve -> Track A -> G5 -> Assemble."""
+    """The real pipeline: G1 -> G2 -> Retrieve -> G3 -> Track A -> Track B (optional, gated by
+    G4) -> G5 -> Assemble. Track B is the only stage that can actually be shed under budget
+    pressure."""
     return [
         InputGuardStage(),
         ScopeGuardStage(),
         RetrieveStage(),
+        GroundGateStage(),
         ExtractAnswerStage(),
+        GenerateStage(),
         OutputGuardStage(),
         AssembleStage(),
     ]
