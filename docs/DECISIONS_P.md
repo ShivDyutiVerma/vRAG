@@ -285,3 +285,56 @@ and ~3-in-4 genuinely out-of-scope questions will be correctly caught — an exp
 tradeoff, not an accident. `docs/RISKS.md` R-R19 closed as resolved. Re-sweep MARGIN independently
 at TAU=0.8835 flagged as follow-up work, not done today (needs R's index locally, which I don't
 have — R's sweep script and calibration set are reusable for this without new data collection).
+
+## P-016 — Circuit breaker for Track B: only "fair-chance" outcomes move it, not every timeout
+
+**Date:** 2026-08-18 · **Status:** Accepted
+**Context:** `docs/PROGRESS_P.md`'s own "next session should start by" list flagged the circuit
+breaker as the clearest remaining gap, motivated by directly observed Sarvam latency variance
+(10x+ call to call, P-R13/P-R17) — every request during the P-R13 outage paid the full
+remaining-budget timeout cost probing an endpoint that was going to fail anyway.
+**The obvious design has a real bug, caught before writing any code:** a breaker that counts every
+`GenerateStage` timeout/failure as a provider-health signal would trip open almost immediately
+under completely ordinary, healthy-Sarvam production traffic — not because Sarvam is unhealthy,
+but because P-014 already established Track B's real non-streaming completion time (1.4s-15s+)
+exceeds almost any realistic per-request budget (~200ms total, often less by the time
+`GenerateStage` runs) regardless of provider health. That's the two-track design's normal,
+expected shedding behavior, not evidence of an outage. Counting it as a failure would (a) add no
+real protection beyond the budget/timeout mechanism already in place (P-011/P-013), since the
+breaker would just be permanently open in steady state anyway, and (b) actively break generous-
+budget calls made for real testing (e.g. a manual `/ask` with a large `budget_ms`, exactly how
+Track B was verified working in the previous session) by rejecting them outright during the open
+window, for a reason unrelated to those specific calls.
+**Decision:** Built `src/vrag/generation/circuit_breaker.py` — a standard closed/open/half-open
+state machine (`CircuitBreaker`), plus `should_count_as_health_signal(timeout_s,
+min_fair_timeout_s)`: an outcome only counts toward the breaker if the call was given at least
+`MIN_FAIR_TIMEOUT_S=2.0` seconds — comfortably (>2x) above Sarvam chat's measured P95 TTFT (858ms,
+P-012), enough that the provider had a fair chance to at least start responding or fail fast.
+Below that floor, the outcome is inconclusive (could be either "provider is fine, budget was just
+tight" or "provider is actually struggling") and is ignored either way. A completed call (success)
+is always recorded regardless of how much time it was given — success is unambiguous evidence of
+health no matter the allowance. Wired into `GenerateStage` in `src/vrag/harness/stages.py`:
+`allow_request()` gates the network call entirely (skip reason: "circuit breaker open..."),
+`record_failure()`/`record_success()` fire on the two existing failure branches (outer
+`TimeoutError`, `result is None`) and the success path respectively, all gated by
+`should_count_as_health_signal` except the unconditional success recording. A module-level
+singleton (`TRACK_B_BREAKER`) holds state, since `GenerateStage` is instantiated fresh per request
+via `default_stages()` — a per-instance breaker would reset every request and never accumulate
+anything.
+**Verification:** 15 new tests: `tests/generation/test_circuit_breaker.py` (10, pure state-machine
+tests against an injectable fake clock — no real `time.sleep`, deterministic) and
+`tests/harness/test_generate_stage_circuit_breaker.py` (5, proving `GenerateStage` actually
+consults the breaker — an open breaker skips without calling `generate_track_b` at all; a
+tight-budget failure does *not* move a fresh breaker; a fair-chance failure does; success closes
+an open one). Then a real end-to-end run against the live Sarvam API (not mocked) with a 15s
+budget: `track="generative"`, `stages_skipped=[]`, breaker state `CLOSED` after — confirms the
+closed-state passthrough works in the real async pipeline, not just against mocks. 77/77 tests
+green (62 pre-existing + 15 new). `ruff check .` (repo-wide) and `mypy` on changed files clean.
+**Consequences:** Given the `MIN_FAIR_TIMEOUT_S=2.0` gate, most default-budget (~200ms) production
+requests today don't move the breaker either way — it's real, correct, tested infrastructure that
+is currently under-exercised by design, not a limitation to fix. Its practical value today is
+protecting repeated generous-budget calls (manual testing, or any future per-request budget
+override) from hammering a genuinely down provider; its value grows directly with whatever closes
+P-014's gap (real token streaming), since that's what would bring ordinary request budgets close
+enough to Track B's real completion time for the breaker's fair-chance window to matter on the
+normal request path.
