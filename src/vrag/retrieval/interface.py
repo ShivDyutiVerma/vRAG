@@ -25,6 +25,14 @@ deployment-memory fix in docs/DECISIONS_P.md P-018: a container could plausibly 
 downloaded before the leaner embedder dependencies are installed, and `retrieve()`'s own docstring
 already promises "Never raises." A missing import is exactly the kind of internal failure that
 promise is supposed to cover, not just a missing file.
+
+Embedder/chunk-lookup choice (docs/DECISIONS_R.md R-023): uses `LiteE5Embedder` (raw onnxruntime +
+tokenizers, no torch/transformers import) and `load_built_index_lean()` (SQLite-backed chunk lookup
+when the artifact has one, else the plain dict) — the R-021/R-022 memory fixes, verified
+byte-identical to the original `E5Embedder`+dict path, not an approximation. Needs the
+`retrieval-lean` extra installed (onnxruntime + tokenizers + faiss-cpu + bm25s — NOT torch/
+transformers/sentence-transformers) and the lean ONNX model directory on disk; see docs/RISKS.md R4
+for what's still needed on the deploy side to actually reach these code paths in production.
 """
 
 from __future__ import annotations
@@ -95,19 +103,21 @@ def _get_real_retriever() -> HybridRetriever | None:
         return _retriever
     _retriever_load_attempted = True
 
-    if not (_INDEX_DIR / "chunk_lookup.json").exists():
+    if not (_INDEX_DIR / "chunk_lookup.json").exists() and not (
+        _INDEX_DIR / "chunk_lookup.sqlite3"
+    ).exists():
         return None
 
     try:
-        from vrag.index.embedder import E5Embedder
-        from vrag.index.persistence import load_built_index
+        from vrag.index.embedder import LiteE5Embedder
+        from vrag.index.persistence import load_built_index_lean
         from vrag.retrieval.hybrid import HybridRetriever
 
-        dense, sparse, chunk_lookup = load_built_index(_INDEX_DIR)
+        dense, sparse, chunk_lookup = load_built_index_lean(_INDEX_DIR)
         _retriever = HybridRetriever(
             dense=dense,
             sparse=sparse,
-            embedder=E5Embedder(),
+            embedder=LiteE5Embedder(),
             chunk_lookup=chunk_lookup,
             # A3 winner, docs/DECISIONS_R.md R-010 — explicit, not relying on the default
             retrieval_mode="dense",

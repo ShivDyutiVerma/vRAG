@@ -58,7 +58,7 @@ def test_uses_real_retriever_when_index_present(
             return [[1.0, 0.0] for _ in texts]
 
     monkeypatch.setattr(
-        "vrag.index.embedder.E5Embedder", lambda: _FakeEmbedder()
+        "vrag.index.embedder.LiteE5Embedder", lambda: _FakeEmbedder()
     )
 
     results = asyncio.run(interface_module.retrieve("भारत की राजधानी", k=5))

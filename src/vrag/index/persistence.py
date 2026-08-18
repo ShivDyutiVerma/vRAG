@@ -16,6 +16,7 @@ from pathlib import Path
 from vrag.chunking.base import Chunk
 from vrag.index.dense import DenseIndex
 from vrag.index.sparse import SparseIndex
+from vrag.index.sqlite_chunk_lookup import SQLiteChunkLookup
 
 
 def save_built_index(
@@ -42,6 +43,30 @@ def load_built_index(path: str | Path) -> tuple[DenseIndex, SparseIndex, dict[st
     path = Path(path)
     dense = DenseIndex.load(path / "dense")
     sparse = SparseIndex.load(path / "sparse")
+    raw_lookup = json.loads((path / "chunk_lookup.json").read_text(encoding="utf-8"))
+    chunk_lookup = {chunk_id: Chunk(**data) for chunk_id, data in raw_lookup.items()}
+    return dense, sparse, chunk_lookup
+
+
+def load_built_index_lean(
+    path: str | Path,
+) -> tuple[DenseIndex, SparseIndex, SQLiteChunkLookup | dict[str, Chunk]]:
+    """Runtime-optimised counterpart to load_built_index() (docs/DECISIONS_R.md R-023) — used by
+    src/vrag/retrieval/interface.py's real-retriever loader, not by scripts/build_index.py or eval
+    scripts (those build the dict fresh in memory anyway, so there's nothing to save by loading it
+    lazily).
+
+    Prefers `chunk_lookup.sqlite3` (R-021's SQLiteChunkLookup — chunk_id->doc_id kept in memory,
+    full Chunk text fetched lazily per-row) when present in `path`, falling back to the eager
+    `chunk_lookup.json` dict otherwise so this stays a drop-in replacement for artifacts built
+    before R-021 (e.g. the current index-metadata_aware-v1 release asset, which predates the
+    sqlite file)."""
+    path = Path(path)
+    dense = DenseIndex.load(path / "dense")
+    sparse = SparseIndex.load(path / "sparse")
+    sqlite_path = path / "chunk_lookup.sqlite3"
+    if sqlite_path.exists():
+        return dense, sparse, SQLiteChunkLookup(sqlite_path)
     raw_lookup = json.loads((path / "chunk_lookup.json").read_text(encoding="utf-8"))
     chunk_lookup = {chunk_id: Chunk(**data) for chunk_id, data in raw_lookup.items()}
     return dense, sparse, chunk_lookup

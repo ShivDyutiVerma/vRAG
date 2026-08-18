@@ -48,6 +48,19 @@ retrieval = [
   "rerankers>=0.10",
   "flashrank>=0.2",  # rerankers' FlashRank backend needs this installed separately (R-011)
 ]
+# Runtime-only subset of `retrieval`, for the deployed container (docs/DECISIONS_R.md R-023).
+# Deliberately excludes torch/transformers/sentence-transformers/optimum/optimum-onnx/rerankers/
+# flashrank — those are for offline work only (ablations, ONNX export); LiteE5Embedder
+# (src/vrag/index/embedder.py) does inference with just onnxruntime + tokenizers, and
+# `retrieve()`'s "dense" mode (the A3 winner) doesn't need a reranker. `retrieval` (above) stays
+# the group for dev machines running the actual ablation/export scripts.
+retrieval-lean = [
+  "numpy>=2.5",
+  "faiss-cpu>=1.15",
+  "bm25s>=0.3",
+  "onnxruntime>=1.28",
+  "tokenizers>=0.20",
+]
 # Workstream P: generation, guardrails beyond regex/lexical, telemetry analysis extras.
 # Empty for now — G1/G2/G5 are pure-stdlib regex/lexical (docs/TECH_MENU.md §S3), no heavy deps
 # needed yet. Add here (not to base `dependencies`) the moment Track B generation or a guardrail
