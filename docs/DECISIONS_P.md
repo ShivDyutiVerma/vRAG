@@ -636,3 +636,35 @@ the paid tier now that even 727MB steady-state — let alone the higher peak —
 No further deploy attempts against the free tier without either a fix that specifically targets
 peak load (e.g., loading the index/embedder in a way that avoids holding multiple copies in memory
 during initialization) or a decision to pay for headroom.
+
+## P-021 — Real bug found and fixed in Track B's streaming handler: 0% -> 63% success rate
+
+**Date:** 2026-08-19
+**Status:** Accepted — fixed, verified via `pytest tests/generation` (27/27 green) and by direct
+re-testing against the live Sarvam API. Found while building the P6 latency campaign's standalone
+Track B measurement (`scripts/bench_latency.py`, see the joint P6 entry in `docs/DECISIONS.md`).
+**Context:** Single-operator session from 2026-08-19 onward (P's collaborator out of weekly Claude
+Code credits) — this entry continues P's numbering since the fix lives in P's module
+(`src/vrag/generation/`), same convention as if P's own session had found it.
+**What was found:** Calling `generation.sarvam_llm.generate()` directly (bypassing
+`GenerateStage`'s budget gate, giving it a real 15s window) against 30 real Sarvam calls: **0/30
+succeeded**, every one crashing with `TypeError: can only concatenate str (not "NoneType") to
+str` at `_call_once_streaming`'s `accumulated += delta`. Root cause:
+`choices[0]["delta"].get("content", "")` — `.get(key, default)`'s default only applies when the
+key is *absent*, not when it's present with an explicit `null` value. Sarvam's SSE stream
+sometimes sends an explicit `"content": null` (e.g. a trailing or role-only delta chunk), which
+`.get()` correctly returns as `None`, not `""` — and nothing downstream guarded against that.
+**Fix:** One line — `(choices[0]["delta"].get("content") or "")`. `or ""` normalises both "key
+absent" and "key present but null" to the same safe empty string.
+**Verified, not assumed:** re-ran the same 30-call standalone measurement after the fix:
+**19/30 succeeded (63.3%)**, real coherent Hindi answers, completion latency P50=1976.5ms,
+P70=2557.3ms, P100=6429.8ms. The remaining 11/30 failures are the already-documented, genuinely
+provider-side stall bug (P-R20 in `docs/RISKS.md`) — distinct from this bug, not fixed by it, and
+not something this session can fix (Sarvam-side).
+**Consequences:** This was silently masking a large fraction of Track B's real capability — every
+previous session's "Track B works, verified live" claims were true for the specific test runs that
+happened not to hit a null-content chunk, but the *actual* population success rate was far lower
+than anyone had reason to suspect until this systematic 30-call measurement surfaced it. Nothing
+else changes: `GenerateStage`'s budget-gated behavior, the circuit breaker, and stall-detection
+are all unaffected by this fix — they operate correctly regardless of whether individual calls
+crash or complete; this fix just means more of them complete instead of crashing.

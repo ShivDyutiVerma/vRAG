@@ -170,7 +170,10 @@ async def _call_once_streaming(client: httpx.AsyncClient, messages: list[dict]) 
             try:
                 chunk = json.loads(data_str)
                 choices = chunk.get("choices") or []
-                delta = choices[0]["delta"].get("content", "") if choices else ""
+                # .get("content", "") only supplies the default when the key is absent -- Sarvam's
+                # SSE stream sometimes sends an explicit "content": null (e.g. a trailing/role-only
+                # delta), which .get() then returns as None, not "". `or ""` normalises both cases.
+                delta = (choices[0]["delta"].get("content") or "") if choices else ""
             except (json.JSONDecodeError, KeyError, IndexError):
                 continue
             if delta and delta.strip():

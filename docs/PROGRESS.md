@@ -3,6 +3,35 @@
 > Edited only at integration syncs (`docs/TEAM_SPLIT.md` §5), by whoever is merging — a hand-written
 > combined summary of `PROGRESS_R.md` + `PROGRESS_P.md`. Not a running log; a snapshot.
 
+## ⚠️ Operational change, 2026-08-19: single-operator mode
+
+Workstream P's collaborator (Arunish) is out of weekly Claude Code credits — this session (Shiv,
+previously Workstream R only) is now covering **both** workstreams solo for the rest of the build.
+`.workstream` still reads `R` (unchanged, historical) but ownership boundaries in `docs/TEAM_SPLIT.md`
+§2 no longer restrict what this session touches — read `docs/PROGRESS_P.md`/`docs/DECISIONS_P.md`
+for what P already completed (a lot — harness, guardrails, generation, telemetry, API, deployment
+prep) before assuming something isn't done. Deployment (R4/R-R21, the free-tier RAM problem) is
+**deliberately parked** — attempted a Google Cloud Run migration, hit real setup friction (gcloud
+auth issues under Git Bash, GCP billing account setup), and the user redirected to **run everything
+locally first, decide where to deploy for free later**. Verified 2026-08-19: the full local stack
+(real Sarvam STT/LLM key now available, real retrieval, real guardrails) works end-to-end against
+`localhost` — confirmed with a real held-out query returning a real cited answer.
+
+**P6 (latency campaign) done, 2026-08-19** — went from 0% to real numbers in one session:
+`eval/test_queries.json` (100 real queries), `eval/audio/` (95 real TTS WAVs),
+`scripts/bench_latency.py`, `scripts/make_latency_charts.py`, `tests/test_latency_regression.py`,
+`docs/LATENCY_BUDGET.md` filled in with real measurements, ADR-003 and ADR-005 recorded in
+`docs/DECISIONS.md`. Headline finding: Track A's true stage cost is P50=5.2ms (exit criterion met)
+but the client-observed latency for an answered query is P50=213-246ms because `GenerateStage`
+always attempts a doomed Track B call under the 200ms budget before shedding it — reported
+honestly, no harness change (user's call). Also found and fixed a real bug in Track B's streaming
+handler along the way (`docs/DECISIONS_P.md` P-021) that was silently capping its real success rate
+at 0% — now 63.3% (19/30 real calls).
+
+Current priority: deployment remains parked (R4/R-R21, `docs/RISKS.md`); next up is `t_e2e_voice`
+(the WebSocket voice benchmark — audio assets are ready, the client isn't built yet) or picking up
+whatever's next in `docs/BUILD_PLAN.md` P7 (README, frontend polish, manual QA).
+
 **Last updated:** 2026-08-17 (Day 1 sync — merging `workstream-p` into `main`, then `main` into `workstream-r`)
 **Current phase:** P0 wrapping up / P1 underway (P is ahead on the walking skeleton; R is ahead on chunking/retrieval code)
 **Days remaining:** 5 (deadline 2026-08-22 23:59 IST)
