@@ -991,3 +991,34 @@ smaller, quantified corpus cut and a correspondingly higher deploy target than e
 revisit paid-tier economics now that the free-path number is 727MB vs. the original 1,474MB
 (a materially different cost-benefit than when the paid fallback was first discussed); or check
 whether a different free hosting tier offers more headroom (P's deployment domain).
+
+## R-025 — Verified the live deploy directly after P applied R-023/P-020's Dockerfile fix: `/ask` returns 502, `/healthz` doesn't
+
+**Date:** 2026-08-18
+**Status:** Finding recorded, **not investigated or fixed here** — this is P's deployment module,
+and the fix (if any) lives in `Dockerfile`/`render.yaml`/Render's dashboard, none of which R owns.
+**Context:** P's P-020 (`docs/DECISIONS_P.md`) applied R-023's 3-step Dockerfile change, fixed two
+real bugs found along the way (tarball path mismatch, Python 3.12 floor), and verified locally
+under Docker's own `-m 512m` limit: 446.8MiB steady-state, real (non-stub) retrieval confirmed.
+Deployed live on that basis, with a documented rollback plan if Render's real environment behaved
+differently than the local Docker test.
+**What I checked, following the same "verify claims against the live URL directly" discipline that
+found R-018's original stub issue:** `GET /healthz` → 200 OK, consistently, across 3 separate
+retries. `POST /ask` with a real Hindi query (`"भारत की राजधानी क्या है?"`, verified UTF-8 bytes in
+the request body, not a shell-encoding artifact) → **502 Bad Gateway**, header
+`x-render-routing: no-deploy`, reproduced twice (immediately, and again after a 20s wait for a
+possible restart).
+**Interpretation, not confirmed root cause:** `/healthz` never touches
+`_get_real_retriever()` — it's a static handler. `/ask` is the first thing that forces the lazy
+singleton to actually load the FAISS index + ONNX embedder session for real. The pattern (health
+check fine, first real-retrieval-triggering request 502s with a "no deploy currently serving"
+routing header) is consistent with an OOM crash during that first load in Render's actual
+environment, even though P's local Docker test with the same `-m 512m` limit completed a real
+query successfully — P-020 already named this as a real possibility ("cloud container limits and
+enforcement can differ from local Docker Desktop in ways not fully visible from here"). Not
+confirmed — could also be a Render-specific cold-start/routing artifact unrelated to memory; I
+didn't have access to Render's own logs/dashboard to check for an actual OOM-kill signal.
+**Deliberately not acted on:** fixing this (whether that's the documented rollback, a memory
+adjustment, or something else) requires `Dockerfile`/`render.yaml`/Render dashboard access, all P's
+ownership (`docs/TEAM_SPLIT.md` §2) — recording the verified symptom here and in `docs/RISKS.md`
+R-R21 for P's session to pick up, not attempting a fix myself.
