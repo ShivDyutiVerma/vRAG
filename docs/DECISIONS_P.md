@@ -425,3 +425,70 @@ arrives) is a separate, still-undone piece — this session's streaming work is 
 groundedness check needs the complete answer and citations before it's safe to show anything to
 the user (see P-014's discussion of why client-facing streaming has its own separate design
 tension with the G4 gate). Flagged as a distinct follow-up, not done today.
+
+## P-018 — Live deployment has been running the Day-0 stub the whole time; chosen fix direction and status
+
+**Date:** 2026-08-18 · **Status:** In progress — P-side prep done, R-side lean embedder pending
+**Context:** R found (`docs/DECISIONS_R.md` R-018) by checking the actual live `/ask` response
+before starting new work that `https://vrag-voice.onrender.com` has been serving the Day-0 stub
+for retrieval this entire time — none of this session's real retrieval work (A1-A4 ablations,
+efSearch, G3 calibration) has ever reached the deployed demo, despite every local test and every
+live-verification check I ran this session (including several in my own ADRs today) genuinely
+passing. Root cause, squarely mine: `Dockerfile` runs bare `pip install -e .`, never installing
+the `retrieval` extra, and `data/` is gitignored so the built index was never going to reach the
+container regardless. R separately measured (R-020) that even fixing this naively would likely
+crash the deploy: the persisted index alone uses 591MB RSS (over Render free tier's 512MB budget
+before any embedder loads), and `sentence-transformers` pulls in the full `torch`/`transformers`
+stack regardless of inference backend (ONNX included), pushing total RSS to ~1.5GB either way.
+**Decision:** Presented the real tradeoff to the user rather than picking a fix direction
+unilaterally — this spans a real cost decision (Render's Standard tier, $25/mo, 2GB RAM,
+confirmed via web search rather than assumed pricing) versus real undesigned cross-team
+engineering work (shrink R's indexed corpus + replace `sentence-transformers` with a lean
+`onnxruntime`-only inference path to drop the ~883MB `torch`/`transformers` baseline). Also caught
+and flagged before presenting: shrinking the corpus alone cannot fit under 512MB regardless of
+size, since the embedder's own framework overhead (measured: 1,474MB with embedder − 591MB
+index-only ≈ 883MB) already exceeds the budget on its own — a corpus-only fix was never a real
+standalone option, only useful paired with the leaner-embedder work. User chose the combined free
+path (shrink corpus + drop `torch`/`transformers`), with the paid tier as an explicit fallback if
+it doesn't land before the deadline.
+**What's mine, done today:**
+1. **Defensive fix, `src/vrag/retrieval/interface.py`:** `_get_real_retriever()` could previously
+   raise uncaught if the index files were present but loading them failed (missing dependency,
+   corrupt artifact) — violating `retrieve()`'s own documented "Never raises" contract, which only
+   handled "index file missing," not "index present but unloadable." Wrapped the load in
+   `try/except Exception`, logs and falls back to the stub. This is a prerequisite for staging the
+   fix below without risk: without it, downloading the index artifact ahead of the leaner embedder
+   landing would have taken the *working* stub-based demo down to a crash on every query. New
+   test (`tests/test_retrieval_interface.py`) reproduces this for real on this dev machine (which
+   has no `retrieval` extras installed) rather than mocking the failure.
+2. **`Dockerfile`:** added a build-time step downloading R's published index artifact
+   (`index-metadata_aware-v1` GitHub Release, verified reachable and its internal tar structure
+   inspected before writing the extraction path) to `data/index/`, landing at exactly
+   `data/index/metadata_aware/` where `interface.py` looks. Deliberately did **not** add
+   `pip install -e ".[retrieval]"` yet — installing today's heavy extras (`torch`,
+   `sentence-transformers`) would reproduce R's measured OOM. Built and ran the image locally
+   before pushing: confirmed the index files land at the right path (324MB on disk), the app
+   starts and serves `/healthz`/`/ask` correctly, and — because of fix (1) — the missing-`faiss`
+   import is caught, logged clearly, and falls back to the stub rather than crashing. Verified this
+   is a genuinely inert, safe prep step: current deployed behavior is unchanged until the leaner
+   embedder dependencies are installed alongside it.
+**What's R's, not started here (their file ownership, per `docs/TEAM_SPLIT.md` §2):**
+`src/vrag/index/embedder.py`'s torch/transformers-free `onnxruntime`-only inference path, and
+`pyproject.toml`'s corresponding leaner runtime dependency group (today's `retrieval` extra bundles
+the full ablation-workflow stack, not a minimal production-serving one). Also R's: picking and
+rebuilding a smaller working-pool corpus size, re-validated against A1-A4's existing numbers.
+**Consequences:** The live demo still serves the Day-0 stub today — this ADR doesn't change that,
+only prepares for it safely. If R's lean-embedder work lands, the remaining P-side steps are:
+add the new leaner extras group to the Dockerfile install line, redeploy, and re-verify with a
+real `/ask` call against the live URL (the same check that found this bug — not trusting "should
+be deployed" claims again without checking the actual URL). If it doesn't land with enough runway
+before the Aug 22 deadline, the documented fallback is switching Render to the Standard plan
+($25/mo) — a same-day, low-risk fix — which the user has already pre-authorized as the safety net.
+**What I learned, worth stating plainly:** every "verified live" claim I made earlier this session
+(P-015's G3 calibration, P-016's circuit breaker, P-017's streaming) was checked against the real
+public URL and was real *for what it tested* — but none of those checks would have caught retrieval
+itself being stubbed, because the stub's output shape is deliberately identical to the real path's
+(by design, so downstream code never has to know which one answered). "The pipeline behaves
+correctly end-to-end" and "the pipeline is running the real retrieval implementation" are different
+claims, and I was only directly checking the first. Worth remembering for any future "verified
+live" claim: know specifically what a given live check can and cannot distinguish.

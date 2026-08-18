@@ -18,14 +18,24 @@ multi-GB corpus + model haven't been downloaded), falls back to the Day-1 stub i
 this file's tests and Workstream P's harness both keep working either way; only the *content* of
 what comes back differs. The stub's shape is identical to the real path's output, so nothing
 downstream needs to know which one answered.
+
+Also falls back to the stub if the index *files* are present but loading them fails for any reason
+(missing retrieval dependencies, corrupt/partial artifact, etc.) — found while staging the
+deployment-memory fix in docs/DECISIONS_P.md P-018: a container could plausibly have the index
+downloaded before the leaner embedder dependencies are installed, and `retrieve()`'s own docstring
+already promises "Never raises." A missing import is exactly the kind of internal failure that
+promise is supposed to cover, not just a missing file.
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from vrag.retrieval.hybrid import HybridRetriever
@@ -88,19 +98,26 @@ def _get_real_retriever() -> HybridRetriever | None:
     if not (_INDEX_DIR / "chunk_lookup.json").exists():
         return None
 
-    from vrag.index.embedder import E5Embedder
-    from vrag.index.persistence import load_built_index
-    from vrag.retrieval.hybrid import HybridRetriever
+    try:
+        from vrag.index.embedder import E5Embedder
+        from vrag.index.persistence import load_built_index
+        from vrag.retrieval.hybrid import HybridRetriever
 
-    dense, sparse, chunk_lookup = load_built_index(_INDEX_DIR)
-    _retriever = HybridRetriever(
-        dense=dense,
-        sparse=sparse,
-        embedder=E5Embedder(),
-        chunk_lookup=chunk_lookup,
-        # A3 winner, docs/DECISIONS_R.md R-010 — explicit, not relying on the default
-        retrieval_mode="dense",
-    )
+        dense, sparse, chunk_lookup = load_built_index(_INDEX_DIR)
+        _retriever = HybridRetriever(
+            dense=dense,
+            sparse=sparse,
+            embedder=E5Embedder(),
+            chunk_lookup=chunk_lookup,
+            # A3 winner, docs/DECISIONS_R.md R-010 — explicit, not relying on the default
+            retrieval_mode="dense",
+        )
+    except Exception:
+        logger.exception(
+            "Real retriever failed to load despite index files being present "
+            "(missing dependency? corrupt artifact?) — falling back to the stub"
+        )
+        return None
     return _retriever
 
 
