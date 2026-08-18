@@ -26,15 +26,19 @@ from vrag.retrieval.interface import RetrievedChunk
 logger = logging.getLogger(__name__)
 
 _CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
-# sarvam-105b-conversations is Sarvam's variant tuned specifically for real-time
-# conversational/voice-agent workloads (vs. the general sarvam-105b) — a better fit here than the
-# default model.
-_MODEL = "sarvam-105b-conversations"
+# sarvam-105b-conversations is marketed as tuned for real-time conversational/voice-agent
+# workloads, but measured (docs/DECISIONS_P.md) to be broken for structured JSON output — it pads
+# pure whitespace instead of emitting content at all under response_format:json_schema, even with
+# reasoning disabled. Plain sarvam-105b produces correct structured output; use that instead.
+_MODEL = "sarvam-105b"
 
 _SYSTEM_PROMPT = (
-    "You are a grounded question-answering assistant. Answer ONLY using the numbered context "
-    "passages given. If the passages don't contain the answer, say so plainly in the `answer` "
-    "field rather than guessing. Always respond in the same language as the user's question. "
+    "You are a grounded question-answering assistant for a Hindi voice product. Answer ONLY "
+    "using the numbered context passages given. If the passages don't contain the answer, say "
+    "so plainly in the `answer` field rather than guessing. "
+    "CRITICAL: the `answer` field MUST be written in the same script and language as the "
+    "context passages (Hindi/Devanagari) — never answer in English even if you reason in "
+    "English internally. An answer in the wrong language is treated as a failure. "
     "Cite only chunk_ids that were actually given to you — never invent one."
 )
 
@@ -57,6 +61,13 @@ async def _call_once(client: httpx.AsyncClient, messages: list[dict]) -> str:
         },
         "temperature": 0.2,
         "max_tokens": 512,
+        # sarvam-105b is a reasoning model: by default it emits a reasoning_content chain-of-
+        # thought that's billed and counted against max_tokens *before* the actual structured
+        # content, and a short budget gets entirely consumed by reasoning with the real answer
+        # never produced. Disabling it is Sarvam's own documented recommendation for
+        # latency-sensitive/live-call use (docs/DECISIONS_P.md) and is essential here regardless
+        # of latency, since 512 tokens of reasoning would otherwise starve the answer itself.
+        "reasoning_effort": None,
     }
     headers = {
         "api-subscription-key": settings.sarvam_api_key,
