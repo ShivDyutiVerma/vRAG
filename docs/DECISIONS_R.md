@@ -1061,3 +1061,68 @@ default. Closes R-R14 with a real, tested answer instead of leaving it as an ope
 **Consequences:** One less open item on `docs/RISKS.md`. Confirms A3's original conclusion is
 robust to the most obvious first mitigation attempt, strengthening confidence in the dense-only
 decision rather than casting doubt on it.
+
+## R-027 — The real quality/latency/memory sweep R-024 never ran; corrects R-024's "83% cut" estimate
+
+**Date:** 2026-08-19
+**Status:** Accepted — real measurement, run on user request. **Materially corrects R-024's
+"~17,300 chunks / 83% cut" estimate** — the real number is worse: **~5,900 chunks / ~94% cut**.
+**Context:** R-024 (2026-08-18) measured only RSS-vs-chunk-count scaling (20k/50k/99,767 chunks,
+index-only) and explicitly did not measure Recall/MRR/latency at those sizes — that was flagged as
+the missing half and escalated rather than assumed. This entry is that missing half, run on
+request, using `scripts/eval_corpus_size.py` (quality + latency) and
+`scripts/audit_full_stack_at_size.py` (real full-stack RSS, not derived by combining
+separately-measured components).
+**Methodology, stated precisely:** Chunk subsamples via `random.Random(42).sample()` (not a prefix
+slice — avoids ordering bias from how the corpus was originally built), reusing the real,
+already-computed FAISS vectors via `reconstruct()` — no re-embedding. Every held-out query scored
+through the exact same `score_hits()`/`dedupe_doc_ids()` path every A1-A4 ablation uses. Full-stack
+RSS measured with `load_built_index_lean(..., retrieval_mode="dense")` — the exact function and
+mode production uses (post-ADR-007), including the lean SQLite chunk lookup at every size, not the
+eager JSON dict (an earlier draft of this measurement mixed the two and produced a 961MB
+full-corpus reading that didn't match ADR-007's real 715.7MB — caught by cross-checking against a
+known-real number before trusting it, not assumed correct on the first run).
+
+**Real, measured table:**
+
+| n_chunks | Recall@1 | Recall@5 | Recall@10 | MRR@10 | Coverage* | FAISS RSS | FAISS disk | Search P50/P100 | Full-stack RSS (steady) |
+|---|---|---|---|---|---|---|---|---|---|
+| 20,000 | 0.120 | 0.184 | 0.192 | 0.149 | 22.2% | 86.9MB | 36.2MB | 0.45/0.90ms | **542.7MB** |
+| 50,000 | 0.202 | 0.406 | 0.440 | 0.285 | 54.4% | 142.9MB | 90.4MB | 0.44/0.75ms | **606.4MB** |
+| 99,767 (full) | 0.330 | 0.644 | 0.750 | 0.456 | 100% | 237.4MB | 180.4MB | 0.47/0.74ms | **714.4MB** (matches ADR-007's 715.7MB within 1.3MB — cross-checked) |
+
+*Coverage = fraction of the 500 frozen held-out queries whose relevant passage survives in the
+subsampled corpus at all, independent of whether search actually finds it — precomputed once per
+corpus from the full `doc_id` set, not from top-10 hits (an earlier draft of this script computed
+coverage from retrieved hits only, which conflates "answer removed" with "answer present but
+ranked outside top-10"; fixed before trusting the number).
+
+**What "83% cut" (R-024) vs. "94% cut" (this entry) means, precisely:** both are solving the same
+equation — fit `full_stack_RSS(N) = intercept + slope * N` to real measured points, then solve for
+the `N` where `full_stack_RSS(N) = 512MB`. R-024's fit used an intercept built by *adding* two
+separately-measured numbers from different sessions (R-020's index-only intercept + R-022's
+embedder-only figure). This entry's fit (least-squares over the 3 real full-stack points above,
+predicted-vs-measured within 0.6MB at every point — a tight fit) gives:
+**`full_stack_RSS(N) ≈ 499.3MB + 0.00215MB × N`**. Solving for 512MB: **N ≈ 5,900 chunks — a ~94%
+cut from 99,767**, not R-024's ~83%. Neither number reflects a measured recall at that reduced
+size (5,900 is smaller than any tested point) — both are linear extrapolations of *memory*, with
+zero information about quality at that size. The real, measured recall numbers above (0.184 at
+20,000, the smallest size actually tested) already show severe degradation well above 5,900 chunks;
+recall at 5,900 would be worse still, unmeasured, and not safely extrapolable from a 3-point curve
+whose lowest real data point is already over 3x larger.
+**Does any tested configuration remain within the spec's 50k–200k target (ADR-002)?** **No.**
+50,000 sits exactly at the spec's floor and its full-stack RSS (606.4MB) already exceeds 512MB.
+20,000 is already below the spec's floor and also exceeds 512MB (542.7MB). The full corpus
+(99,767, within spec, and the only size with real quality numbers matching A1-A4's history) is at
+714.4MB. **No spec-compliant size was measured to fit under 512MB, and the extrapolated size that
+would (~5,900 chunks) is itself roughly 8.5x below the spec's 50k floor** — meaning satisfying both
+the RAM budget and ADR-002's original corpus-size target simultaneously is not achievable via
+corpus-shrink alone under the current architecture (embedder + FAISS HNSW dense-only).
+**Consequences:** This makes the corpus-shrink lever *more* clearly non-viable than R-024 already
+found it to be, not less. No corpus change made — this is measurement only, matching the user's
+explicit scope for this request. The practical choices for closing the remaining ~200MB gap (at
+the real, spec-compliant full corpus) are unchanged from R-024/RISKS.md R4: a paid tier, a
+different host, or accepting a severe, spec-violating corpus cut with real (now partially
+quantified) quality cost. `eval/corpus_size_tmp/` (gitignored, ~313MB, regenerate via
+`scripts/eval_corpus_size.py --sizes 20000 50000 99767`) holds the built subsample artifacts this
+run used.

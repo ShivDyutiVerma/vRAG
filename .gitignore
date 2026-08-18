@@ -31,6 +31,7 @@ data/
 *.index
 eval/audio/*.wav
 eval/results/
+eval/corpus_size_tmp/
 traces.jsonl
 scripts/*.out.log
 scripts/*.err.log
