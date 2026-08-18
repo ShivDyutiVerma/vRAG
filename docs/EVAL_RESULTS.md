@@ -91,8 +91,6 @@ free. Already wired into `retrieve()` via `HybridRetriever` (`src/vrag/retrieval
 
 - Hyperparameter sweep for `fixed_overlap` (overlap ∈ {0, 0.1, 0.2}) — not run; strategy is tied with
   the winner already, so this is a low-priority nice-to-have, not a blocker for anything
-- A2 (embedder comparison), A3 (retrieval mode: dense vs sparse vs hybrid), A4 (rerank) — next
-- efSearch recall-vs-latency curve (§3, `docs/assets/efsearch_curve.png`) — Phase 3 task, not started
 
 ## §2 — Embedding (A2)
 
@@ -280,10 +278,41 @@ designed to also accept as valid.
 
 ### What's not done yet
 
-- efSearch recall-vs-latency curve (`docs/assets/efsearch_curve.png`) — Phase 3 task, not started.
 - A genuinely multilingual/Hindi-trained reranker (e.g. `BAAI/bge-reranker-v2-m3`, flagged
   BENCH-ONLY in `docs/TECH_MENU.md` §S9 for latency, not language fit) was not tested — out of scope
   for A4's three named candidates, but worth a footnote for anyone revisiting this decision later.
+
+### efSearch — recall-vs-latency curve
+
+**Setup:** chunking/embedder/retrieval mode = A1-A3 winners (`metadata_aware`/`multilingual-e5-small`
+/dense-only), swept `efSearch` ∈ {16, 32, 64, 128, 256} — the HNSW parameter controlling how many
+graph neighbors are explored per search, trading query latency for recall — against the frozen
+500-query held-out set, reusing the persisted index (`DenseIndex.set_ef_search()` mutates the
+already-built graph's search-time behavior; no rebuild or re-embedding needed).
+
+| efSearch | Recall@5 | Recall@10 | p50 search | p95 search | p100 search |
+|---|---|---|---|---|---|
+| 16 | 0.628 | 0.728 | 0.139ms | 0.211ms | 3.304ms |
+| 32 | 0.646 | 0.744 | 0.276ms | 0.436ms | 0.677ms |
+| **64** | **0.652** | **0.748** | **0.414ms** | **0.553ms** | **0.825ms** |
+| 128 | 0.654 | 0.756 | 0.699ms | 0.987ms | 1.387ms |
+| 256 | 0.656 | 0.758 | 1.216ms | 1.733ms | 2.546ms |
+
+![efSearch curve](assets/efsearch_curve.png)
+
+**Analysis — clear knee at 64, not a flat curve or an unbounded win from cranking it higher.**
+Recall@5 climbs meaningfully from 16→64 (+2.4pp, well above A1's measured ~0.2-0.4pp noise floor —
+`docs/DECISIONS_R.md` R-004) but only crawls from 64→256 (+0.4pp total, inside that same noise
+band), while p50 latency keeps climbing roughly linearly with `efSearch` the whole way (0.414ms →
+0.699ms → 1.216ms). Even 256's ~1.2ms is trivial in isolation against the 200ms end-to-end budget,
+but there's no reason to spend 2-3x the search cost for a recall gain that's statistically
+indistinguishable from noise.
+
+### Decision — efSearch=64 (`docs/DECISIONS_R.md` R-014)
+
+**Status: Accepted.** Keeps `src/vrag/index/dense.py`'s existing `DEFAULT_EF_SEARCH=64` — chosen
+from this curve, not the pre-sweep placeholder it started as. Same shape of result as A2's e5-small
+confirmation (R-009): the incumbent value is confirmed by data, not silently kept unchallenged.
 
 ## §4 — Generation (A5)
 

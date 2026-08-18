@@ -57,6 +57,18 @@ def test_k_larger_than_index_size_does_not_error() -> None:
     assert len(results) == 1
 
 
+def test_set_ef_search_changes_search_time_parameter_without_rebuild() -> None:
+    index = DenseIndex(dim=2)
+    index.add(["a", "b", "c"], [[1.0, 0.0], [0.0, 1.0], [0.9, 0.1]])
+    index.set_ef_search(16)
+    assert index._index.hnsw.efSearch == 16
+    index.set_ef_search(256)
+    assert index._index.hnsw.efSearch == 256
+    # search still works correctly after mutating efSearch, not just accepted silently
+    results = index.search([1.0, 0.0], k=1)
+    assert results[0][0] == "a"
+
+
 def test_save_load_round_trip_preserves_search_behaviour(tmp_path: Path) -> None:
     index = DenseIndex(dim=2)
     index.add(["a", "b", "c"], [[1.0, 0.0], [0.0, 1.0], [0.9, 0.1]])

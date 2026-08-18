@@ -426,3 +426,43 @@ pass/fail, which is a legitimate fix regardless of which workstream "owns" the f
 still Workstream P's future work) — only the test's hermeticity was fixed here, not the underlying
 guardrail. Flagging this ADR itself is the transparency mechanism for the cross-boundary edit, same
 as any other decision in this log.
+
+## R-014 — efSearch: 64, chosen from the measured recall-vs-latency curve
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** `docs/BUILD_PLAN.md` P3 task 9 / `docs/TECH_MENU.md` §S6 — sweep efSearch ∈ {16, 32,
+64, 128, 256}, plot Recall@5 vs. p50 search latency, pick the operating point from the curve rather
+than guessing. Chunking/embedder/retrieval mode held at the A1-A3 winners. Ran against the frozen
+500-query held-out set, reusing the persisted `data/index/metadata_aware/` index —
+`DenseIndex.set_ef_search()` (new method) mutates the already-built HNSW graph's search-time
+parameter in place, so this needed zero rebuilds and zero re-embedding (500 query vectors computed
+once, reused across all five efSearch values). Full table and chart:
+`docs/EVAL_RESULTS.md` §3, `docs/assets/efsearch_curve.png`.
+
+| efSearch | Recall@5 | Recall@10 | p50 search | p95 search |
+|---|---|---|---|---|
+| 16 | 0.628 | 0.728 | 0.139ms | 0.211ms |
+| 32 | 0.646 | 0.744 | 0.276ms | 0.436ms |
+| **64** | **0.652** | **0.748** | **0.414ms** | **0.553ms** |
+| 128 | 0.654 | 0.756 | 0.699ms | 0.987ms |
+| 256 | 0.656 | 0.758 | 1.216ms | 1.733ms |
+
+**Decision:** Keep `efSearch=64` (`src/vrag/index/dense.py`'s existing `DEFAULT_EF_SEARCH`) as the
+production value.
+**Rationale:** The curve has a clear knee at 64: the 16→32→64 climb is real (Recall@5 +2.4pp from
+16 to 64, well above A1's measured ~0.2-0.4pp noise floor — docs/DECISIONS_R.md R-004), but 64→128→
+256 buys only +0.2pp then +0.2pp more, both inside that same noise band, while p50 latency keeps
+climbing roughly linearly with efSearch (0.414ms → 0.699ms → 1.216ms). Even 256's ~1.2ms is trivial
+against the 200ms end-to-end budget in isolation, but every hot-path stage's slack matters when the
+budget is this tight (`AGENT_BUILD_SPEC.md` §3.2) — there's no reason to pay 2-3x the search cost
+for a recall gain that's indistinguishable from noise. `DEFAULT_EF_SEARCH=64` was already hardcoded
+as the pre-sweep value in `dense.py` (explicitly marked "placeholder... not a guess dressed up as a
+decision") — this run confirms it rather than picking a new number, same pattern as A2's e5-small
+confirmation (R-009).
+**Consequences:** No code change to the shipped value. `dense.py`'s comment updated from
+"placeholder" to cite this ADR, since it's now a measured decision, not an unverified guess.
+`DenseIndex.set_ef_search()` is new, reusable infrastructure — cheap to re-sweep later if the index
+or query distribution changes materially (e.g. after ONNX quantisation in Phase 6, though efSearch
+is a pure search-time/graph-traversal parameter and shouldn't be affected by the embedding
+backend's own precision).

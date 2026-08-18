@@ -2,9 +2,12 @@
 L2-normalised vectors, so inner product equals cosine similarity — normalise at embed time
 (`embedder.py` already does, via `normalize_embeddings=True`), never re-normalise here.
 
-`efSearch` is intentionally NOT hardcoded to a "reasonable-looking" number — it gets chosen from
-the recall-vs-latency curve in Phase 3 (docs/BUILD_PLAN.md P3 task 9), so the default here is a
-placeholder clearly marked as such, not a guess dressed up as a decision.
+`efSearch=64` is chosen from the measured recall-vs-latency curve (docs/BUILD_PLAN.md P3 task 9,
+docs/DECISIONS_R.md R-014, docs/assets/efsearch_curve.png), not guessed: Recall@5 gains flatten
+sharply past this point (0.652 at 64 vs. 0.656 at 256 — within A1's ~0.2-0.4pp noise floor) while
+p50 latency keeps climbing roughly linearly with efSearch, so 64 is the knee of the curve — 128/256
+buy negligible, likely-noise recall for real added cost, and this project's 200ms end-to-end budget
+means every stage's slack matters even when a single stage's own cost looks tiny in isolation.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ import numpy as np
 
 DEFAULT_M = 32
 DEFAULT_EF_CONSTRUCTION = 200
-DEFAULT_EF_SEARCH = 64  # placeholder — Phase 3 replaces this with a curve-chosen value
+DEFAULT_EF_SEARCH = 64  # curve-chosen, docs/DECISIONS_R.md R-014 — not a guess
 
 
 class DenseIndex:
@@ -61,6 +64,12 @@ class DenseIndex:
 
     def __len__(self) -> int:
         return len(self._chunk_ids)
+
+    def set_ef_search(self, ef_search: int) -> None:
+        """`efSearch` only controls search-time graph traversal depth, not the HNSW graph itself —
+        safe to change on an already-built index without rebuilding (docs/BUILD_PLAN.md P3 task 9's
+        efSearch sweep relies on this to avoid a full re-embed per sweep point)."""
+        self._index.hnsw.efSearch = ef_search  # type: ignore[attr-defined]
 
     def save(self, path: str | Path) -> None:
         """AGENT_BUILD_SPEC.md §5.3: build offline, download-and-mmap at boot, never rebuild at
