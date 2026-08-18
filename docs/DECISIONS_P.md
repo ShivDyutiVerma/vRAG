@@ -286,6 +286,22 @@ tradeoff, not an accident. `docs/RISKS.md` R-R19 closed as resolved. Re-sweep MA
 at TAU=0.8835 flagged as follow-up work, not done today (needs R's index locally, which I don't
 have — R's sweep script and calibration set are reusable for this without new data collection).
 
+**Update 2026-08-18 (same day):** R completed exactly the follow-up this ADR flagged, same day —
+`docs/DECISIONS_R.md` R-017. `MARGIN=0.05` did not carry over to the new `TAU=0.8835`: verified
+live it caused 88.0% false-refusal, not the 19.3% this ADR's design target states, because
+in-domain top1-vs-top5 gaps are naturally tiny at this operating point. A fine sweep confirmed no
+useful non-zero `MARGIN` exists at this `TAU` on this corpus (even `MARGIN=0.01` alone → 28.7%).
+Set `MARGIN=0.0`, verified live (2/3 previously-blocked test queries now answer correctly, 1/3
+still correctly abstains via a legitimate `TAU` check). Worth recording plainly: this was a real
+bug in what I shipped, not a hypothetical — G3 would have wrongly refused roughly 9 in 10 real
+in-domain questions in production between this ADR's commit and R's fix, a much worse outcome than
+the 19.3% the chosen operating point was supposed to deliver. Caught because `g3_confidence.py` is
+joint-owned and R re-verified the shipped result against real data rather than trusting the design
+target — exactly what joint ownership is for. Merged into `workstream-p` clean, no conflicts.
+84/84 tests green after merge (R split one test into two: one confirming `MARGIN=0.0`'s current
+no-op behavior at this operating point, one confirming the margin mechanism itself still works via
+`monkeypatch` for any future recalibration).
+
 ## P-016 — Circuit breaker for Track B: only "fair-chance" outcomes move it, not every timeout
 
 **Date:** 2026-08-18 · **Status:** Accepted

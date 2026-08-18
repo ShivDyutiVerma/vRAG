@@ -68,24 +68,26 @@ underlying rate — stated plainly rather than overclaiming, and worth reporting
 - [x] Every request writes a trace with per-stage ms timings
 - [x] All five guardrail layers (G1–G5) implemented, unit-tested, and — for G4 — now verified
       against a real generated answer, not just synthetic test cases
-- [x] G3 calibrated against real data (300 queries, R's sweep): `TAU=0.8835`, the balanced
-      operating point the user chose after the data showed EVAL_PROTOCOL.md's two targets can't
-      both be hit on this corpus (P-015). `MARGIN=0.05` still uncalibrated at this TAU (follow-up).
+- [x] G3 fully calibrated against real data (300 queries, R's sweep): `TAU=0.8835`, the balanced
+      operating point the user chose (P-015); `MARGIN=0.0`, fixed same day by R (R-017) after
+      live-verifying my shipped `MARGIN=0.05` caused 88% false-refusal at this TAU, not the
+      intended 19.3% — a real bug, caught by the joint-ownership cross-check on this file working
+      exactly as intended.
 - [x] Track B switched to streaming with stall detection (P-017) — mitigates (does not fix) a
       newly-found, high-rate Sarvam reliability bug (P-R20). Client-facing token-by-token display
       is a separate, still-undone piece (design tension with the G4 gate needing complete output).
 
 ## What works right now (verified, not assumed)
 
-- Fourth same-day merge from `origin/main` (R's A4/G3-calibration/efSearch work): clean
-  fast-forward both directions (`workstream-p` -> `main` and back), tests green
+- Fifth same-day merge from `origin/main` (R's A4/G3-calibration/efSearch work, then R's MARGIN
+  fix R-017): clean merges throughout, tests green
 - **Track B end-to-end, for real:** `POST`/`WS` request → real Sarvam call → structured JSON
   (`reasoning`, `answer`, `cited_chunk_ids_csv`) → parsed → G4-checked → accepted →
   `AnswerResponse(track="generative", status="answered", ...)`. Directly observed, repeatedly,
   against the live API — not mocked, not simulated ✅
-- **G3 calibrated, applied, live-verified:** `TAU=0.8835` (P-015), the balanced point the user
-  chose from R's real 300-query sweep. Stub fallback path (used in CI/fresh clones) confirmed to
-  still clear the new TAU ✅
+- **G3 fully calibrated, applied, live-verified:** `TAU=0.8835` (P-015) + `MARGIN=0.0` (R-017,
+  fixing a real bug in my shipped `MARGIN=0.05` that caused 88% false-refusal at this TAU). Stub
+  fallback path (used in CI/fresh clones) confirmed to still clear the new TAU ✅
 - **Circuit breaker built, wired, live-verified:** `src/vrag/generation/circuit_breaker.py`
   (P-016) — closed/open/half-open state machine, module-level singleton since `GenerateStage` is
   built fresh per request, only "fair-chance" (>=2.0s) outcomes move it. Ran the real pipeline
@@ -104,9 +106,8 @@ underlying rate — stated plainly rather than overclaiming, and worth reporting
   `src/vrag/generation/sarvam_llm.py` (P-017) — SSE consumption, 20-consecutive-whitespace-chunk
   stall abort, wired into `generate()`'s existing repair-retry loop. Live: 2/3 test runs stalled on
   both attempts, each caught in ~2.2-2.6s (vs. 4-60s+ before); Track A covered every failure ✅
-- `pytest` (my scope): 83/83 passing (77 pre-existing + 6 new streaming/stall tests) throughout
-  all of today's changes. `ruff check .` (repo-wide, incl. R's files) and `mypy` on changed files:
-  clean ✅
+- `pytest` (my scope): 84/84 passing after merging R's MARGIN fix (R-017). `ruff check .`
+  (repo-wide, incl. R's files) and `mypy` on my scope's modules: clean ✅
 
 ## What is stubbed / faked / TODO
 
@@ -126,11 +127,10 @@ underlying rate — stated plainly rather than overclaiming, and worth reporting
   realistic 5-chunk context) — today's fix bounds the *cost* of this failure, it does not fix the
   underlying rate. Worth reporting to Sarvam with the reproduction case.
 - No `search_corpus` tool for Track B.
-- G3's `TAU` is now calibrated (P-015, `TAU=0.8835`); `MARGIN` is not — carried over unchanged,
-  never independently swept at the new TAU. G4's threshold (`MIN_OVERLAP_RATIO=0.15`) is still an
-  uncalibrated placeholder — today's testing exercised it against a real generated answer and it
-  behaved sensibly (correctly failed a wrong-language answer, correctly passed a fixed one), but
-  that's not the same as a calibration sweep.
+- G3's `TAU`/`MARGIN` are both now calibrated (P-015/R-017). G4's threshold
+  (`MIN_OVERLAP_RATIO=0.15`) is still an uncalibrated placeholder — today's testing exercised it
+  against a real generated answer and it behaved sensibly (correctly failed a wrong-language
+  answer, correctly passed a fixed one), but that's not the same as a calibration sweep.
 - Retry policy (`tenacity`) tested correct in isolation, not attached to a live stage.
 - Real browser mic click-through — still not done. Genuinely just needs a human with a phone.
 - efSearch curve, A4/A5 ablations — Workstream R's queue (A4 next per their side).
@@ -150,8 +150,5 @@ underlying rate — stated plainly rather than overclaiming, and worth reporting
    its own design tension: G4's groundedness check needs the *complete* answer + citations before
    it's safe to show anything, so this needs either a redesign (e.g. an incremental/best-effort G4
    check) or accepting a "commit point" partway through the stream. Not scoped yet.
-3. Re-sweep G3's `MARGIN` independently at the new `TAU=0.8835` (P-015) — R's sweep held MARGIN=0
-   while varying TAU; needs R's index locally, which this machine doesn't have. Either run it on
-   R's machine or ask R to re-run `scripts/eval_g3_calibration.py`'s margin sweep at this TAU.
-4. Check `docs/PROGRESS_R.md` for R's latest.
-5. Click through the real mic UI on a phone. Still. Genuinely just do this one.
+3. Check `docs/PROGRESS_R.md` for R's latest.
+4. Click through the real mic UI on a phone. Still. Genuinely just do this one.
