@@ -2,8 +2,8 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-18 (Day 2, session 05 — same-day continuation)
-**Current phase:** P4/P5 — Harness Hardening + Guardrails, Track B working + circuit-breaker-protected
+**Last updated:** 2026-08-18 (Day 2, session 06 — same-day continuation)
+**Current phase:** P4/P5 — Harness Hardening + Guardrails, Track B streaming + stall-protected
 
 ## Where we are, in one paragraph
 
@@ -27,6 +27,27 @@ P95 TTFT) toward the breaker, so ordinary two-track budget shedding never falsel
 outage. Verified live against the real Sarvam API with a generous budget: Track B succeeded,
 breaker recorded success, stayed `CLOSED`.
 
+Fifth same-day session: picked up real token streaming for Track B (P-017), the item flagged as
+"the actual unlock." Before writing client-facing streaming code, probed the live API with the
+real schema/prompt first — found this reshaped the whole task. A realistic 5-chunk context (vs.
+the earlier 1-2 chunk probes) exposed two real Sarvam-side bugs, not one: (1) our own schema's
+unconstrained `reasoning` field can eat the whole token budget before `answer` is ever reached —
+`reasoning_effort: null` doesn't touch this, it only disables a *different*, hidden CoT mechanism;
+fixed with an explicit "keep it to one sentence" prompt instruction, verified to cut latency on
+success from ~2.2-2.7s to ~1.0-1.2s. (2) A second, more consequential bug: even after fixing (1),
+the model sometimes completes `reasoning` and `answer` correctly, then fails to continue to the
+final field and close the JSON — padding whitespace toward `max_tokens` instead. This is the same
+*symptom* as the already-documented P-R15 array-field bug but a *distinct* cause (confirmed:
+`cited_chunk_ids_csv` has been a plain string since P-013, and the bug still happens) — P-R15's
+original fix addressed A cause, not THE cause. Switched to streaming specifically to catch this
+fast: track consecutive whitespace/empty content deltas, abort after 20 in a row (evidence-based
+threshold — legitimate JSON formatting whitespace never exceeded 2 in any successful run observed)
+instead of waiting out the full `max_tokens` budget. Live-verified: 2 of 3 test runs stalled on
+*both* attempts (a genuinely high rate, not a rare edge case) but were each caught and handled in
+~2.2-2.6s instead of the 4-60s+ this would have taken before — and Track A correctly covered every
+failure, every time. This is a mitigation (bounds the cost of failure), not a fix for the
+underlying rate — stated plainly rather than overclaiming, and worth reporting to Sarvam.
+
 ## Phase exit criteria — P4/P5
 
 - [x] Every stage typed with Pydantic in/out
@@ -47,21 +68,26 @@ breaker recorded success, stayed `CLOSED`.
 - [x] Every request writes a trace with per-stage ms timings
 - [x] All five guardrail layers (G1–G5) implemented, unit-tested, and — for G4 — now verified
       against a real generated answer, not just synthetic test cases
-- [x] G3 calibrated against real data (300 queries, R's sweep): `TAU=0.8835`, the balanced
-      operating point the user chose after the data showed EVAL_PROTOCOL.md's two targets can't
-      both be hit on this corpus (P-015). `MARGIN=0.05` still uncalibrated at this TAU (follow-up).
+- [x] G3 fully calibrated against real data (300 queries, R's sweep): `TAU=0.8835`, the balanced
+      operating point the user chose (P-015); `MARGIN=0.0`, fixed same day by R (R-017) after
+      live-verifying my shipped `MARGIN=0.05` caused 88% false-refusal at this TAU, not the
+      intended 19.3% — a real bug, caught by the joint-ownership cross-check on this file working
+      exactly as intended.
+- [x] Track B switched to streaming with stall detection (P-017) — mitigates (does not fix) a
+      newly-found, high-rate Sarvam reliability bug (P-R20). Client-facing token-by-token display
+      is a separate, still-undone piece (design tension with the G4 gate needing complete output).
 
 ## What works right now (verified, not assumed)
 
-- Fourth same-day merge from `origin/main` (R's A4/G3-calibration/efSearch work): clean
-  fast-forward both directions (`workstream-p` -> `main` and back), tests green
+- Fifth same-day merge from `origin/main` (R's A4/G3-calibration/efSearch work, then R's MARGIN
+  fix R-017): clean merges throughout, tests green
 - **Track B end-to-end, for real:** `POST`/`WS` request → real Sarvam call → structured JSON
   (`reasoning`, `answer`, `cited_chunk_ids_csv`) → parsed → G4-checked → accepted →
   `AnswerResponse(track="generative", status="answered", ...)`. Directly observed, repeatedly,
   against the live API — not mocked, not simulated ✅
-- **G3 calibrated, applied, live-verified:** `TAU=0.8835` (P-015), the balanced point the user
-  chose from R's real 300-query sweep. Stub fallback path (used in CI/fresh clones) confirmed to
-  still clear the new TAU ✅
+- **G3 fully calibrated, applied, live-verified:** `TAU=0.8835` (P-015) + `MARGIN=0.0` (R-017,
+  fixing a real bug in my shipped `MARGIN=0.05` that caused 88% false-refusal at this TAU). Stub
+  fallback path (used in CI/fresh clones) confirmed to still clear the new TAU ✅
 - **Circuit breaker built, wired, live-verified:** `src/vrag/generation/circuit_breaker.py`
   (P-016) — closed/open/half-open state machine, module-level singleton since `GenerateStage` is
   built fresh per request, only "fair-chance" (>=2.0s) outcomes move it. Ran the real pipeline
@@ -76,21 +102,35 @@ breaker recorded success, stayed `CLOSED`.
   (wrong-language) one before the prompt fix ✅
 - Real provider latency data for ADR-003 recorded in `docs/DECISIONS_P.md` P-012 (both the outage
   numbers and the recovery numbers — P50 chat TTFT 452ms once healthy) ✅
-- `pytest` (my scope): 77/77 passing (62 pre-existing + 15 new circuit-breaker tests) throughout
-  all of today's changes. `ruff check .` (repo-wide, incl. R's files) and `mypy` on changed files:
-  clean ✅
+- **Track B streaming + stall detection, live-verified:** `_call_once_streaming` in
+  `src/vrag/generation/sarvam_llm.py` (P-017) — SSE consumption, 20-consecutive-whitespace-chunk
+  stall abort, wired into `generate()`'s existing repair-retry loop. Live: 2/3 test runs stalled on
+  both attempts, each caught in ~2.2-2.6s (vs. 4-60s+ before); Track A covered every failure ✅
+- `pytest` (my scope): 84/84 passing after merging R's MARGIN fix (R-017). `ruff check .`
+  (repo-wide, incl. R's files) and `mypy` on my scope's modules: clean ✅
 
 ## What is stubbed / faked / TODO
 
-- No real token streaming for Track B — non-streaming waits for the full ~500-token structured
-  response, which is why it rarely clears any realistic budget even though raw TTFT (452ms P50)
-  is much more reasonable. Documented as an accepted, deliberate gap (P-014), not hidden.
+- Server-side streaming now built for Track B (P-017: `stream: true` + stall detection), but this
+  is NOT client-facing token-by-token display — the WS `/voice` endpoint still buffers, validates
+  via G4, and responds once, same external contract as before. Real reason: G4's groundedness
+  check needs the *complete* answer + citations before it's safe to show anything, so streaming
+  partial text live to the client has its own separate design tension with the guardrail gate —
+  not solved today, flagged as a distinct follow-up. What streaming *did* unlock today: failures
+  are now detected in ~a few hundred ms instead of waiting out the full non-streaming completion
+  (which could take 4-60s+ to fail). Full non-streaming completion time itself (~1.4s-15s+ on
+  success) is unchanged by this — still an accepted, deliberate gap (P-014).
+- **A second, more consequential Sarvam reliability bug found this session (P-R20):** distinct
+  from P-R15's array-field bug, the model sometimes completes `reasoning`+`answer` correctly then
+  fails to continue to the final schema field and close the JSON object, padding whitespace
+  instead. Live-observed rate is concerning (2/3 test runs stalled on both attempts under a
+  realistic 5-chunk context) — today's fix bounds the *cost* of this failure, it does not fix the
+  underlying rate. Worth reporting to Sarvam with the reproduction case.
 - No `search_corpus` tool for Track B.
-- G3's `TAU` is now calibrated (P-015, `TAU=0.8835`); `MARGIN` is not — carried over unchanged,
-  never independently swept at the new TAU. G4's threshold (`MIN_OVERLAP_RATIO=0.15`) is still an
-  uncalibrated placeholder — today's testing exercised it against a real generated answer and it
-  behaved sensibly (correctly failed a wrong-language answer, correctly passed a fixed one), but
-  that's not the same as a calibration sweep.
+- G3's `TAU`/`MARGIN` are both now calibrated (P-015/R-017). G4's threshold
+  (`MIN_OVERLAP_RATIO=0.15`) is still an uncalibrated placeholder — today's testing exercised it
+  against a real generated answer and it behaved sensibly (correctly failed a wrong-language
+  answer, correctly passed a fixed one), but that's not the same as a calibration sweep.
 - Retry policy (`tenacity`) tested correct in isolation, not attached to a live stage.
 - Real browser mic click-through — still not done. Genuinely just needs a human with a phone.
 - efSearch curve, A4/A5 ablations — Workstream R's queue (A4 next per their side).
@@ -102,14 +142,13 @@ breaker recorded success, stayed `CLOSED`.
 
 ## Next session should start by
 
-1. Re-sweep G3's `MARGIN` independently at the new `TAU=0.8835` (P-015) — R's sweep held MARGIN=0
-   while varying TAU; needs R's index locally, which this machine doesn't have. Either run it on
-   R's machine or ask R to re-run `scripts/eval_g3_calibration.py`'s margin sweep at this TAU.
-2. Consider whether real token streaming for Track B is worth the time investment before Day 3's
-   scheduled end, given it's the actual unlock for Track B mattering in practice — currently it's
-   correct but rarely fires under a real (small) budget, and the circuit breaker's own
-   `MIN_FAIR_TIMEOUT_S` gate means most default-budget attempts don't produce a health signal
-   either way today (see P-016) — streaming would change that by shrinking real completion time
-   toward the budget instead of past it.
+1. Report the P-R20 stall pattern to Sarvam (reproduction: 5-chunk context, `strict: true`,
+   3-field all-string schema, model completes 2/3 fields then pads whitespace) — provider-side bug,
+   not ours to fix, but worth flagging with real repro steps now that we have them.
+2. Consider real client-facing token-by-token display for Track B (the WS `/voice` endpoint
+   streaming partial text as it arrives) — separate from today's server-side streaming, and has
+   its own design tension: G4's groundedness check needs the *complete* answer + citations before
+   it's safe to show anything, so this needs either a redesign (e.g. an incremental/best-effort G4
+   check) or accepting a "commit point" partway through the stream. Not scoped yet.
 3. Check `docs/PROGRESS_R.md` for R's latest.
 4. Click through the real mic UI on a phone. Still. Genuinely just do this one.
