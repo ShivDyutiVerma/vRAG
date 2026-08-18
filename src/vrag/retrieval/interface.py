@@ -8,8 +8,10 @@ implementation.
 Real path: loads the persisted `metadata_aware` index (docs/DECISIONS_R.md R-004 — the A1 ablation
 winner, chosen as "cheapest among five statistically-tied strategies") from `data/index/`, built
 offline by `scripts/build_index.py --save-dir` (AGENT_BUILD_SPEC.md §5.3 — never build the index at
-container start). Delegates to `HybridRetriever` (src/vrag/retrieval/hybrid.py), which is what
-actually does dense∥sparse concurrent search + RRF fusion.
+container start). Delegates to `HybridRetriever` (src/vrag/retrieval/hybrid.py) in `retrieval_mode=
+"dense"` — the A3 ablation winner (docs/DECISIONS_R.md R-010) — not the originally-assumed hybrid
+RRF path; see that ADR and the module docstring in hybrid.py for the measured reason and its
+consequences for RetrievedChunk.score's scale.
 
 Fallback: if the persisted index isn't present on disk (e.g. a fresh clone, or CI, where the
 multi-GB corpus + model haven't been downloaded), falls back to the Day-1 stub instead of raising —
@@ -92,7 +94,12 @@ def _get_real_retriever() -> HybridRetriever | None:
 
     dense, sparse, chunk_lookup = load_built_index(_INDEX_DIR)
     _retriever = HybridRetriever(
-        dense=dense, sparse=sparse, embedder=E5Embedder(), chunk_lookup=chunk_lookup
+        dense=dense,
+        sparse=sparse,
+        embedder=E5Embedder(),
+        chunk_lookup=chunk_lookup,
+        # A3 winner, docs/DECISIONS_R.md R-010 — explicit, not relying on the default
+        retrieval_mode="dense",
     )
     return _retriever
 

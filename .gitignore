@@ -35,6 +35,9 @@ traces.jsonl
 scripts/*.out.log
 scripts/*.err.log
 
+# --- downloaded model caches (re-fetched on first use, not source) ---
+.flashrank_cache/
+
 # --- os / editor cruft ---
 .DS_Store
 .vscode/

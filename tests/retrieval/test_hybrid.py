@@ -48,8 +48,14 @@ def _lookup() -> dict[str, Chunk]:
 
 @pytest.mark.asyncio
 async def test_dense_and_sparse_run_concurrently_not_sequentially() -> None:
+    # retrieval_mode="hybrid" explicitly -- "dense" (the shipped default, docs/DECISIONS_R.md
+    # R-010) never calls sparse at all, so it wouldn't exercise this concurrency guarantee.
     retriever = HybridRetriever(
-        dense=_SlowDense(), sparse=_SlowSparse(), embedder=_FakeEmbedder(), chunk_lookup=_lookup()
+        dense=_SlowDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_lookup(),
+        retrieval_mode="hybrid",
     )
     t0 = time.perf_counter()
     await retriever.retrieve("भारत की राजधानी क्या है")
@@ -87,3 +93,65 @@ async def test_internal_failure_returns_empty_list_never_raises() -> None:
         chunk_lookup=_lookup(),
     )
     assert await retriever.retrieve("query", k=5) == []
+
+
+@pytest.mark.asyncio
+async def test_default_mode_is_dense_and_never_calls_sparse() -> None:
+    class _FailingSparse:
+        def search(self, query: str, k: int) -> list[tuple[str, float]]:
+            raise AssertionError("sparse.search should never be called in dense mode")
+
+    retriever = HybridRetriever(
+        dense=_SlowDense(),
+        sparse=_FailingSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_lookup(),
+    )
+    results = await retriever.retrieve("query", k=5)
+    assert len(results) == 1
+    assert results[0].chunk_id == "a"
+
+
+@pytest.mark.asyncio
+async def test_sparse_mode_never_calls_dense() -> None:
+    class _FailingDense:
+        def search(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+            raise AssertionError("dense.search should never be called in sparse mode")
+
+    retriever = HybridRetriever(
+        dense=_FailingDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_lookup(),
+        retrieval_mode="sparse",
+    )
+    results = await retriever.retrieve("query", k=5)
+    assert len(results) == 1
+    assert results[0].chunk_id == "a"
+
+
+def test_unknown_retrieval_mode_raises_at_construction() -> None:
+    with pytest.raises(ValueError, match="unknown retrieval_mode"):
+        HybridRetriever(
+            dense=_SlowDense(),
+            sparse=_SlowSparse(),
+            embedder=_FakeEmbedder(),
+            chunk_lookup=_lookup(),
+            retrieval_mode="bogus",
+        )
+
+
+@pytest.mark.asyncio
+async def test_score_is_clamped_into_zero_one_range() -> None:
+    class _OutOfRangeDense:
+        def search(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+            return [("a", 1.5)]
+
+    retriever = HybridRetriever(
+        dense=_OutOfRangeDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_lookup(),
+    )
+    results = await retriever.retrieve("query", k=5)
+    assert results[0].score == 1.0

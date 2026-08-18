@@ -216,8 +216,74 @@ real result, not silently dropped.
 
 ### A4 — Reranking (none / FlashRank / cross-encoder)
 
-_Not run yet. Will run against the A3 winner (dense-only). Will also include the efSearch
-recall-vs-latency curve (`docs/assets/efsearch_curve.png`)._
+**Setup:** chunking/embedder/retrieval mode = `metadata_aware`/`multilingual-e5-small`/dense-only
+(A1-A3 winners) held fixed. Dense search fetches `candidate_k=50` per query; the reranker narrows
+to `top_k=10`, which is what's scored. `none` scores dense's native top-10 directly (identical setup
+to A3's dense row). `cross-encoder` ran on the full 500-query held-out set (fast enough once
+diagnosed — see below). `flashrank` ran on a 30-query sample only — its own per-query latency
+already disqualifies it before quality is even a question (see Analysis).
+
+| Reranker | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 | p50 rerank latency | n queries |
+|---|---|---|---|---|---|---|---|
+| **none** (A3 dense baseline) | **0.322** | **0.652** | **0.748** | **0.4523** | **0.5163** | 0ms | 500 |
+| flashrank (`ms-marco-MultiBERT-L-12`) | 0.000 | 0.100 | 0.200 | 0.0351 | 0.0724 | **12,710ms** | 30 |
+| cross-encoder (`ms-marco-MiniLM-L6-v2`) | 0.048 | 0.228 | 0.336 | 0.1223 | 0.1681 | 150ms | 500 |
+
+### Analysis — both rerankers make quality dramatically *worse*, verified as real, not a bug
+
+This is a far larger and more surprising effect than A3's dense-vs-hybrid gap, so it was checked
+hard before being written up as a finding rather than dismissed as a wiring bug. Query-level
+diagnostics (not just aggregate numbers) on real held-out queries:
+
+- **FlashRank's scores are saturated at ~1.000 for every candidate, on Hindi text, regardless of
+  relevance.** Checked three queries where dense's #1 hit (out of 50) was the correct passage: after
+  reranking, all 10 output scores read `1.0, 1.0, 1.0, ..., 1.0` and the correct passage was pushed
+  completely out of the top-10 in all three cases. Isolated further to confirm this is Hindi-specific,
+  not a length or wiring artifact: the same model cleanly discriminates relevant-vs-irrelevant on
+  short **English** text (Paris-related candidates scored 0.999 vs. 0.002-0.006 for unrelated ones)
+  but produces the same ~0.999-for-everything saturation on short, unambiguous **Hindi** text (a
+  clearly-relevant "Paris is the capital of France" candidate scored *lower* than an unrelated
+  "banana" candidate). `ms-marco-MultiBERT-L-12`, despite "Multi" in its name, does not provide a
+  usable relevance signal for Hindi on this stack — the model, not the wiring, is the cause.
+- **FlashRank is also unusably slow for a 200ms-budget hot path — 12.7 SECONDS per query,
+  independently disqualifying.** Traced to `rerankers`' FlashRank backend running on CPU-only
+  `onnxruntime` (no `onnxruntime-gpu` installed) with a 12-layer multilingual BERT on real
+  corpus-length text (~300-460 chars/candidate × 50 candidates) — ~500x `docs/TECH_MENU.md` §S9's
+  own "sub-20ms for 50 candidates" estimate, which was very likely benchmarked on the smaller
+  English-only variant on short candidates, not this model/language/text-length combination. This
+  matters beyond the dev machine too: `AGENT_BUILD_SPEC.md` §5.3's deploy target is CPU-only, so this
+  isn't a "buy a bigger GPU" problem — the multilingual FlashRank model is not viable on this
+  project's actual deployment shape either way.
+- **The cross-encoder is fast (150ms/50 candidates, GPU) but equally uninformative on Hindi, for a
+  different, verified reason: it's an English-only model.** `cross-encoder/ms-marco-MiniLM-L6-v2`
+  was never trained on Hindi. Same short-Hindi-text isolation test as above: given one obviously
+  correct answer ("पेरिस फ्रांस की राजधानी है") and clearly unrelated candidates (bananas, the Great
+  Wall of China), it ranked the *correct* answer **last**, below both irrelevant candidates, with all
+  four scores clustered tightly (8.32-8.75) — no real discrimination, consistent with genuinely
+  out-of-distribution input for an English-trained model.
+- **Neither failure is a candidate-pool or wiring problem.** Both rerankers received the correct
+  `(chunk_id, text)` pairs from the same dense candidate pool that scores 0.652 Recall@5 on its own;
+  `score_hits`'s dedup path (R-006) is identical across all three rows. The regression is entirely
+  inside what each reranker's scoring function does with Hindi input.
+
+### Decision — shipping no reranker (`docs/DECISIONS_R.md` R-012)
+
+**Status: Accepted.** `none` wins A4 outright — not merely by default, but because both tested
+alternatives were measured to actively destroy retrieval quality on this corpus, for two distinct,
+verified root causes (score saturation vs. English-only training). `HybridRetriever` keeps
+`NoOpReranker` as its production default; `FlashRankReranker`/`CrossEncoderReranker` stay implemented
+(useful if a genuinely multilingual/Hindi-capable reranker is swapped in later) but neither is wired
+into the request path. Matches `docs/TECH_MENU.md` §S9's own framing exactly: "None — SHIP as
+default — prove rerank earns its ms." Here, rerank not only failed to earn its ms, it actively cost
+quality — a stronger and cleaner result than the "no measurable difference" outcome the ablation was
+designed to also accept as valid.
+
+### What's not done yet
+
+- efSearch recall-vs-latency curve (`docs/assets/efsearch_curve.png`) — Phase 3 task, not started.
+- A genuinely multilingual/Hindi-trained reranker (e.g. `BAAI/bge-reranker-v2-m3`, flagged
+  BENCH-ONLY in `docs/TECH_MENU.md` §S9 for latency, not language fit) was not tested — out of scope
+  for A4's three named candidates, but worth a footnote for anyone revisiting this decision later.
 
 ## §4 — Generation (A5)
 

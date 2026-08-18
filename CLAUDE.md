@@ -163,7 +163,12 @@ only at the integration syncs listed in `docs/TEAM_SPLIT.md` §5, by whoever is 
 - Request-path functions carry `# HOTPATH` — no network, no disk, no cold starts
 - All timing uses `time.perf_counter_ns()`; convert to ms only at serialisation
 - E5 embeddings **require** `"query: "` / `"passage: "` prefixes — there is a test; do not remove it
-- Dense and sparse retrieval run concurrently via `asyncio.gather`
+- Retrieval default is **dense-only**, not hybrid — the A3 ablation measured dense-only beating
+  hybrid+RRF on this corpus (`docs/DECISIONS_R.md` R-010), a deliberate, data-driven deviation from
+  this file's original assumption and from `AGENT_BUILD_SPEC.md` line 625's assumed exit criterion,
+  confirmed with the user before shipping. `HybridRetriever` (`src/vrag/retrieval/hybrid.py`) still
+  implements and tests a `retrieval_mode="hybrid"` path — when it runs, dense and sparse MUST run
+  concurrently via `asyncio.gather`, never sequentially
 - Models **and** the JSON schema are compiled/warmed at boot (schema compilation is 50–200ms on first use, then cached)
 - In the structured-output schema, the reasoning field comes **before** the answer field
 - ONNX int8 is for **CPU only** — on GPU it is slower than FP32; use FP16 there

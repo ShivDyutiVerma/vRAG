@@ -66,3 +66,32 @@ class FlashRankReranker:
         texts = [text for _chunk_id, text in candidates]
         result = self._ranker_instance().rank(query=query, docs=texts, doc_ids=chunk_ids)
         return [(r.doc_id, float(r.score)) for r in result.top_k(k)]
+
+
+class CrossEncoderReranker:
+    """A4's third candidate — TECH_MENU.md S9's `cross-encoder/ms-marco-MiniLM-L6-v2` (~1,800
+    docs/sec, nDCG@10 74.30 on TREC DL19). Loaded via `rerankers`' `model_type="cross-encoder"`
+    (routes to its TransformerRanker backend), same lazy-load pattern as FlashRankReranker."""
+
+    name = "cross-encoder"
+
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L6-v2") -> None:
+        self._model_name = model_name
+        self._ranker: Any = None
+
+    def _ranker_instance(self) -> Any:
+        if self._ranker is None:
+            from rerankers import Reranker as RerankersReranker
+
+            self._ranker = RerankersReranker(self._model_name, model_type="cross-encoder")
+        return self._ranker
+
+    def rerank(
+        self, query: str, candidates: list[tuple[str, str]], k: int
+    ) -> list[tuple[str, float]]:
+        if not candidates:
+            return []
+        chunk_ids = [chunk_id for chunk_id, _text in candidates]
+        texts = [text for _chunk_id, text in candidates]
+        result = self._ranker_instance().rank(query=query, docs=texts, doc_ids=chunk_ids)
+        return [(r.doc_id, float(r.score)) for r in result.top_k(k)]

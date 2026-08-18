@@ -38,6 +38,7 @@ retrieval = [
   "transformers>=5.15",
   "sentence-transformers>=5.7",
   "rerankers>=0.10",
+  "flashrank>=0.2",  # rerankers' FlashRank backend needs this installed separately (R-011)
 ]
 # Workstream P: generation, guardrails beyond regex/lexical, telemetry analysis extras.
 # Empty for now — G1/G2/G5 are pure-stdlib regex/lexical (docs/TECH_MENU.md §S3), no heavy deps

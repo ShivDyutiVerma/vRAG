@@ -301,10 +301,100 @@ Dataset-specific explanation, not a general anti-hybrid claim: BM25 depends on l
 between query and passage, which is weakened by this corpus's machine-translated Hindi text
 (inconsistent term translation, transliterated acronyms — `docs/DECISIONS_R.md` R-003) in exactly the
 way dense embeddings' semantic matching is not.
-**Consequences:** `HybridRetriever`'s RRF fusion path stays implemented (harmless, unused in the
-default config) but `retrieve()`'s production wiring should call dense search only going forward —
-tracked as a follow-up code change, not yet applied to `src/vrag/retrieval/interface.py`. A candidate
-mitigation (fuse over a larger per-lane pool, e.g. top-50, before truncating to top-10) was
-identified but deliberately not tested in this run — it changes candidate-pool size, a different
-ablation axis than retrieval mode, and would void this run under `CLAUDE.md`'s "never change two
-variables in one experiment" rule. Logged as a follow-up idea in `docs/RISKS.md`.
+**Consequences:** `HybridRetriever`'s RRF fusion path stays implemented and tested (`retrieval_mode=
+"hybrid"`), unused in the default config. A candidate mitigation (fuse over a larger per-lane pool,
+e.g. top-50, before truncating to top-10) was identified but deliberately not tested in this run —
+it changes candidate-pool size, a different ablation axis than retrieval mode, and would void this
+run under `CLAUDE.md`'s "never change two variables in one experiment" rule. Logged as a follow-up
+idea in `docs/RISKS.md`.
+
+**Update, 2026-08-18 — production wiring applied, after explicit user confirmation.** This ADR
+initially left the code change as a follow-up, flagging that it deviates from
+`AGENT_BUILD_SPEC.md` line 625's assumed Phase-3 exit criterion ("hybrid beats dense-only on
+Recall@5") and from CLAUDE.md's original "dense and sparse run concurrently" hot-path invariant.
+Given the size and reliability of the measured gap, asked the user directly rather than resolving
+either way unilaterally; confirmed: ship dense-only as the default, keep hybrid mode implemented and
+tested but off by default. Applied: `HybridRetriever` (`src/vrag/retrieval/hybrid.py`) now takes a
+`retrieval_mode` constructor arg (`"dense"` default, `"sparse"`/`"hybrid"` also supported, each
+skipping the search calls the others don't need — dense mode no longer calls BM25 at all);
+`src/vrag/retrieval/interface.py` passes `retrieval_mode="dense"` explicitly; CLAUDE.md's hot-path
+invariant line updated to state the default and point to this ADR.
+
+**Side effect worth flagging for Workstream P:** switching from RRF-fused scores (bounded to roughly
+`0.008-0.033` for a two-list fusion at `k=60`) to raw dense cosine-similarity scores (typically
+`~0.3-0.95` for E5 embeddings) changes `RetrievedChunk.score`'s numeric scale. This matters because
+`src/vrag/guardrails/g3_confidence.py`'s `TAU = 0.35` placeholder is explicitly calibrated against
+"query-document cosine similarity typically runs ~0.30-0.55" (its own docstring) — i.e. G3 was
+already written assuming a cosine-similarity-scale score, which the old hybrid-mode RRF scores could
+structurally never reach (max ~0.033 < 0.35), meaning `top1 < TAU` was true for every real query
+regardless of actual relevance. **Confirmed, not just inferred:** re-ran the local-only `test_api.py`
+failure noted earlier this session ("G3 correctly abstains on real low scores") against the live
+`/ask` endpoint post-switch — it still abstains, but `refusal_reason` moved from what would have been
+a structurally-guaranteed `top1 < TAU` failure to `"Ambiguous match: top result doesn't clearly stand
+out"` (the *margin* check, `top1 - top5 < MARGIN=0.05`) — `top1` now clears `TAU` as the docstring
+intends. Not fixed here (G3 is Workstream P's module, not touched) — flagged in `docs/RISKS.md`
+(P-R15) for P to verify against real G3 calibration; `MARGIN`, not `TAU`, looks like the placeholder
+most worth scrutinizing first now.
+
+## R-011 — New dependency: `flashrank` (rerankers' FlashRank backend, for the A4 rerank ablation)
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** A4 (`docs/TECH_MENU.md` §S9) tests `FlashRankReranker` (`src/vrag/retrieval/rerank.py`),
+which loads via the already-installed `rerankers` library's `model_type="flashrank"` path. Running
+it failed immediately: `rerankers` doesn't vendor FlashRank's own inference code, it's a separate
+optional backend (`pip install "rerankers[flashrank]"`) that pulls in the `flashrank` PyPI package.
+**Decision:** Add `flashrank>=0.2` to `pyproject.toml`'s `retrieval` extra, alongside the already
+existing `rerankers>=0.10`.
+**Rationale:** `flashrank` is exactly what `docs/TECH_MENU.md` §S9 already named as the one viable
+hot-path reranker on CPU-only infra ("sub-20ms for 50 candidates") — this isn't a new capability
+being introduced, just the concrete package `rerankers`' own docs require for the backend already
+planned. Verified via `pip install "rerankers[flashrank]"`: resolves cleanly, all transitive deps
+(`onnxruntime`, `tokenizers`, already-present in the retrieval stack) already satisfied.
+**Consequences:** One more package for R's retrieval extra; zero impact on Workstream P (not in base
+`dependencies`, P never imports `vrag.retrieval.rerank`).
+
+## R-012 — Reranking: shipping `none` — both tested rerankers actively destroy quality on Hindi text
+
+**Date:** 2026-08-18
+**Status:** Accepted
+**Context:** A4 ablation (`docs/TECH_MENU.md` §A row A4 / §S9) — chunking/embedder/retrieval mode
+held at the A1-A3 winners, reranker varied across none/FlashRank/cross-encoder. Full table and
+query-level diagnostics: `docs/EVAL_RESULTS.md` §3. Headline, far larger than any prior ablation
+gap: `none` scores Recall@5=0.652; `flashrank` collapses to 0.100 (n=30 sample); `cross-encoder`
+collapses to 0.228 (n=500). Verified hard before writing this up, given the size of the effect:
+- **FlashRank (`ms-marco-MultiBERT-L-12`) outputs saturate at ~1.000 for every candidate on Hindi
+  text, regardless of relevance** — confirmed on 3 real queries where dense's #1-of-50 hit was
+  correct: all 10 post-rerank scores read `1.0` and the correct passage was pushed out of the
+  top-10 in every case. Isolated to a Hindi-specific model failure, not a bug: the same model
+  cleanly separates relevant/irrelevant **English** text (0.999 vs. 0.002-0.006) but produces the
+  same near-1.0-for-everything pattern on short, unambiguous **Hindi** text (a directly-relevant
+  candidate scored *below* an unrelated "banana" candidate). Also independently disqualifying on
+  latency: 12.7s/query (measured on real corpus-length text) — traced to `rerankers`' FlashRank
+  backend running CPU-only `onnxruntime` (no `onnxruntime-gpu` installed) on a 12-layer multilingual
+  model; ~500x `docs/TECH_MENU.md` §S9's own "sub-20ms" estimate. Not fixable by adding a GPU either
+  — `AGENT_BUILD_SPEC.md` §5.3's deploy target is CPU-only.
+- **Cross-encoder (`ms-marco-MiniLM-L6-v2`) is fast (150ms/50 candidates, GPU) but English-only
+  and equally uninformative on Hindi**, for a different, also-verified reason: same short-Hindi
+  isolation test, given one obviously-correct answer and two clearly-unrelated candidates, it ranked
+  the correct answer **last**, below both irrelevant ones, with all scores clustered tightly
+  (8.32-8.75) — genuine out-of-distribution behaviour for a model never trained on Hindi, not noise
+  in the harness.
+- **Ruled out as a wiring/candidate-pool problem:** both rerankers received the same
+  `(chunk_id, text)` pairs from the identical dense candidate pool that independently scores 0.652
+  Recall@5; `score_hits`'s R-006 dedup path is shared and unchanged across all three A4 rows.
+**Decision:** Ship `none` (`NoOpReranker`) as the production reranker — no change from
+`HybridRetriever`'s existing default. `FlashRankReranker`/`CrossEncoderReranker` stay implemented in
+`src/vrag/retrieval/rerank.py` (useful if a genuinely Hindi-capable reranker is swapped in later) but
+neither is wired into the request path.
+**Rationale:** `docs/TECH_MENU.md` §S9 frames `none` as "SHIP as default — prove rerank earns its
+ms," explicitly treating "no measurable difference" as one valid, expected A4 outcome. What was
+actually found is stronger and cleaner than that baseline case: both tested candidates were measured
+to actively destroy quality, each for an independently verified, model-specific reason (score
+saturation vs. English-only training) rather than a marginal or ambiguous result.
+**Consequences:** No production code changes needed (the default was already `none`). A genuinely
+multilingual/Hindi-capable reranker (e.g. `BAAI/bge-reranker-v2-m3`, TECH_MENU's own BENCH-ONLY tier
+for latency reasons, not language fit) was not tested — out of scope for A4's three named
+candidates, worth a footnote for anyone revisiting rerankers later. `flashrank`'s dependency
+(R-011) stays in `pyproject.toml` since `FlashRankReranker` remains valid, tested code, just unused
+by default.
