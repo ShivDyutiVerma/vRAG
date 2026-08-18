@@ -2,9 +2,10 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-18 (Day 2, session 08 — same-day continuation)
-**Current phase:** P4/P5 done; **critical deployment gap found (R-R21/R4) — live demo has been
-running the Day-0 stub this whole session, real retrieval blocked on a cross-team memory fix**
+**Last updated:** 2026-08-18 (Day 2, session 09 — same-day continuation)
+**Current phase:** P4/P5 done; **live free-tier deploy of real retrieval tried and failed (real
+OOM on first `/ask`, P-020), rolled back cleanly — demo restored to stub-based, working. Next:
+check alternative free hosts with more RAM headroom (user's directive, R4)**
 
 ## Where we are, in one paragraph
 
@@ -90,6 +91,22 @@ random rate as P-017 first characterized it. Verified this predates today's sche
 failure with the old 3-field schema). This means Track B's own "I don't know" branch — exactly
 where a generative answer would matter most — is the case most likely to hit this provider bug.
 The mechanism itself is proven correct; live success is currently gated on Sarvam's reliability.
+
+Eighth same-day session: R finished the memory-fix engineering (R-023, production wiring for the
+lean embedder + SQLite chunk lookup, 727MB measured) and separately measured the corpus-shrink
+lever's real ceiling (R-024: needs an ~83% chunk-count cut to fit, or a much worse embedder —
+neither viable) — escalated both to the user. Applied R-023's 3 specified Dockerfile steps myself,
+found and fixed two real issues neither of us anticipated (a tarball naming mismatch needing
+`--strip-components=1`, and a Python 3.11→3.12 bump for `numpy>=2.5`). Local testing under Docker's
+own 512MB limit looked genuinely promising — 446.8MiB steady-state, real retrieval confirmed
+working. Presented the real tradeoff to the user (try it and roll back vs. wait for more corpus-
+shrink work vs. reconsider the now-much-cheaper paid tier); they chose to try it live. **Real,
+live-verified result: it failed.** `/healthz` stayed healthy but every real `/ask` call OOM-killed
+the process (confirmed via runtime logs — no access-log line before each restart, reproduced 3/3).
+The local test's steady-state measurement didn't capture the *peak* memory during first-load
+initialization, which is the actual constraint. Rolled back immediately via `git revert` (not a
+force-push, so a future ordinary push can't silently undo it), redeployed, verified the demo is
+fully restored (3/3 `/ask` calls succeeding again). See P-020 for the complete record.
 
 ## Phase exit criteria — P4/P5
 
@@ -207,33 +224,41 @@ enough runway before Aug 22.
 
 ## Blockers
 
-- **Real retrieval in production is blocked on R4/R-020's memory fix** — real progress, not
-  stalled: R-021 (SQLite chunk_lookup) + R-022 (torch-free `LiteE5Embedder`, byte-identical output
-  verified) together cut combined RSS 1,539MB → 741MB (-52%, zero quality cost), still 145% of the
-  512MB budget. **User has since given R explicit direction to rule out the paid Render plan for
-  now and keep shrinking for free** — the $25/mo Standard-plan fallback documented earlier this
-  session is de-prioritized per that direction, not something to execute unilaterally without
-  checking first if it still applies as the deadline approaches.
+- **Real retrieval in production is blocked on R4 — now with a real, live-verified negative result,
+  not just a projection.** R's engineering side is genuinely done (R-023: 727MB steady-state,
+  production-wired, zero quality cost) and the corpus-shrink lever's real ceiling is measured and
+  disqualifying (R-024: needs an ~83% chunk cut). I tried deploying it live anyway (user's
+  direction) — real OOM on every `/ask` call, confirmed via runtime logs, not just steady-state
+  RSS exceeding budget. Rolled back cleanly; demo restored (P-020). **User's next directive (given
+  to R's session, R4): check whether a different free host offers more RAM headroom before
+  accepting either a corpus-quality cut or the paid tier** — this is explicitly my domain, not yet
+  started.
 - `GROQ_API_KEY` still empty if a second generation provider is ever wanted for comparison — not
   currently needed since Sarvam is healthy again.
 
 ## Next session should start by
 
-1. **Check whether R's memory fix (corpus resize + lean embedder) has landed** — if so, add the
-   new leaner extras group to the Dockerfile install line, redeploy, and re-verify with a real
-   `/ask` call against the live URL (the same check that found this bug in the first place — never
-   trust "should be deployed" without checking the actual URL again).
-2. R is close (741MB vs. a 512MB budget, R-021/R-022) and the user has directed R to keep shrinking
-   for free rather than pay — respect that unless it's genuinely not going to land in time; check
-   with the user again before reviving the paid-plan fallback, don't execute it unilaterally.
-3. Report P-R20 to Sarvam — now has a much sharper, highly reproducible repro case (P-019: 12/12
+1. **Research alternative free hosting options with more RAM than Render's 512MB** (user's
+   directive via R4) — candidates worth checking: Fly.io, Railway, Hugging Face Spaces (CPU tier,
+   revisit given the original HF Spaces blocker was about Docker SDK paywall, not RAM), others.
+   Need real, current specs (free-tier RAM ceiling, any catches) before proposing a switch, not
+   assumed numbers — same discipline as checking Render's actual pricing earlier this session.
+2. If a better free host exists: plan the migration (Sarvam STT/generation code is host-agnostic,
+   should port cleanly; the real question is whether the retrieval index/embedder artifacts and
+   memory ceiling actually fit there, verified the same way — build, run under the real memory
+   limit, confirm real (non-stub) `/ask` calls survive, not just `/healthz`).
+3. If no better free option exists, the decision reverts to R4's original two remaining options —
+   accept a severe corpus-quality cut, or reconsider the paid tier now that the real number needed
+   is smaller than originally assumed (727MB steady-state, likely more at peak) — check with the
+   user, don't decide either unilaterally.
+5. Report P-R20 to Sarvam — now has a much sharper, highly reproducible repro case (P-019: 12/12
    failures on insufficient-context queries, any chunk count, with or without the extra schema
    field) rather than a vague "sometimes stalls." Worth writing up properly and sending.
-4. Re-test `search_corpus`'s full live escalation chain periodically — the mechanism is proven
+6. Re-test `search_corpus`'s full live escalation chain periodically — the mechanism is proven
    correct, just gated on Sarvam's reliability for insufficient-context completions specifically.
-5. Consider real client-facing token-by-token display for Track B (the WS `/voice` endpoint
+7. Consider real client-facing token-by-token display for Track B (the WS `/voice` endpoint
    streaming partial text as it arrives) — separate from today's server-side streaming, and has
    its own design tension: G4's groundedness check needs the *complete* answer + citations before
    it's safe to show anything, so this needs either a redesign (e.g. an incremental/best-effort G4
    check) or accepting a "commit point" partway through the stream. Not scoped yet.
-6. Click through the real mic UI on a phone. Still. Genuinely just do this one.
+8. Click through the real mic UI on a phone. Still. Genuinely just do this one.
