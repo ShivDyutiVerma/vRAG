@@ -172,6 +172,20 @@ smoke-tested, and run against the same frozen eval set, and none came close. No 
 "switch back" to e5-small since it was never actually replaced — this ran as a genuine ablation
 stage, and the incumbent won on its merits.
 
+### Confirmation pass (A1×A2 cross-check) — reasoned skip, not an oversight
+
+`docs/TECH_MENU.md` §A names a confirmation pass ("top-2 chunkers × top-2 embedders, 4 cross runs")
+to catch chunking/embedder interaction effects. Considered and deliberately not run: `metadata_aware`
+and `passage_native` produce byte-identical chunk text (R-004 — only metadata differs), so a
+genuinely distinct second chunking candidate is `fixed_overlap`, already cross-combined with
+`e5-small` in A1's own table. That leaves only a genuine embedder-side question, and there isn't one
+worth asking here — the second-best embedder (`vyakyarth`) trails `e5-small` by 38 Recall@5 points
+(§2 above), a gap no chunking-strategy choice is remotely likely to close, and each `vyakyarth`
+index rebuild costs ~13 minutes (§2's table), so the two genuinely-new combinations would cost
+~25+ minutes to very likely just reconfirm what's already known. The precondition the confirmation
+pass exists to check — a close call at both stages that a fixed independent-selection approach might
+get wrong — doesn't hold here; A2's gap is an order of magnitude too large.
+
 ## §3 — Retrieval mode + reranking (A3, A4)
 
 ### A3 — Retrieval mode (dense / sparse / hybrid+RRF)

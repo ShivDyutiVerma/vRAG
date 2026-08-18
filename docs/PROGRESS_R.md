@@ -79,6 +79,15 @@ ready for whoever makes the final call.
 - A genuinely Hindi-capable reranker (e.g. `bge-reranker-v2-m3`) was never tried — A4 only tested the
   three TECH_MENU-named candidates, all of which failed for either English-only training or model
   saturation on Hindi
+- `docs/BUILD_PLAN.md` P3 task 10 ("optional but high-value": Sarvam `transcribe` vs `translit`
+  output modes for retrieval quality) — genuinely blocked, not skipped by choice: no `.env`/Sarvam
+  key on this machine (`docs/RISKS.md`'s Day 0-1 blockers note). Considered a transliteration-library
+  proxy instead of real Sarvam output; rejected — a generic library's romanization scheme has no
+  guarantee of matching Sarvam's actual `translit` convention, and reporting a finding based on a
+  possibly-wrong proxy would risk a misleading result, not a real one. Needs either R's own Sarvam
+  key or running this test from Workstream P's machine.
+- A1×A2 confirmation pass — reasoned skip, not run; see `docs/EVAL_RESULTS.md` §2 for why (no genuine
+  embedder-side question exists once A2's 38-point gap is accounted for)
 
 ## Blockers
 
