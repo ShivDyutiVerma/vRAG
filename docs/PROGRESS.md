@@ -28,9 +28,23 @@ honestly, no harness change (user's call). Also found and fixed a real bug in Tr
 handler along the way (`docs/DECISIONS_P.md` P-021) that was silently capping its real success rate
 at 0% — now 63.3% (19/30 real calls).
 
-Current priority: deployment remains parked (R4/R-R21, `docs/RISKS.md`); next up is `t_e2e_voice`
-(the WebSocket voice benchmark — audio assets are ready, the client isn't built yet) or picking up
-whatever's next in `docs/BUILD_PLAN.md` P7 (README, frontend polish, manual QA).
+**Memory work, 2026-08-19 (R-023 through R-030) — the RAM problem may now be solved.** Deep
+component-by-component audits (ADR-006, R-028) found two real, fixable costs: BM25 loading
+unconditionally in dense-only mode (~105MB wasted, fixed in ADR-007) and — the big one — the
+tokenizer costing more RAM than the ONNX model itself (262MB vs. 137MB, R-028). Verified a
+`sentencepiece`-based replacement reproduces 100.0000% exact token IDs on 1,020 real strings
+(R-029), implemented it behind `LiteE5Embedder`'s unchanged interface (R-030), and **production
+RSS is now 493.8MB steady-state / 492.9MB peak — under Render's 512MB free-tier budget for the
+first time**, down from 1,860MB at the start of this work (-73.4%), with retrieval quality
+confirmed unchanged (Recall@1/5/10, MRR@10 match the established baseline to full float
+precision). **Not yet verified in the real target environment** (this is a local measurement;
+P-020 found local-vs-Render can differ for peak-during-load specifically) — a real Docker
+`-m 512m` test or live Render attempt is the honest next step before calling R4 resolved.
+
+Current priority: deployment remains parked by the user's direction, but now has real, favorable
+numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
+`t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)
+or picking up whatever's next in `docs/BUILD_PLAN.md` P7 (README, frontend polish, manual QA).
 
 **Last updated:** 2026-08-17 (Day 1 sync — merging `workstream-p` into `main`, then `main` into `workstream-r`)
 **Current phase:** P0 wrapping up / P1 underway (P is ahead on the walking skeleton; R is ahead on chunking/retrieval code)
