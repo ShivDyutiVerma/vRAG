@@ -3,8 +3,8 @@
 > Mine, edited freely, any time. Never edited by Workstream P.
 
 **Last updated:** 2026-08-18, Session 02
-**Current phase:** P3 exit criteria fully met (ahead of schedule); G3 calibration complete and applied jointly with P (TAU+MARGIN both live and verified)
-**Build status:** 🟢 green — 151/151 tests pass, ruff/mypy clean
+**Current phase:** P3 exit criteria fully met; G3 calibration complete and applied jointly with P; found and partially addressed a real deployment gap (R-018/R-R21) — **live URL still needs a P-side fix before it reflects any of this**
+**Build status:** 🟢 green — 172/172 tests pass, ruff/mypy clean
 
 ## Where I am, in one paragraph
 
@@ -100,21 +100,41 @@ internally consistent with its own stated target.
 - A1×A2 confirmation pass — reasoned skip, not run; see `docs/EVAL_RESULTS.md` §2 for why (no genuine
   embedder-side question exists once A2's 38-point gap is accounted for)
 
+**Was about to start P6's ONNX-quantise-the-embedder task**, reasoning R was clear to move into
+Day-4-scoped work since both progress docs described a fully working real pipeline. Checked the
+actual live URL directly before committing to that — good thing: **the live deployment
+(`https://vrag-voice.onrender.com`) runs entirely on the Day-0 stub, not real retrieval at all.**
+`Dockerfile` never installs the `retrieval` extra and `data/` is gitignored, so none of A1-A4's work
+has ever reached production, despite local testing on both machines showing it working. Full
+root-cause and what's needed: `docs/DECISIONS_R.md` R-018, `docs/RISKS.md` R-R21 (marked high
+priority — blocks the actual C7 "live working link" deliverable if unresolved by submission).
+Prepared the R-side half of the fix without touching `Dockerfile`/`render.yaml` (Workstream P's
+ownership): packaged and published the current production index as a GitHub Release asset
+(`index-metadata_aware-v1`, 187MB, verified publicly downloadable) — extracting it to
+`data/index/metadata_aware/` is all the code side needs, no code changes required.
+`sentence-transformers[onnx]`/`optimum` got installed locally while exploring the ONNX path before
+this was found; not yet added to `pyproject.toml` (no commit made), harmless to leave installed,
+picking this back up is a legitimate next step once the deploy gap is closed.
+
 ## Blockers
 
-- None. G3's calibration (`docs/RISKS.md` R-R19) is fully resolved — TAU and MARGIN both applied
-  and verified live.
+- **The live deployment gap (`docs/RISKS.md` R-R21) needs Workstream P** — Dockerfile/render.yaml
+  are their ownership. The artifact is ready; three small steps remain (install `[retrieval]` in the
+  image, download+extract the release asset at boot/build, redeploy+reverify) — not something R
+  should do unilaterally on shared deploy infra.
 
 ## Next session should start by
 
-1. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014 for the full
+1. **Check whether R-R21 (live deployment stub) has been fixed** — verify with a real `/ask` call
+   against the live URL, the same way this was found, before trusting "deployed and working" claims
+   again for anything beyond local testing.
+2. Read `docs/EVAL_RESULTS.md` §1-3 and `docs/DECISIONS_R.md` R-010/R-012/R-014 for the full
    A3/A4/efSearch story before touching retrieval code again — the production default is now
    dense-only, no reranker, efSearch=64, and all three are deliberate, data-driven, documented
    choices, not oversights
-2. Read `docs/DECISIONS_R.md` R-015/R-017 for the G3 calibration story before touching TAU/MARGIN
+3. Read `docs/DECISIONS_R.md` R-015/R-017 for the G3 calibration story before touching TAU/MARGIN
    again — both are now live-verified, not placeholders
-3. R is running ~2 days ahead of `docs/TEAM_SPLIT.md` §5's schedule (all of A1-A4 + efSearch + G3
-   calibration, originally spread across Days 1-3, done on Day 1). Check with the user or
-   `docs/BUILD_PLAN.md`'s later phases (P6 ONNX quantisation is R's file, `src/vrag/index/
-   embedder.py`) before assuming there's nothing left, but don't pull Day-4-scoped latency work
-   forward on its own — `docs/TEAM_SPLIT.md` explicitly warns against that
+4. Once R-R21 is resolved, ONNX-quantising the embedder (`docs/BUILD_PLAN.md` P6, R's file
+   `src/vrag/index/embedder.py`) is the natural next R-owned task — `sentence-transformers[onnx]`
+   is already installed locally from this session's exploration, not yet formalized in
+   `pyproject.toml`
