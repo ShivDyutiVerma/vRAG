@@ -596,3 +596,56 @@ correctly when a nonzero value is set via `monkeypatch` (so the code path stays 
 future recalibration). 151/151 tests pass. If `TAU` is ever recalibrated again, `MARGIN` needs
 re-sweeping at the new value too — the module docstring now says so explicitly, so this doesn't
 silently recur.
+
+## R-018 — Found the live deployment runs entirely on the Day-0 stub; prepared (not applied) the missing index artifact
+
+**Date:** 2026-08-18
+**Status:** Accepted — artifact prepared and published; the actual deploy-side fix is Workstream P's
+to apply, not done here
+**Context:** Was about to start `docs/BUILD_PLAN.md` P6's ONNX-quantise-the-embedder task, reasoning
+that `docs/TEAM_SPLIT.md` §5's Day-3 "complete" gate looked satisfied from both `docs/PROGRESS_R.md`
+and `docs/PROGRESS_P.md` (both describe a fully working real pipeline). Checked the actual live URL
+directly before proceeding, rather than trusting local-testing claims for a deploy-readiness
+question — good thing: `POST /ask` against `https://vrag-voice.onrender.com` on a real corpus query
+returned `chunk_id: "stub-chunk-001"`/`"stub-chunk-002"` with `retrieve` timing `0.007ms` — the
+hardcoded Day-0 stub, not real FAISS search (which costs sub-millisecond but not sub-microsecond,
+and wouldn't return exactly those fixed chunk IDs).
+**Root cause:** `Dockerfile` runs `pip install -e .` with no extras — the `retrieval` extra
+(`sentence-transformers`, `faiss-cpu`, `bm25s`, `torch`, all of `src/vrag/index/`'s real
+dependencies) is never installed in the production image. Separately, `data/` is gitignored, so the
+persisted index was never going to reach the container even if the extra were installed.
+`AGENT_BUILD_SPEC.md` §5.3 anticipated exactly this: *"do not build the FAISS index at container
+start... build it offline, commit the artifacts to a release asset or object storage, and
+download-and-mmap at boot."* That step was never built by either track — R kept improving the index
+locally across A1-A4/efSearch/G3 without anyone shipping a version of it anywhere near production.
+**Decision:** Prepared the R-side half of the fix without touching `Dockerfile`/`render.yaml`
+(Workstream P's ownership per `docs/TEAM_SPLIT.md` §2's "Deployment" row) — packaged the current
+production index (`data/index/metadata_aware/`: `metadata_aware` chunking, `multilingual-e5-small`
+embedder, `efSearch=64`, built from git commit `bbe74a5`) as a GitHub Release asset:
+`https://github.com/ShivDyutiVerma/vRAG/releases/download/index-metadata_aware-v1/
+metadata_aware_index.tar.gz` (187MB compressed, verified publicly downloadable). Extracting it to
+`data/index/metadata_aware/` at the repo root is all that's needed on the code side —
+`src/vrag/retrieval/interface.py`'s `_get_real_retriever()` already looks for exactly that path and
+picks it up automatically, no code change required.
+**What's still needed (not done here, flagged for Workstream P in `docs/RISKS.md`):** (1) install
+the `retrieval` extra in the production image — `pip install -e ".[retrieval]"` in `Dockerfile`
+instead of the current bare `pip install -e .`; this alone adds real weight and CPU-only `torch`
+(no CUDA wheel needed in production, `docs/DECISIONS_R.md` R-005) to the image; (2) a boot-time (or
+build-time) step that downloads and extracts the release asset above into `data/index/
+metadata_aware/` before `uvicorn` starts — a `curl`/`tar` line in the `Dockerfile` or an entrypoint
+script; (3) redeploy and re-verify with the same live `/ask` check used to find this bug.
+**Rationale for not applying the Dockerfile/render.yaml change myself:** unlike R-013's `test_api.py`
+fix or R-017's `MARGIN` fix (both squarely retrieval-adjacent, data-backed corrections), this touches
+deployment infrastructure explicitly owned by Workstream P, with real consequences if done wrong
+(a broken production deploy, unlike a local test or a guardrail constant). The artifact and the exact
+steps needed are prepared and documented so the actual fix is small and low-risk for whoever applies
+it, but the "commit to render.yaml/Dockerfile and watch it deploy" step should be P's, or done
+jointly.
+**Consequences:** The "Day-3 complete" milestone read from local testing (`docs/PROGRESS_R.md`/
+`docs/PROGRESS_P.md`) does **not** hold for the actual public URL specifically on the retrieval
+stage — everything else in the pipeline (STT, generation, all five guardrails logic, harness) is
+real and live per P's verification, only retrieval is stubbed in production right now. This doesn't
+retroactively invalidate any ablation finding (A1-A4, efSearch, G3 calibration) — those were all
+measured against the real index directly, never through the stub — it only means the *deployed
+demo* doesn't yet reflect that work. Flagged in `docs/RISKS.md` as blocking for the actual C7
+deliverable ("public GitHub repo, live working link") if left unresolved before submission.
