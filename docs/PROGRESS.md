@@ -37,9 +37,14 @@ tokenizer costing more RAM than the ONNX model itself (262MB vs. 137MB, R-028). 
 RSS is now 493.8MB steady-state / 492.9MB peak — under Render's 512MB free-tier budget for the
 first time**, down from 1,860MB at the start of this work (-73.4%), with retrieval quality
 confirmed unchanged (Recall@1/5/10, MRR@10 match the established baseline to full float
-precision). **Not yet verified in the real target environment** (this is a local measurement;
-P-020 found local-vs-Render can differ for peak-during-load specifically) — a real Docker
-`-m 512m` test or live Render attempt is the honest next step before calling R4 resolved.
+precision). **Verified in a real Docker `-m 512m` environment 2026-08-19 (R-031) — and it FAILS.** Reproduced
+2/2: container starts clean (~277MiB, real retriever confirmed loaded, not the stub), but the
+first real `/ask` query OOM-kills it (exit 137) every time — the same failure P-020 found live on
+Render on 2026-08-18, now confirmed locally. The 493.8MB steady-state number was real but was
+never the binding constraint; the binding constraint is the memory spike during first real
+embedding-inference + FAISS search, which no fix so far has targeted. R4 is **not** resolved — see
+`docs/RISKS.md` R4 and `docs/DECISIONS_R.md` R-031 for the full finding. No code changed in
+response per explicit instruction (validation-only, stop-and-report on failure).
 
 Current priority: deployment remains parked by the user's direction, but now has real, favorable
 numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:

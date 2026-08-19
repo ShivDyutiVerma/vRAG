@@ -1400,3 +1400,109 @@ progress. Deployment itself remains parked per the user's earlier "run everythin
 direction — this finding doesn't change that, it just means the eventual deploy attempt (whenever
 it happens) now has real, current, favorable numbers to work with, and a corpus cut may no longer
 be necessary at all if a live Render (or Docker-simulated) test confirms this number holds.
+
+## R-031 — Docker `-m 512m` validation of R-030's build: the exact peak-during-load discrepancy P-020 warned about, now reproduced locally, real R4 FAIL
+
+**Date:** 2026-08-19
+**Status:** Accepted as a real, reproduced negative result. R4 is **not resolved**. No architecture,
+corpus, FAISS, embedding-model, or tokenizer change made in response — per explicit user
+instruction, this was a validation-only exercise and the finding is reported as-is.
+
+**What changed to make this test possible (all Docker/packaging-only, zero retrieval-architecture
+change):**
+- `Dockerfile`: `pip install -e .` → `pip install -e ".[retrieval-lean]"` (was installing zero
+  retrieval dependencies at all — confirmed the pre-existing `Dockerfile` silently ran the Day-0
+  stub in production, never real retrieval, see below).
+- `Dockerfile`: index asset `index-metadata_aware-v1` → `index-metadata_aware-v2` (the
+  SQLite-lookup layout `load_built_index_lean()` actually expects, R-021).
+- `Dockerfile`: base image `python:3.11-slim` → `python:3.12-slim` — genuine, previously-undetected
+  bug found by this exercise: `retrieval-lean`'s `numpy>=2.5` pin requires Python ≥3.12, but had
+  only ever been installed on the dev machine's real interpreter (3.13, R-001), never inside the
+  Dockerfile's declared 3.11 until this build. `pyproject.toml`'s stated `>=3.11` floor is still
+  satisfied.
+- New GitHub Release `embedder-lite-onnx-v2`: `sentencepiece.bpe.model` + the unchanged int8 ONNX
+  model (`onnx/model_quint8_avx2.onnx`, byte-identical sha256 to v1's copy). `embedder-lite-onnx-v1`
+  only shipped `tokenizer.json`, predating the R-029/R-030 sentencepiece swap — the deployed
+  container had no way to load the current embedder at all until this release existed. Asset
+  sha256: `840fd2a6563bcf12cd3a7c3e787bc2fb2c4559af811bf09fdd0761d3c7c73769`; inner file hashes
+  recorded in the release notes.
+- `src/vrag/api/main.py`: added a `lifespan` hook that eager-loads the retriever singleton at boot
+  (so a memory test's "startup peak" actually includes the FAISS+embedder load, not just the first
+  request), plus an opt-in `VRAG_REQUIRE_REAL_RETRIEVAL=1` env var that makes a failed real-retriever
+  load fatal at startup instead of silently degrading to the stub — used only via `docker run -e`
+  for this validation, never set by the `Dockerfile` itself, so production's existing "never take
+  the service down over a retrieval hiccup" resilience (docs/DECISIONS_P.md) is unchanged by
+  default. `/healthz` now also reports `{"status": "ok", "retrieval": "real" | "stub"}` instead of
+  just confirming the FastAPI process is alive — status code unchanged (still 200) so this doesn't
+  alter Render's actual health-check pass/fail semantics.
+- `is_retrieval_real()` added to `src/vrag/retrieval/interface.py` as the public way to ask this
+  without reaching into the private `_get_real_retriever()` singleton from another module.
+- `tests/test_api.py::test_healthz` updated for the new response shape (machine-dependent
+  `retrieval` value, same pattern already used by `test_ask_returns_answered_for_a_query_the_stub_
+  covers` for the same reason); added `test_healthz_reports_stub_when_real_retriever_unavailable`
+  for a deterministic check of the stub branch. Full suite: 216/216, ruff clean, mypy clean.
+
+**First finding, before any memory test: the previously-committed `Dockerfile` was not testing
+real retrieval at all.** Built and ran it exactly as it stood (no extras installed, `index-
+metadata_aware-v1`, no embedder asset downloaded): container ran fine at 41.5MiB / 512MiB, but
+`/ask` returned `"chunk_id":"stub-chunk-001"` — `_get_real_retriever()` was silently falling back
+to the Day-0 stub the whole time (missing `onnxruntime`/`faiss-cpu`/`sentencepiece`). This means
+**every prior claim about the live/deployed container's memory behavior for R4 was, at best,
+untested and, at worst, measuring the wrong thing** — the actual R-023-through-R-030 memory work
+had never been exercised inside a container until this session.
+
+**Second finding, after fixing the above and rebuilding with real retrieval wired in: OOM-killed,
+reproduced 2/2.** `docker run -m 512m --memory-swap 512m` (swap disabled, a true hard ceiling, no
+masking):
+
+- Startup: clean. `VRAG_REQUIRE_REAL_RETRIEVAL=1` did **not** trip — the real retriever loaded
+  successfully (FAISS index + `LiteE5Embedder`'s ONNX session + SentencePiece). `/healthz` returned
+  `{"status":"ok","retrieval":"real"}`, confirming this wasn't another stub-fallback false pass.
+- Steady-state after startup, before any real (non-guardrail-refused) query: **~276-277MiB**
+  (276.4MiB and 277.1MiB across the two runs) — well under budget, and notably *lower* than the
+  local host's previously-measured 493.8MB steady-state, because this reading was taken before any
+  real embedding inference or FAISS search had executed even once (only a guardrail-refused empty
+  query had been sent — G1 rejects before `retrieve()` runs, so it never touches the embedder).
+- First real end-to-end query (`"भारत में सबसे ऊँचा पर्वत कौन सा है?"`, the same held-out-style
+  query used throughout this session): container was **OOM-killed both times** (`exit code 137`,
+  `docker inspect`'s `OOMKilled: true`). Run 1: FastAPI's own access log shows `"POST /ask HTTP/1.1
+  200 OK"` immediately followed by `Killed` — the response was served and the kernel reclaimed the
+  process's memory right after. Run 2 (continuous ~150ms-interval `docker stats` sampling
+  alongside the same request): last live sample **352MiB / 512MiB**, then the container was gone by
+  the next sample — the true peak is bounded below by 352MiB and reached/exceeded the 512MiB cgroup
+  ceiling somewhere in the ~150ms gap the sampler couldn't resolve (the same class of sampling-
+  resolution caveat already documented for BM25 loading in ADR-006, now confirmed to apply here
+  too). Because of this, **E ("/ask returns a real chunk_id, not stub-chunk-001") was not directly
+  confirmed by reading a captured response body** — the process died before the body was reliably
+  read back — but `/healthz` immediately prior confirmed `retrieval: "real"`, and there is no code
+  path by which `/ask` would use the stub while `/healthz` simultaneously reports real, so this is
+  circumstantially as strong as direct confirmation without literally being one.
+- Steps F/G ("10 repeated queries", "memory growth check") were not reached — the container did not
+  survive the first real query, so there is nothing to measure repeated-query behavior against.
+
+**This is not a new failure mode — it's the same one P-020 already found live on Render on
+2026-08-18** ("every real `/ask` call OOM-kills the process... the blocker is specifically *peak*
+memory during first real load, not just steady-state"), **now reproduced for the first time in a
+controlled, local, swap-disabled Docker environment against the fully memory-optimized R-030
+build**, closing the "not yet verified in the actual target environment" gap this ADR's own R-030
+entry and `docs/RISKS.md` R4 both explicitly flagged as the honest next step. The 221.9MB steady-
+state win from R-030 is real and unaffected by this finding — but it was never the binding
+constraint. **The binding constraint, confirmed twice now across two different measurement
+environments (live Render, local Docker), is the memory spike during the first real embedding-
+inference-plus-FAISS-search, which no work so far (R-023 through R-030) has directly measured or
+targeted** — every memory fix to date reduced steady-state/idle RSS, not inference-time peak.
+
+**Likely cause (hypothesis, not verified — no further investigation run per "stop, do not
+auto-optimize"):** ONNX Runtime's session memory arena (`enable_cpu_mem_arena`, on by default,
+R-028 found tuning it doesn't help *steady-state* but never isolated its *first-inference* growth
+specifically) sizes its buffers to the actual input tensors on first real use, not at session
+creation — the eager-`lifespan` startup load in this same change set creates the `InferenceSession`
+but deliberately does not run a warm-up inference, so this cost was never paid until the real
+query arrived. FAISS HNSW search-time working set and Docker cgroup memory accounting differing
+from host-side RSS (page cache, shared-library mappings counted differently) are secondary
+candidates. Distinguishing between these would need an isolated first-inference-only memory probe
+(same methodology as R-028's audit scripts) — not attempted here, consistent with the user's stop
+instruction.
+
+**R4 verdict: FAIL.** The current production build does not survive a hard 512MB limit under real
+traffic. `docs/RISKS.md` R4 updated accordingly.

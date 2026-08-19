@@ -16,6 +16,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -26,6 +29,7 @@ from starlette.websockets import WebSocketState
 from vrag.harness.budget import Budget
 from vrag.harness.pipeline import PipelineContext, run_pipeline
 from vrag.harness.stages import default_stages
+from vrag.retrieval.interface import is_retrieval_real
 from vrag.schemas import AnswerResponse
 from vrag.stt.sarvam import stream_transcribe
 from vrag.telemetry.trace import build_trace_record, emit_trace
@@ -37,7 +41,30 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="vrag", version="0.1.0")
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Forces `retrieve()`'s lazy retriever singleton (src/vrag/retrieval/interface.py) to load
+    at boot instead of on first `/ask` — otherwise a Docker memory test's "startup peak" would
+    miss the FAISS+embedder load entirely (it'd happen on the first request instead) and
+    /healthz would report ready before retrieval actually is. `retrieve()`'s own "never raises"
+    contract is untouched — this only decides *when* the existing lazy load happens, not whether
+    a failure degrades to the stub.
+
+    VRAG_REQUIRE_REAL_RETRIEVAL=1 (unset by default, never set in the Dockerfile) makes a failed
+    load fatal at startup instead of silently degrading — opt-in, for validation runs where a
+    healthy-looking stub-backed container would be a false pass (docs/RISKS.md R4), not a
+    production default; the graceful degradation P built for a flaky/partial deploy stays intact
+    unless this is explicitly requested."""
+    real = is_retrieval_real()
+    if not real and os.environ.get("VRAG_REQUIRE_REAL_RETRIEVAL") == "1":
+        raise RuntimeError(
+            "VRAG_REQUIRE_REAL_RETRIEVAL=1 but the real retriever failed to load — see the "
+            "logged exception above for the cause. Refusing to start with stub-only retrieval."
+        )
+    yield
+
+
+app = FastAPI(title="vrag", version="0.1.0", lifespan=_lifespan)
 
 _FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
 
@@ -75,7 +102,7 @@ async def build_answer(
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "retrieval": "real" if is_retrieval_real() else "stub"}
 
 
 @app.post("/ask", response_model=AnswerResponse)

@@ -21,9 +21,25 @@ client = TestClient(app)
 
 
 def test_healthz():
+    """`retrieval` is machine-dependent (real index present locally vs. a fresh clone/CI, same
+    caveat as the stub test below) -- only the shape is asserted here. See
+    test_healthz_reports_stub_when_real_retriever_unavailable for a deterministic check of the
+    stub branch specifically."""
     resp = client.get("/healthz")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["retrieval"] in {"real", "stub"}
+
+
+def test_healthz_reports_stub_when_real_retriever_unavailable(monkeypatch):
+    import vrag.retrieval.interface as interface
+
+    monkeypatch.setattr(interface, "_get_real_retriever", lambda: None)
+
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok", "retrieval": "stub"}
 
 
 def test_ask_returns_answered_for_a_query_the_stub_covers(monkeypatch):

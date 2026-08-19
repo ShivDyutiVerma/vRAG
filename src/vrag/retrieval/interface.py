@@ -139,6 +139,16 @@ def _get_real_retriever() -> HybridRetriever | None:
     return _retriever
 
 
+def is_retrieval_real() -> bool:
+    """True once the real retriever (FAISS + LiteE5Embedder) has loaded successfully, False if
+    only the Day-0 stub is available. Triggers the same lazy load `retrieve()` uses (memoized,
+    so calling this first and then `retrieve()` costs nothing extra) — added for the API layer's
+    `/healthz` and eager-startup hooks (src/vrag/api/main.py) to report real readiness instead of
+    just "the FastAPI process is up", without changing `retrieve()`'s own "never raises"
+    contract."""
+    return _get_real_retriever() is not None
+
+
 async def retrieve(query: str, k: int = 5) -> list[RetrievedChunk]:
     """The one function Workstream P's harness calls to get retrieved context.
 
