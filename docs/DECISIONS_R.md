@@ -1635,3 +1635,109 @@ attempted: (a) initialize the ONNX session with a smaller/no memory arena (`enab
 *construction-time* RSS specifically, which this probe shows is the real cost); (b) reduce FAISS/
 SQLite's ~298MB (corpus-shrink, already known catastrophic for quality per R-027); (c) accept a
 deploy target above 512MB. This ADR does not recommend one -- diagnostic only, per instruction.
+
+## R-033 — Offline FAISS index-variant ablation: scalar-quantized fp16 storage saves 77MB at zero measured quality cost
+
+**Date:** 2026-08-19
+**Status:** Accepted as a finding. Diagnostic/offline only, per explicit instruction — no
+production code, `Dockerfile`, deployment config, corpus, embedding model, tokenizer, or the
+500-query held-out set changed. Not deployed, not wired into `src/vrag/index/dense.py`'s defaults.
+
+**Motivation:** R-032 found FAISS + SQLite load (~298MB) is the single largest of the two
+components that together exceed the real 512MB Docker limit — the largest lever R-032 itself did
+not investigate. This ablation asks whether FAISS's own footprint specifically can shrink by
+R-032's implied gap (~60MB) without giving back the quality R-027 already spent effort protecting.
+
+**Method:** `scripts/eval_faiss_index_variants.py` (new). Same methodology as R-027's
+`eval_corpus_size.py`: every candidate searches the exact same 99,767 real vectors, reconstructed
+once via `faiss.Index.reconstruct()` from the current production index — no re-embedding, no
+corpus change. The 500 real held-out queries are embedded once (real `LiteE5Embedder`, real
+`"query: "` prefix) and reused unchanged across every candidate, so the embedder/tokenizer can't
+be a confound. Exactly one axis changes per candidate relative to the production baseline
+(`IndexHNSWFlat`, M=32, efConstruction=200, efSearch=64, `METRIC_INNER_PRODUCT` — `src/vrag/index/
+dense.py`'s own defaults, unmodified), per CLAUDE.md's "never change two variables in one
+experiment run": `hnsw16_flat_fp32` changes only M (32→16); `hnsw32_sq8` and `hnsw32_sqfp16`
+change only vector storage (`IndexHNSWSQ` with `ScalarQuantizer.QT_8bit` / `QT_fp16` in place of
+flat fp32 storage), M/efConstruction/efSearch/metric all held at the baseline's own values.
+Resident RSS measured in an isolated subprocess per candidate (same discipline as R-020/R-027, one
+candidate's load can't pollute another's), both immediately after `DenseIndex.load()` and again
+after running all 500 real `.search()` calls in that same subprocess, to catch any search-time
+growth. Quality via the shared `score_hits()` path every ablation in this project routes through.
+Latency P50/P95/P100 (matching R-014's efSearch curve and R-028's ONNX sweep — this project's
+established convention for component-level search latency).
+
+**A real, small, expected discrepancy against the given baseline, checked before trusting the
+rest:** this ablation's own rebuilt `baseline_hnsw32_flat_fp32` measured Recall@5=0.642 /
+MRR@10=0.45610, not the reference 0.644 / 0.45627 — a difference of exactly one query's outcome
+(`(0.644-0.642)*500 = 1.0`). HNSW graph construction uses an unseeded internal RNG for level
+assignment (`faiss.IndexHNSWFlat`'s `.add()`), so an independently rebuilt graph over the identical
+vectors is not guaranteed bit-identical to the original, and a single query landing near a
+tie-broken boundary is exactly the expected shape of that effect — not a bug in reconstruction,
+the embedder, or the held-out set. All comparisons below are read relative to this run's own
+rebuilt baseline, not the original reference numbers, for a fair apples-to-apples comparison.
+
+**Results (99,767 vectors, dim=384, 500 real held-out queries, single run each — not yet
+repeated 3x per CLAUDE.md's experiment-discipline rule; see Consequences):**
+
+| Candidate | RSS after load | RSS after 500 searches | Disk | Recall@1 | Recall@5 | Recall@10 | MRR@10 | search P50 | P95 | P100 | Build time |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **baseline** HNSW32 flat fp32 | 237.8MB | 245.7MB (+7.96MB) | 180.4MB | 0.330 | 0.642 | 0.750 | 0.45610 | 0.403ms | 0.548ms | 0.937ms | 34.5s |
+| HNSW16 flat fp32 | 224.6MB (**-13.2MB**) | 232.5MB (+7.98MB) | 167.6MB | 0.330 | 0.642 | 0.748 | 0.45465 | 0.284ms | 0.386ms | 0.551ms | 23.3s |
+| HNSW32 + SQ **int8** | 122.5MB (**-115.3MB**) | 130.8MB (+8.34MB) | 65.5MB | 0.320 | 0.640 | 0.742 | 0.45038 | 1.085ms | 1.466ms | 2.150ms | 42.7s |
+| HNSW32 + SQ **fp16** | 160.8MB (**-77.0MB**) | 169.2MB (+8.34MB) | 103.8MB | 0.330 | 0.642 | 0.750 | 0.45610 | 1.417ms | 1.874ms | 2.414ms | 56.3s |
+
+All four confirmed `metric_type == METRIC_INNER_PRODUCT` (checked directly, not assumed) — cosine
+semantics preserved throughout, since production vectors are already L2-normalised at embed time.
+Vector storage: baseline and HNSW16 store full float32 vectors uncompressed (`IndexHNSWFlat` wraps
+a `Flat` storage); SQ8 stores 1 byte/dimension, SQfp16 stores 2 bytes/dimension (IEEE half-float)
+— both confirmed via `.reconstruct()` returning dequantized float32 (works on all four, verified
+directly) and via the disk-size ratios above, not asserted from documentation alone. The ~8MB
+search-time RSS growth is present in **all four candidates at nearly the same magnitude**
+(7.96-8.34MB) regardless of index type or quantization — this doesn't scale with the variable
+under test, so it reads as a generic Python/numpy-interpreter warmup cost from running 500 real
+`.search()` calls in a fresh subprocess, not a FAISS-index-type-specific search-time cost.
+
+**Against the three acceptance criteria:**
+
+- **HNSW16** (fewer graph links only): saves only 13.2MB — well short of the ~60MB target. Quality
+  and latency are both fine (actually faster: fewer links to traverse), but it fails criterion 1
+  outright regardless. Not recommended alone.
+- **SQ8** (int8): saves 115.3MB, clears the target with room to spare. Real, non-trivial quality
+  cost though — Recall@1 -0.010, Recall@5 -0.002, Recall@10 -0.008, MRR@10 -0.0057 (~1.3%
+  relative) versus this run's own baseline — a genuine regression, not noise (the baseline-vs-
+  reference check above establishes the noise floor at ~0.002/one query; SQ8's Recall@1 delta
+  alone is 5x that). Search latency roughly 2.5-2.7x baseline's own (1.09ms P50 vs 0.40ms) but
+  still under 2.2ms worst-case against a 200ms total budget — not a real latency threat in
+  absolute terms, whatever the relative multiplier.
+- **SQfp16**: saves 77.0MB — clears the ~60MB target and does so at **zero measured quality
+  cost relative to this run's own rebuilt baseline**: Recall@1/5/10 identical (0.330/0.642/0.750),
+  MRR@10 identical to 5 decimal places (0.45610396825396826, matching the baseline row bit for
+  bit). Latency roughly 3.5x baseline's own P50 (1.42ms vs 0.40ms) but, same as SQ8, trivial in
+  absolute terms against the 200ms budget (2.41ms P100 worst case).
+
+**Recommendation: HNSW32 + SQ fp16 (`IndexHNSWSQ`, `ScalarQuantizer.QT_fp16`, M=32,
+efConstruction=200, efSearch=64, `METRIC_INNER_PRODUCT`) satisfies all three stated criteria** —
+saves 77.0MB (>60MB target), zero measured quality regression, latency stays trivial against the
+200ms budget. SQ8 is explicitly **not** recommended over it: it saves more memory (115.3MB) but at
+a real quality cost, and fp16 already clears the required ~60MB without spending any of that
+budget — there's no reason to pay SQ8's quality cost for headroom this problem doesn't need. If a
+future constraint ever needs more than 77MB from this lever specifically, SQ8 is the documented,
+measured fallback, not a guess.
+
+**Consequences, nothing applied yet:**
+- **This is a single run per candidate, not the 3x-and-report-the-spread CLAUDE.md's experiment
+  discipline calls for.** The recall/MRR deltas discussed above are compared against this run's
+  own baseline (not the original reference) specifically to control for HNSW's construction
+  non-determinism as best as a single run can, but a real spread check (3 independent rebuilds per
+  candidate) is the honest next step before this recommendation is treated as final, not just
+  directionally right.
+- **Not yet verified that a 77MB FAISS-side saving actually closes R4's real gap.** R-032's ~298MB
+  FAISS+SQLite figure was measured in the real Linux Docker container; this ablation's ~237.8MB
+  baseline FAISS-alone figure was measured on this dev machine's Windows `psutil` — the same
+  cross-environment caveat R-032 already flagged (Windows `WorkingSetSize` vs. Linux `RSS`) applies
+  here too. A rough projection (298MB - 77MB ≈ 221MB FAISS+SQLite, + R-032's ~205-218MB embedder
+  construction ≈ 426-439MB, comfortably under 512MB) is *plausible* but not measured — the actual
+  next step, not taken here, is wiring this index type into a real Docker build and re-running
+  R-031/R-032's exact validation, not assuming the offline number transfers.
+- **Not wired into `src/vrag/index/dense.py`, not rebuilt into `index-metadata_aware-v3`, not
+  deployed anywhere.** This ADR reports a measured, promising option; it does not implement it.

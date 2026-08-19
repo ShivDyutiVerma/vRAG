@@ -32,6 +32,7 @@ data/
 eval/audio/*.wav
 eval/results/
 eval/corpus_size_tmp/
+eval/faiss_variant_tmp/
 traces.jsonl
 scripts/*.out.log
 scripts/*.err.log

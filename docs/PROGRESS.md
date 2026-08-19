@@ -54,6 +54,14 @@ before measured resident together in one process. A `-m 512m` re-run of the prob
 between those two steps, nothing else. See `docs/DECISIONS_R.md` R-032 for the full ranked-causes
 breakdown. No fix applied — diagnostic only, per instruction.
 
+**Real lever found 2026-08-19 (R-033), offline FAISS index-variant ablation.** `IndexHNSWSQ` +
+`ScalarQuantizer.QT_fp16` saves 77.0MB off FAISS's own footprint at zero measured quality change
+(Recall@1/5/10, MRR@10 all identical to the rebuilt baseline) — clears the ~60MB target R-032's
+gap analysis implied, at no quality cost. An int8 alternative saves more (115MB) but at a real
+quality cost, not recommended since fp16 already clears the bar for free. Offline finding only —
+not wired in, no new release asset, not deployed. See `docs/DECISIONS_R.md` R-033 for the full
+tradeoff table; a real Docker re-verification is the honest next step, not yet done.
+
 Current priority: deployment remains parked by the user's direction, but now has real, favorable
 numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
 `t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)
