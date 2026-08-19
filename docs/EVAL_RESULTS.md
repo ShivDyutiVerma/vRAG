@@ -354,6 +354,84 @@ designed to also accept as valid.
   BENCH-ONLY in `docs/TECH_MENU.md` §S9 for latency, not language fit) was not tested — out of scope
   for A4's three named candidates, but worth a footnote for anyone revisiting this decision later.
 
+### A4 follow-up — does reranking specifically fix "same-template distractor" queries? (R-037/R-038)
+
+A live forensic investigation (R-037) found a real user query ("what is India's capital") abstained
+because dense retrieval ranked the one relevant passage below several near-duplicate "[country] की
+राजधानी [city] है" distractors for *other* countries (London/Islamabad/Munich/etc., all scoring
+0.81-0.83). Since this looked like exactly the case a cross-encoder should excel at, a targeted
+follow-up (R-038) tested it directly rather than assuming A4's aggregate result generalizes.
+
+**Method:** derived a 122-query diagnostic subset from the existing 500 held-out queries (dense
+miss@1, but the relevant passage present somewhere in dense top-20, with a confidently-wrong top-1
+score at or above the subset's own median) — a labeled filter, never written back into
+`eval/heldout_queries.json`. Compared dense-only top-10 against dense top-20 → the same A4
+cross-encoder → top-10, on this exact subset.
+
+| Config | Recall@1 | Recall@5 | Recall@10 | MRR@10 | p50/p95/p100 latency |
+|---|---|---|---|---|---|
+| Dense-only (production) | 0.0000* | **0.7049** | **0.9098** | **0.2763** | 0.58 / 1.01 / 1.64 ms |
+| Dense-20 + cross-encoder → top-10 | **0.1230** | 0.3934 | 0.6230 | 0.2494 | 57.4 / 77.5 / 89.8 ms |
+
+*Recall@1=0 for dense-only is tautological — the subset is defined as dense's rank-1 misses.
+
+Reranking fixed 15/122 rank-1 misses (a real but modest win) but Recall@5/@10 regressed sharply on
+the *same* subset — the reranker promotes other same-template distractors into its top-10
+selection window, pushing the correct-but-lower-ranked passage back out. On the flagship
+India-capital example itself, reranking made the ranking *worse*: it moved the correct Delhi
+passage from dense's rank 9 to rank 8, but only by first promoting seven *other* countries'
+capital passages above it (Georgia, Chile, Malta, Denmark, Austria/Slovakia/Hungary, Rwanda,
+Uruguay) that dense hadn't even surfaced there. **Confirms A4's net-negative finding generalizes
+to the subset built specifically to favor reranking's hypothesized strength — not a targeted win.**
+Reranking remains off in production. Full record: `docs/DECISIONS_R.md` R-037/R-038,
+`eval/ablation_ledger.csv` rows `r038_targeted_*`.
+
+## §3b — Memory optimization & corpus-size experiment (R4)
+
+**The RAM problem:** Render's free tier caps a container at 512MB. The original retrieval stack
+(PyTorch `sentence-transformers` embedder + fp32 FAISS index) measured **1,860MB RSS** on the
+original dev machine — nowhere close.
+
+**Two levers were investigated; only one shipped.**
+
+**Corpus-shrink (rejected, R-024/R-027):** a real quality+memory sweep at 20k/50k/99,767 chunks
+(`scripts/eval_corpus_size.py`, `scripts/audit_full_stack_at_size.py`, random subsample via
+`random.Random(42).sample()`, reusing already-computed FAISS vectors):
+
+| n_chunks | Recall@1 | Recall@5 | Recall@10 | MRR@10 | Full-stack RSS |
+|---|---|---|---|---|---|
+| 20,000 | 0.120 | 0.184 | 0.192 | 0.149 | 542.7MB |
+| 50,000 | 0.202 | 0.406 | 0.440 | 0.285 | 606.4MB |
+| 99,767 (full) | 0.330 | 0.644 | 0.750 | 0.456 | 714.4MB |
+
+A least-squares fit over these three real points (predicted-vs-measured within 0.6MB at every
+point) gives `full_stack_RSS(N) ≈ 499.3MB + 0.00215MB × N`; solving for 512MB requires **~5,900
+chunks — a ~94% cut**, 8.5x below the spec's own 50k-chunk floor, with severe, unmeasured-but-
+clearly-worse quality at that size. **Correctly rejected as a viable fix** — not a config that more
+tuning would have saved.
+
+**Embedder + index engineering (shipped, R-019/R-022/R-029/R-030/R-033/R-034):**
+1. `LiteE5Embedder` — raw `onnxruntime` + `sentencepiece`, no `torch`/`sentence-transformers`
+   import (`import torch` alone measured ~383MB RSS; the HF `tokenizers` Rust library another
+   ~262MB for this model's 250k-token vocabulary). Verified byte-identical output (cosine
+   similarity 1.0) and 100.0000% exact tokenizer-ID equivalence against 1,020 real test strings.
+2. FAISS `sqfp16` scalar quantization — 2-byte half-float vector storage instead of 4-byte
+   float32, ~77MB saved at zero measured Recall@k/MRR@10 regression (an int8 alternative was also
+   tested and rejected for a real quality cost this doesn't have).
+
+**Result: 1,860MB → 493.8MB steady-state (73.4% cut), zero quality cost, verified under the real
+512MB Docker constraint** (`docker run -m 512m --memory-swap 512m`): startup 204.4MiB, peak after
+10 real queries 397.8MiB, ~114MB headroom, `OOMKilled: false`, real citations on 6/10 queries (not
+the stub). Recall@10 0.748 vs. 0.750 fp32 baseline (noise-floor difference), MRR@10 0.45550 vs.
+0.45627 (~0.17% relative) — quality preserved exactly, not approximately.
+
+**FP32-vs-FP16 grounding-gate (G3) side effect, checked directly, not assumed** (R-035): ran the
+real, unmodified `g3_confidence.check()` (`TAU=0.8835`) against both indices' real scores for all
+500 held-out queries — **zero decisions changed** (371 answered / 129 abstained, identical for
+both). Top1 score difference (fp16 − fp32): mean -0.00007, stdev 0.00131, max absolute 0.0281 —
+even the largest single-query divergence didn't flip a decision. Full per-query detail:
+`eval/g3_fp32_vs_fp16_comparison.json`.
+
 ### efSearch — recall-vs-latency curve
 
 **Setup:** chunking/embedder/retrieval mode = A1-A3 winners (`metadata_aware`/`multilingual-e5-small`
@@ -386,16 +464,116 @@ indistinguishable from noise.
 from this curve, not the pre-sweep placeholder it started as. Same shape of result as A2's e5-small
 confirmation (R-009): the incumbent value is confirmed by data, not silently kept unchallenged.
 
-## §4 — Generation (A5)
+## §4 — Generation (Track B)
 
-_Not run yet — Workstream P._
+**Setup:** `generation.sarvam_llm.generate()` called directly with real retrieved chunks and a
+generous 15s timeout — measures what Track B delivers when given a fair chance, not what the
+200ms-budget harness measures (which sheds it, see §6). 30 real Sarvam `sarvam-105b` calls,
+streaming, `reasoning_effort: null`.
+
+| | Value |
+|---|---|
+| Success rate | **19/30 (63.3%)** |
+| Completion latency (succeeded only) | P50=1976.5ms, P70=2557.3ms, P100=6429.8ms, mean=2483.1ms |
+
+**A real bug was found and fixed while building this measurement, not a pre-existing known issue:
+before the fix, 0/30 calls succeeded.** `choices[0]["delta"].get("content", "")`'s default only
+applies when the key is *absent*; Sarvam's SSE stream sometimes sends an explicit `"content":
+null`, which `.get()` correctly returns as `None`, then crashed string concatenation downstream.
+One-line fix: `.get("content") or ""`. Verified via `pytest tests/generation` (27/27) and by
+direct re-measurement (`docs/DECISIONS_P.md` P-021).
+
+The remaining 11/30 failures (37%) are a documented, provider-side reliability issue (`P-R20` in
+`docs/RISKS.md`): the model sometimes stalls mid-completion and pads whitespace instead of
+finishing, most sharply correlated with insufficient-context ("I don't know"-style) answers
+specifically. Mitigated with streaming + stall detection (aborts in ~a few hundred ms instead of
+waiting out the full timeout) — Track A covers every case where Track B fails, so this is a real
+quality/contribution-rate gap for Track B, never an availability gap for the system as a whole.
+
+**Under the default 200ms total request budget, Track B is essentially always shed before it
+starts** — `GenerateStage`'s pre-flight gate (`docs/DECISIONS_R.md` R-036) skips attempting it
+outright whenever the remaining budget after retrieval can't realistically fit a fair ~2s Sarvam
+attempt, which a 200ms budget structurally never can. This is by design, not a bug: see §6 for the
+wall-clock consequence of *not* having this gate (the pre-R-036 numbers) versus having it (the
+current, measured numbers).
 
 ## §5 — Guardrails
 
-_Not run yet — Workstream P + joint G3/G4 calibration. Will include
-`docs/assets/g3_calibration.png`._
+All five layers are real and independently tested (`pytest tests/guardrails/` — 31/31 pass).
+
+**G1 (input safety) / G2 (scope+language) / G5 (PII redaction):** deterministic checks, unit +
+real end-to-end `/ask` tests, no calibration needed.
+
+**G3 (confidence gate) — real 300-query calibration** (`docs/DECISIONS_R.md` R-015, 150 in-domain
++ 150 out-of-domain queries, sweeping `TAU`/`MARGIN`):
+
+`docs/EVAL_PROTOCOL.md`'s two targets — false-refusal(in-domain) < 10% **and**
+correct-refusal(out-of-domain) > 80% — are **not simultaneously reachable** via top1-cosine `TAU`
+gating alone on this corpus. Root cause verified, not assumed: MSMARCO-XI passages recur across
+the ~780k-row source dataset, so a genuinely out-of-index query often still retrieves a
+topically-close or coincidentally-correct passage, making cosine similarity alone an imperfect
+"no real answer exists" signal.
+
+| Target false-refusal | Actual `TAU` | Actual false-refusal | Correct-refusal achieved |
+|---|---|---|---|
+| ≤5% | 0.8487 | 4.7% | 13.3% |
+| ≤10% (spec target) | 0.8640 | 10.0% | 38.0% |
+| ≤15% | 0.8723 | 14.0% | 56.0% |
+| ≤20% | **0.8835 (shipped)** | **19.3%** | **75.3%** |
+| ≤30% | 0.8918 | 30.0% | 79.3% |
+
+**Shipped: `TAU=0.8835`, `MARGIN=0.0`** — the balanced operating point weighing both
+`EVAL_PROTOCOL.md` targets equally, applied jointly (`docs/DECISIONS_P.md` P-015) and confirmed
+live. `MARGIN=0.05` (the pre-calibration placeholder) was tested and found to push false-refusal to
+88.0% at this `TAU` — a fine sweep confirmed no useful non-zero `MARGIN` exists at this operating
+point, so `MARGIN=0.0` is the empirically-correct pairing, not a shortcut (R-017). Full curve:
+![G3 calibration](assets/g3_calibration.png)
+
+**G3 robustness check (R-035):** fp16 index quantization changes zero G3 decisions across the same
+500 held-out queries (see §3b) — the calibration holds under the shipped sqfp16 index, not just
+the fp32 index it was originally calibrated against.
+
+**G4 (groundedness) — honest gap:** `MIN_OVERLAP_RATIO=0.15` is still the original, uncalibrated
+placeholder. The spec-suggested offline NLI entailment pass (Bespoke-MiniCheck / RAGAS style) over
+a sample of real answers, which would let this threshold graduate from a guess to a measured value,
+was never built — flagged here rather than silently left unstated. Does not block correctness: G4
+still runs on every real answer and can still trigger a real refusal, it's the specific threshold
+value that's unvalidated.
 
 ## §6 — Latency (P50/P70/P100)
 
-_Not run yet — Workstream P, Phase 6. Will include `docs/assets/latency_breakdown.png` and
-`docs/assets/latency_cdf.png`._
+Full detail, methodology, and the honest wall-clock-vs-stage-cost story:
+**`docs/LATENCY_BUDGET.md`.** Summary here, explicitly separating **LOCAL/DOCKER** measurements
+from the **one** LIVE RENDER measurement that exists — these are genuinely different environments
+and the numbers are not interchangeable.
+
+**LOCAL (this dev machine, `scripts/bench_latency.py`, 100 queries × 5 reps = 500 samples):**
+
+| Measurement | P50 | P70 | P95 | P100 |
+|---|---|---|---|---|
+| Track A stage cost (server `timings_ms` sum) | 5.2ms | 5.7ms | 6.9ms | 8.9ms |
+| End-to-end wall-clock, answered query — **current** (post R-036 budget gate) | **10.1ms** | 10.6ms | 11.8ms | 16.2ms |
+
+The pre-R-036 wall-clock number for the same measurement was **~213-246ms** (`GenerateStage`
+attempted a doomed Track B call on every answerable query before the pre-flight budget gate
+existed) — kept in `docs/LATENCY_BUDGET.md` as a real, dated before/after record, not deleted.
+
+**LIVE RENDER (deployed URL, `docs/DECISIONS_R.md` R-036, 40 real sequential queries against
+`https://vrag-voice.onrender.com`):**
+
+| Measurement | P50 | P100 |
+|---|---|---|
+| `retrieve` / `t_pipeline` stage-sum, live | **594.9ms** | **1105.7ms** |
+
+**This does not meet the 200ms target — stated plainly, not minimized.** Root cause verified via
+Render's own metrics API (steady ~409-430MB throughout, ruling out memory pressure) and Render's
+documented free-tier spec (0.1 shared vCPU): the identical code path that runs in 5-16ms locally
+runs 10-40x slower under free-tier CPU contention. This is a hosting-tier limitation, not a code
+regression — see `docs/LATENCY_BUDGET.md` and `docs/ARCHITECTURE.md`'s deploy runbook for the full
+honest breakdown.
+
+**Response-status mix** (local, 500 samples, real query distribution — 60% in-domain / 20%
+off-topic / 10% unsafe / 10% degenerate, `eval/test_queries.json`): 275 answered (55%), 165
+abstained (33%, G3 gate), 60 refused (12%, G1/G2).
+![latency breakdown](assets/latency_breakdown.png)
+![latency CDF](assets/latency_cdf.png)

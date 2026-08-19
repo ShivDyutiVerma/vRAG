@@ -84,10 +84,44 @@ decision changes (371 answered/129 abstained, identical both ways) — the earli
 observation was sampling noise, not a real fp16 effect. TAU/MARGIN left untouched, no retuning
 needed. Full record: `docs/DECISIONS_R.md` R-035.
 
-Current priority: deployment remains parked by the user's direction, but now has real, favorable
-numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
-`t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)
-or picking up whatever's next in `docs/BUILD_PLAN.md` P7 (README, frontend polish, manual QA).
+## ⚠️ Current state, 2026-08-20 (supersedes everything below this point)
+
+The system described in the "Day 1" snapshot below (`retrieve()` stub, no harness wired in, no
+guardrails) **no longer reflects reality anywhere** — kept only as a historical record of where
+the project started, not as current status. As of this update:
+
+- **Full harness wired in and live**: G1→G2→Retrieve→G3→TrackA/TrackB→G4→G5→Assemble runs for
+  real on both `/ask` and `WS /voice`, deadline propagation active, `GenerateStage`'s pre-flight
+  budget gate (R-036) shed the doomed-Track-B-attempt problem entirely.
+- **Real retrieval confirmed live**: `GET /healthz` on `https://vrag-voice.onrender.com` returns
+  `{"status":"ok","retrieval":"real"}`, verified 2026-08-20 as part of a redeploy that also shipped
+  two real fixes — the frontend refusal-state pill (was collapsing 3 distinct statuses into one
+  hardcoded "Abstained" label) and an STT no-speech timeout (was hanging on a silent session until
+  Sarvam's own ~60s watchdog, now a clear 10s error). 5 real `/ask` calls against the live URL:
+  2 answered with real citations, 3 correctly abstained with real, distinct confidence scores.
+- **All 6 chunking strategies, 4 embedders, dense-vs-hybrid, and 2 rerankers evaluated with real
+  numbers** — `docs/EVAL_RESULTS.md` §1-3, plus a targeted follow-up (R-038) specifically testing
+  reranking against the exact failure mode it was hypothesized to fix. `metadata_aware` /
+  `multilingual-e5-small` / dense-only / no-rerank shipped, each a measured decision.
+- **All 5 guardrail layers real and tested**; G3 has a real 300-query calibration
+  (`TAU=0.8835`, `docs/EVAL_RESULTS.md` §5); G4's threshold is the one remaining uncalibrated
+  value, disclosed rather than hidden.
+- **Memory problem resolved**: 1,860MB → 493.8MB (73.4% cut), verified under the real 512MB Docker
+  constraint with ~114MB headroom, zero quality cost — see `docs/ARCHITECTURE.md`'s memory story.
+- **Latency**: meets the 200ms target locally (P50=10.1ms wall-clock, post R-036); does **not**
+  meet it on live Render specifically due to free-tier CPU contention (P50=594.9ms for the
+  retrieve stage alone) — disclosed plainly in `docs/LATENCY_BUDGET.md` and the README, not hidden.
+- **`README.md` now exists** at the repo root (previously missing) — see it for the full current
+  picture; this file is now a supplementary progress log, not the primary source of truth.
+
+**What's still genuinely open:** real human-microphone verification on the live URL (the
+automation environment used this session provides a muted mic track, not real speech — explicitly
+marked pending, not faked); demo and process videos (not recorded); the promotion grid and
+submission form (`docs/SUBMISSION_CHECKLIST.md`, correctly untouched this early).
+
+---
+
+## Historical: Day 1 sync snapshot (superseded above, kept for the record)
 
 **Last updated:** 2026-08-17 (Day 1 sync — merging `workstream-p` into `main`, then `main` into `workstream-r`)
 **Current phase:** P0 wrapping up / P1 underway (P is ahead on the walking skeleton; R is ahead on chunking/retrieval code)
@@ -109,7 +143,7 @@ this merge). Neither track had run the chunking ablation against real data yet a
 `retrieve()` is still P's Day-1 stub on both branches — R's `HybridRetriever` exists but isn't wired
 in, pending the A1 ablation results.
 
-## Phase exit criteria — P0
+## Phase exit criteria — P0 (Day 1, historical)
 
 - [ ] Probe results committed; provider chosen with evidence, recorded as ADR-003 — **blocked**, no API keys on either machine yet
 - [x] `t_pipeline` definition agreed and recorded as ADR-004 — confirmed at this sync
@@ -117,7 +151,7 @@ in, pending the A1 ablation results.
 - [x] 500 held-out pairs frozen and committed — `eval/heldout_queries.json` (R)
 - [x] `pytest` green, `ruff` clean on both tracks independently
 
-## What works right now (verified, not assumed)
+## What worked at that point (Day 1, historical — see current state above for today's reality)
 
 - Live public HTTPS deploy on Render, verified with real Sarvam STT + real Hindi audio round trip (P)
 - Real FastAPI app + WebSocket voice endpoint + frontend mic capture (P)
@@ -127,16 +161,14 @@ in, pending the A1 ablation results.
 - Real 10,000-query working corpus + 500-pair held-out eval set, built from the actual downloaded
   MSMARCO-XI Hindi file (R)
 
-## What is stubbed / faked / TODO
+## What was stubbed at that point (Day 1, historical — all of this is now real, see current state above)
 
-- `retrieve()` is still the Day-1 stub in the merged code — R's real `HybridRetriever` swap is next
-- No harness orchestration (deadline propagation, retries, guardrails) wired into the live request
-  path yet — `Stage`/`PipelineContext`/`Budget` exist as a shape but `/ask` and `/voice` call
-  `retrieve()` directly (P, explicitly Day 2 scope)
-- No chunking strategy has real Recall@k/MRR/nDCG numbers yet — `docs/EVAL_RESULTS.md` §1 is empty
-- G1–G5 guardrails not started
+- `retrieve()` was still the Day-1 stub — **now real**, dense-only FAISS in production
+- No harness orchestration wired into the live request path — **now fully wired**
+- No chunking strategy had real Recall@k/MRR/nDCG numbers — **now in `docs/EVAL_RESULTS.md` §1-3**
+- G1–G5 guardrails not started — **now all five real and tested**
 
-## Live numbers
+## Live numbers (Day 1, historical — see `docs/LATENCY_BUDGET.md` for current real numbers)
 
 | Metric | Value | Measured on |
 |--------|-------|-------------|
@@ -144,13 +176,13 @@ in, pending the A1 ablation results.
 | Recall@5 (prod strategy) | — | — |
 | Live golden-path round trip (STT→answer) | ~2.4s | 2026-08-17, Render deploy (P-007) |
 
-## Blockers
+## Blockers (Day 1, historical)
 
 - No Sarvam/Groq API keys on either dev machine — blocks `scripts/probe_latency.py` and ADR-003. Owner: user.
 - Non-blocking: Render `/voice` WebSocket lingers ~20-25s before a clean close (doesn't affect answer
   delivery) — tracked as P-R12 in `docs/RISKS.md`.
 
-## Next session should start by
+## What Day 1's session proposed doing next (historical — superseded by the current-state section above)
 
 1. R: run `scripts/eval_chunking.py` across all 6 strategies against the real held-out set, write
    `docs/EVAL_RESULTS.md` §1, promote a winner, wire `HybridRetriever` into `retrieve()`.
