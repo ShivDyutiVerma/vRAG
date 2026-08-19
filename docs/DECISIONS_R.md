@@ -1506,3 +1506,132 @@ instruction.
 
 **R4 verdict: FAIL.** The current production build does not survive a hard 512MB limit under real
 traffic. `docs/RISKS.md` R4 updated accordingly.
+
+## R-032 — Isolated first-real-inference memory probe: root cause found, and it isn't ONNX inference
+
+**Date:** 2026-08-19
+**Status:** Accepted. Diagnostic-only, per explicit instruction — no production/architecture/
+Dockerfile/corpus/FAISS/embedding-model/tokenizer change made. Corrects R-031's "likely cause"
+hypothesis (ONNX arena growth during inference) with directly measured evidence: **the ONNX
+inference call itself costs under 2MB. The real cost is constructing the ONNX `InferenceSession`
+and `SentencePieceProcessor` in the first place** — a ~205MB one-time allocation, on top of FAISS
++ SQLite's own ~298MB, that only happens to land on the first real query because `LiteE5Embedder`
+loads lazily (docs/DECISIONS_R.md R-030's own design, for good reason — see Consequences below).
+
+**Method:** `scripts/probe_first_inference_memory.py` (new, diagnostic-only, not imported by
+production code or referenced from `Dockerfile`). Instruments the real production objects
+(`LiteE5Embedder`, `DenseIndex`, `SQLiteChunkLookup`, the `_get_real_retriever()` singleton)
+directly — calls their existing methods with checkpoints between them; the one place a boundary
+falls *inside* an existing method (`LiteE5Embedder._embed`, to split tokenize / before-ONNX /
+after-ONNX / after-normalize), that method's body is inlined verbatim, not reimplemented. Two
+measurement layers per checkpoint: an in-process ~1ms-interval background RSS sampler (resolves
+the 150ms `docker stats` blind spot R-031 hit) and `tracemalloc` for the Python/numpy-visible
+share, so `native_unexplained_mb` (RSS delta minus tracemalloc delta) isolates ONNX Runtime's and
+FAISS's own C++-side allocations specifically. Every checkpoint is written to a JSON-lines log,
+flushed and `fsync`'d immediately, so a partial log survives an OOM kill. Three modes: `full`
+(real singleton, whole path), `embed_only` (fresh process, embedder alone), `faiss_only` (fresh
+process, FAISS+SQLite alone, no `onnxruntime`/`sentencepiece` import at all). Run inside the real
+`vrag-real:test` image (same assets as R-031) via a bind-mounted script, `psutil` installed
+ad hoc into the ephemeral container (not baked into the image — it's a `dev`-extra-only tool).
+
+**A real self-caught instrumentation bug, before trusting the first result — same discipline as
+R-028's onnx.load() staging distortion:** the first `full`-mode run showed a +205MB jump
+attributed to "03_after_tokenize_query", with `embed_only` showing no such jump at the same label
+(+0.5MB) — read naively, this looked like an interaction effect between FAISS being loaded and
+tokenization. It wasn't real: `_run_embed_inline`'s first checkpoint sat *after* both
+`embedder._ensure_loaded()` (first-ever ONNX session + SentencePieceProcessor construction, since
+the singleton's embedder is constructed-but-unloaded at that point, R-030's lazy-load design) and
+the actual tokenize call, with no boundary between them — so the label lied about which of the two
+operations was actually expensive. `embed_only` didn't show the jump at that label only because
+it had already paid the construction cost one checkpoint earlier, at "02_embedder_loaded_no_index"
+(+217.8MB there). Fixed by adding an explicit checkpoint between construction and tokenize
+(`02a_faiss_and_sqlite_loaded_embedder_not_yet` -> `02b_onnx_session_and_tokenizer_loaded` ->
+`03_after_tokenize_query`) and re-running. All numbers below are from the corrected instrumentation.
+
+**Corrected, measured breakdown (Linux container, `-m 1g` diagnostic limit, 6 queries):**
+
+| Stage | RSS after | Delta | native_unexplained delta |
+|---|---|---|---|
+| 01 process startup | 37.7MB | — | — |
+| 02a FAISS + SQLite loaded (embedder not yet touched) | 335.7MB | **+298.0MB** | +262.2MB |
+| 02b ONNX session + SentencePieceProcessor constructed | 540.5MB | **+204.8MB** | +204.0MB |
+| 03 after tokenizing query 0 | 540.7MB | +0.3MB | +0.3MB |
+| 04 before ONNX inference | 540.7MB | +0.0MB | -0.0MB |
+| 06 after ONNX inference (window peak *during* = boundary 5) | 542.0MB | +1.3MB | +1.3MB |
+| 07 after mean-pool + normalize | 542.2MB | +0.1MB | +0.1MB |
+| 08 before FAISS search | 542.2MB | +0.0MB | +0.0MB |
+| 10 after FAISS search (window peak *during* = boundary 9) | 542.5MB | +0.3MB | +0.3MB |
+| 11 after SQLite chunk fetch | 542.5MB | +0.0MB | -0.0MB |
+| 12 after `retrieve()` round trip | 542.8MB | +0.3MB | +0.3MB |
+| queries 1-5, all boundaries | — | ~0.0MB each | ~0.0MB each |
+
+**Isolation runs (same container, same 1GB limit, confirms the breakdown is real, not an
+artifact of the `full`-mode ordering):**
+- `embed_only` (embedder alone, no FAISS/SQLite ever loaded): startup 38.0MB -> after
+  `_ensure_loaded()` **255.8MB (+217.8MB)** -> after 6 real tokenize+ONNX+normalize cycles,
+  peak 258.2MB. Construction cost (~218MB) matches `full` mode's ~205MB construction cost
+  (same operation, same order of magnitude, small variance expected between separate runs) --
+  **not an interaction effect with FAISS, a real, roughly order-invariant fixed cost.**
+- `faiss_only` (FAISS+SQLite alone, `onnxruntime`/`sentencepiece` never imported): startup
+  37.9MB -> after index load **335.2MB (+297.3MB)**, matching `full` mode's 02a figure almost
+  exactly -> after 6 real searches + SQLite fetches, peak 340.0MB (+4.8MB total, first-search-only,
+  never repeats).
+
+**Direct confirmation under the real 512MB limit:** re-ran `full` mode with `-m 512m
+--memory-swap 512m` (the real limit, not the 1GB diagnostic one). Checkpoint 02a logged
+successfully at **335.1MB**, well under budget. The process was **`Killed` before checkpoint 02b
+could be written** -- i.e., during `LiteE5Embedder._ensure_loaded()`'s construction of the ONNX
+session / SentencePieceProcessor, exactly the stage identified above, with nothing in between.
+This is the single most direct piece of evidence in this investigation: the partial log's last
+line is the boundary immediately before the fatal allocation, not an inference or search step.
+
+**Ranked list of actual causes (measured):**
+
+1. **FAISS dense index + SQLite chunk lookup, resident from first real use: ~298MB.** The single
+   largest block. One-time, does not grow across queries.
+2. **`ort.InferenceSession` + `SentencePieceProcessor` construction, resident from first real
+   embedder use: ~205-218MB.** The second-largest block, confirmed one-time (queries 1-5 show
+   zero further growth) and confirmed *not* caused by FAISS being loaded first (embed_only
+   reproduces essentially the same cost alone). A rough split, cross-referenced against an
+   isolated construction-only micro-test (SentencePieceProcessor alone: ~41MB from a clean
+   baseline) and R-028's independent prior finding that the ONNX session alone (before the
+   R-029/030 tokenizer swap) cost roughly ~137MB in isolation: **SentencePieceProcessor is a
+   minor share (~40MB); `ort.InferenceSession` construction is the dominant share of this
+   ~205MB (~165-180MB)** -- moderate confidence, not directly isolated in this same Linux
+   container (would need one more targeted run to split cleanly; not attempted, per "stop after
+   the diagnostic").
+3. **Actual per-query work -- tokenize, ONNX inference, mean-pool/normalize, FAISS search, SQLite
+   fetch, the full `retrieve()` round trip -- costs under 2MB combined, every time, including the
+   first query.** Rules out ONNX inference-time arena growth (R-031's original hypothesis) as a
+   material contributor: boundary 06 (after ONNX inference) shows +1.3MB max, ever.
+4. **No per-request growth across repeated queries.** Peaks across queries 1-5 vary by at most
+   ~0.6MB from query 0's peak in every mode tested -- not leak-shaped, one-time cost only.
+5. **Code-inspection findings (real, but negligible in magnitude, not contributors to the spike
+   above):** `LiteE5Embedder._embed()` (`src/vrag/index/embedder.py`) returns a Python list via
+   `.tolist()`; `HybridRetriever._embed_and_search_dense()` passes that list straight into
+   `DenseIndex.search()`, which immediately converts it back with `np.asarray([query_vector],
+   dtype=np.float32)` -- a numpy -> Python list -> numpy round trip for a single ~384-float
+   vector (~1.5KB), avoidable by threading the numpy array through directly instead of via
+   `list[float]`. `_embed()`'s `mask = attention_mask[..., None].astype(np.float32)` followed by
+   `last_hidden_state * mask` allocates a full extra `(batch, seq_len, hidden_dim)` intermediate
+   array the same shape as the ONNX output tensor -- avoidable via an in-place multiply. Both are
+   real and both are sized in the tens of KB for a single query, three to four orders of
+   magnitude below the ~205MB and ~298MB costs above -- not worth attributing any of the OOM to
+   either. Not fixed, per "do not fix anything yet."
+
+**Consequences (not yet decided, no action taken):** R4's actual binding constraint is now a
+precise, well-evidenced number, not a hypothesis: **FAISS+SQLite (~298MB) + embedder construction
+(~205MB) ≈ 503-543MB total resident once both have been touched once**, against a 512MB budget --
+a gap of roughly 0MB to -30MB depending on measurement environment (this diagnostic's own
+`tracemalloc`+background-sampler+ad-hoc-`psutil`-install overhead is itself a few MB not present
+in the real app; R-030's local-host figure of 493.8MB was measured on this dev machine's Windows
+`psutil` `WorkingSetSize`, which this session separately found lags/differs from true Linux `RSS`
+-- see the smoke-test note in this ADR's development history, not reproduced here as it predates
+the corrected instrumentation). The two components were never previously measured resident in the
+same process at the same time with this granularity -- R-020/R-023's "index alone" and R-028's
+"embedder alone" audits were exactly that, alone. Options this opens up, none decided or
+attempted: (a) initialize the ONNX session with a smaller/no memory arena (`enable_cpu_mem_arena
+=False` -- R-028 found this doesn't help *inference-time* RSS, but was never tested for
+*construction-time* RSS specifically, which this probe shows is the real cost); (b) reduce FAISS/
+SQLite's ~298MB (corpus-shrink, already known catastrophic for quality per R-027); (c) accept a
+deploy target above 512MB. This ADR does not recommend one -- diagnostic only, per instruction.

@@ -46,6 +46,14 @@ embedding-inference + FAISS search, which no fix so far has targeted. R4 is **no
 `docs/RISKS.md` R4 and `docs/DECISIONS_R.md` R-031 for the full finding. No code changed in
 response per explicit instruction (validation-only, stop-and-report on failure).
 
+**Root cause pinned down 2026-08-19 (R-032), isolated diagnostic probe, directly confirmed against
+the real 512MB limit.** Not ONNX inference, not FAISS search, not a leak — all under 2MB each,
+every query. It's FAISS+SQLite load (~298MB) plus `ort.InferenceSession`+`SentencePieceProcessor`
+construction (~205-218MB, confirmed independent of FAISS) simply stacking to ~503-543MB, never
+before measured resident together in one process. A `-m 512m` re-run of the probe dies exactly
+between those two steps, nothing else. See `docs/DECISIONS_R.md` R-032 for the full ranked-causes
+breakdown. No fix applied — diagnostic only, per instruction.
+
 Current priority: deployment remains parked by the user's direction, but now has real, favorable
 numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
 `t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)

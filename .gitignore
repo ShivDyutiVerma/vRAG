@@ -42,3 +42,4 @@ scripts/*.err.log
 # --- os / editor cruft ---
 .DS_Store
 .vscode/
+.probe_logs/
