@@ -1959,3 +1959,41 @@ held-out set, fp16 quantization does not change a single G3 decision. **No calib
 found — TAU/MARGIN correctly left untouched, per instruction.** Per-query detail (top1 score and
 pass/fail for both indices, every query) written to `eval/g3_fp32_vs_fp16_comparison.json` for
 anyone who wants to audit the raw numbers directly.
+
+## R-036 — Live-Render latency investigation + GenerateStage pre-flight gate fixed to a real threshold
+
+**Date:** 2026-08-19
+**Status:** Accepted, implemented. `scripts/bench_live_render.py` (real 40-query sequential
+benchmark against the live Render deploy) found retrieve/t_pipeline stage-sum P50=594.9ms,
+P100=1105.7ms even on a warm instance — 10-40x the local Docker figure (12-47ms) for the
+identical code path. Render's own CPU/memory metrics API (real, not inferred) showed steady
+memory (~409-430MB, rules out memory pressure) and a directly-observed free-tier instance
+replacement/spin-up event mid-benchmark (a new instance ID appeared with memory still climbing),
+matching Render's documented "spins down after 15 min idle" free-tier policy exactly. Root cause:
+predominantly A (retrieval computation itself, confirmed directly — retrieve is ~99.9% of
+server-side time) compounded by D (CPU contention/allocation — Render's own docs confirm Free
+tier is 0.1 shared CPU vs Starter's 0.5), not B (Track B was attempted on only 1/40 queries) and
+only secondarily C (~230ms consistent network gap once warm). Full per-query data:
+`eval/live_render_latency_results.json`.
+
+**Separately, implemented the previously-proposed minimal Track B budget-gating fix.**
+`GenerateStage.min_viable_ms` (`src/vrag/harness/stages.py`) changed from the spec's aspirational
+110ms TTFT target to `circuit_breaker.MIN_FAIR_TIMEOUT_S * 1000` (2000ms) — reusing an existing
+constant, not inventing a new one. This is the ONLY code change: `run_pipeline`'s existing generic
+`can_afford(min_viable_ms)` pre-flight check (`pipeline.py`, unmodified) now sheds Track B before
+it starts whenever remaining budget can't realistically fit a fair Sarvam attempt, instead of
+starting it and paying up to a ~2s doomed wait before falling back to Track A. Nothing inside
+`GenerateStage.run()` changed — timeout, circuit breaker, G4 gate, structured-output repair, and
+fallback all identical; `tests/harness/test_generate_stage_circuit_breaker.py` (5 tests, calls
+`.run()` directly, bypassing this gate) passes unmodified, direct proof of that. 5 new tests in
+`tests/harness/test_generate_stage_budget_gate.py` prove: Track B shed immediately under a 200ms
+budget (not attempted, not waited on); Track A's answer still returned correctly; skip_reason
+correctly cites the new ~2000ms threshold; Track B still reachable under a genuinely generous
+budget; the internal timeout/fallback path (tested via a direct `.run()` call bypassing the gate)
+is untouched. Full suite: 232/232 (227 + 5 new), ruff clean, mypy clean.
+
+**Not yet done:** redeploy to Render (explicitly deferred by the user), a full `bench_latency.py`
+re-run to produce the official updated P50/P70/P100 numbers for `docs/LATENCY_BUDGET.md` (this
+session only did a quick local sanity check with stub retrieval, not the real campaign). FAISS,
+corpus, embedding model, tokenizer, guardrails, retrieval architecture, the 200ms total budget,
+and the frontend are all untouched, per instruction.

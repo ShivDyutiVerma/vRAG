@@ -199,7 +199,15 @@ class GenerateStage(Stage):
     """
 
     name = "generate"
-    min_viable_ms = 110.0  # AGENT_BUILD_SPEC.md §4 row 8b: Track B TTFT target
+    # Pre-flight gate for run_pipeline's can_afford() check (pipeline.py) -- NOT
+    # AGENT_BUILD_SPEC.md §4 row 8b's 110ms TTFT target, which is an aspirational design target,
+    # not a real completion-time floor. Reuses circuit_breaker.MIN_FAIR_TIMEOUT_S instead: the
+    # same, already-measured threshold (~2x Sarvam's measured P95 TTFT) the breaker uses to decide
+    # whether an outcome is fair evidence of provider health. Under the default 200ms budget this
+    # means run_pipeline sheds this stage immediately, before it ever starts, instead of starting
+    # it and paying the ~2s doomed-wait cost that used to precede every fallback to Track A
+    # (docs/DECISIONS_R.md R-036). A caller with a genuinely generous budget_ms still reaches it.
+    min_viable_ms = circuit_breaker.MIN_FAIR_TIMEOUT_S * 1000
     optional = True
 
     async def run(self, ctx: PipelineContext) -> StageResult:
