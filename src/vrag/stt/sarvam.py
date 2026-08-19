@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 
 _SARVAM_WS_BASE = "wss://api.sarvam.ai/speech-to-text-realtime/ws"
 
+# Bounded wait for Sarvam's *first* transcript event (partial or final). Before this fix, the
+# receive loop waited unboundedly while audio was still being sent, so a silent/no-speech-detected
+# session relied entirely on Sarvam's own ~60s inactivity watchdog to ever say anything back --
+# confirmed live (docs/DECISIONS_R.md R-038): 71.42s session, 0 utterances, no client-visible
+# feedback until Sarvam's own "inactivity_timeout" error at the 60s mark, which is
+# indistinguishable from a frozen UI to a real user. Only applies until the first real transcript
+# event arrives -- once Sarvam is actively transcribing, the wait reverts to unbounded (while
+# audio is still being sent) so a normal mid-sentence pause is never mistaken for silence.
+NO_SPEECH_TIMEOUT_S = 10.0
+
+# Grace period to keep waiting for a trailing message after the sender has sent "end" and has
+# nothing left to feed Sarvam. Sarvam doesn't always close its side promptly (observed on
+# silence-only audio) — without this bound the request-side generator would hang forever instead
+# of completing, which is unacceptable on a request path.
+END_GRACE_S = 3.0
+
 
 class TranscriptEvent(BaseModel):
     type: Literal["partial", "final", "error"]
@@ -86,32 +102,55 @@ async def stream_transcribe(
                     )
             finally:
                 logger.info("Audio sender done (%d chunks), sending 'end' to Sarvam", n)
-                await sarvam_ws.send(json.dumps({"event": "end"}))
-                logger.info("Sent 'end' to Sarvam")
+                try:
+                    await sarvam_ws.send(json.dumps({"event": "end"}))
+                    logger.info("Sent 'end' to Sarvam")
+                except websockets.ConnectionClosed:
+                    # Sarvam already closed its side (e.g. its own inactivity watchdog fired)
+                    # before we got to say we're done. Nothing to send to, nothing to do --
+                    # without this guard the exception surfaces only as an unretrieved exception
+                    # on this background task, never reaching a caller who could handle it.
+                    logger.info("Sarvam connection already closed, skipping 'end' send")
 
         sender_task = asyncio.create_task(_sender())
-        # Grace period to keep waiting for a trailing message after we've sent "end" and the
-        # sender has nothing left to feed Sarvam. Sarvam doesn't always close its side promptly
-        # (observed on silence-only audio) — without this bound the request-side generator would
-        # hang forever instead of completing, which is unacceptable on a request path.
-        end_grace_s = 3.0
+        received_transcript = False
         try:
             while True:
-                timeout = end_grace_s if sender_task.done() else None
+                if sender_task.done():
+                    timeout = END_GRACE_S
+                elif not received_transcript:
+                    # Nothing transcribed yet -- bound the wait so silence/no-speech gets a
+                    # visible error instead of relying on Sarvam's own ~60s watchdog. Once real
+                    # speech has been confirmed, later gaps (pauses mid-sentence) go back to an
+                    # unbounded wait, same as before this fix.
+                    timeout = NO_SPEECH_TIMEOUT_S
+                else:
+                    timeout = None
                 logger.info("Waiting for Sarvam message (timeout=%s)", timeout)
                 try:
                     raw = await asyncio.wait_for(sarvam_ws.recv(), timeout=timeout)
                 except TimeoutError:
+                    if timeout == NO_SPEECH_TIMEOUT_S:
+                        logger.info(
+                            "No transcript within %.1fs, telling client no speech detected",
+                            NO_SPEECH_TIMEOUT_S,
+                        )
+                        yield TranscriptEvent(
+                            type="error", text="No speech detected yet. Please try again."
+                        )
+                        break
                     logger.info("Grace period elapsed with no further message, ending stream")
                     break  # sender is done and nothing arrived within the grace period
                 logger.info("Received from Sarvam: %s", raw)
                 msg = json.loads(raw)
                 event = msg.get("event")
                 if event == "transcript.partial":
+                    received_transcript = True
                     yield TranscriptEvent(
                         type="partial", text=msg.get("text", ""), language=msg.get("language")
                     )
                 elif event == "transcript.final":
+                    received_transcript = True
                     yield TranscriptEvent(
                         type="final", text=msg.get("text", ""), language=msg.get("language")
                     )

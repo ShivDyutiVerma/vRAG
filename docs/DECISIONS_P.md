@@ -668,3 +668,123 @@ than anyone had reason to suspect until this systematic 30-call measurement surf
 else changes: `GenerateStage`'s budget-gated behavior, the circuit breaker, and stall-detection
 are all unaffected by this fix — they operate correctly regardless of whether individual calls
 crash or complete; this fix just means more of them complete instead of crashing.
+
+## P-022 — Frontend: refused/abstained/degraded no longer render as one hardcoded "Abstained" pill
+
+**Date:** 2026-08-19
+**Context:** Same single-operator convention as P-021 — implemented in an `R`-flagged session
+(`.workstream` said `R`) since the operator was working both roles that day, then relocated here
+from `docs/DECISIONS_R.md` (was numbered R-037) once the module-ownership mismatch was caught and
+flagged: `frontend/index.html` is P's module (frontend), not R's (retrieval/ranking). No content
+changed in the move, only the number and this context note.
+**Status:** Accepted, implemented, verified in a real browser. Backend untouched (no API contract,
+schema, retrieval, guardrail, or harness change) -- `frontend/index.html` only.
+
+**Bug:** `answer_final`'s dispatch was a binary branch -- `if(ar.status === 'answered')
+goAnswered(ar); else goRefused(ar.refusal_reason);` -- so `refused`, `abstained`, and `degraded`
+all fell into `goRefused()`, which hardcoded the pill text `'Abstained · confidence too low'`
+regardless of which one actually happened, and always set `body.dataset.state = 'refused'`.
+
+**Fix:** extracted a pure `describeAnswerResponse(ar)` function (`index.html`, no DOM access) with
+one explicit branch per canonical status -- `answered`/`degraded`/`abstained`/`refused` each get
+their own `state`, headline, pill class, and pill text; an unrecognised status falls through to a
+visibly-labeled error rather than silently reusing another status's copy. `renderAnswerResponse`
+applies the result to the DOM; the WS `answer_final` handler now just calls it directly. Added one
+new CSS pill variant (`.status-pill.blocked`, ink-toned) so `refused` has a 4th genuinely distinct
+visual treatment alongside the 3 that already existed (`.ticket` gold-dashed for answered, `.warn`
+gold for degraded, base signal-pink for abstained) -- all reusing existing palette tokens, no new
+colors invented. Also fixed a real consequential bug the state-split would otherwise have
+introduced: `handlePrimaryClick`'s "click primary to start over" check only recognised
+`idle`/`answered`/`refused` as terminal states (everything used to collapse into `refused`) --
+now explicitly covers all 5 terminal states, or "Try again" on a real abstained/degraded response
+would have silently done nothing.
+
+**Verification, real browser (Chrome via automation, not just code review):**
+`frontend/test_status_rendering.html` (new) loads the real, unmodified `index.html` in an iframe
+so the script runs with its actual DOM, and exercises `window.__describeAnswerResponse` (a small
+test-only hook, zero behavior change for real usage) against real captured payloads for
+`answered`/`abstained`/`refused` (from the validated `vrag-real:v3-warmup` container, real
+retrieval, real Sarvam-backed G1/G2/G3) and one schema-valid `degraded` payload -- `AssembleStage`
+(`src/vrag/harness/stages.py`) doesn't emit `degraded` today, out of scope for this fix, so that
+one is hand-built to the exact `AnswerResponse`/`Citation` shape and labeled as such, not passed
+off as backend-captured. 16/16 assertions pass, run live in a real browser: all 4 statuses map to
+distinct `state`/pill-text/pill-class/headline; refused/degraded specifically do not say
+"Abstained"; refused's pill is exactly "Refused"; real answer text and citations survive
+untouched; an unrecognised status gets its own copy, never a silent reuse. Separately verified
+via `getComputedStyle` in the same real browser session that all 4 pill classes produce genuinely
+distinct background/border/text colors, not just distinct strings.
+
+No Node/npm/frontend framework exists in this project (single static HTML file, no build step) --
+this test needs no new dependency, just a local static server (`python -m http.server`) and the
+already-available browser automation tool; documented in the test file's own header comment.
+
+Full backend suite: 232/232 (unaffected, as expected -- no Python files touched).
+
+## P-023 — STT: bounded no-speech timeout + guarded sender shutdown, `src/vrag/stt/sarvam.py`
+
+**Date:** 2026-08-19 / 2026-08-20
+**Context:** Same single-operator convention as P-021/P-022 -- implemented in an `R`-flagged
+session, then relocated here from `docs/DECISIONS_R.md` (was numbered R-038) once the
+module-ownership mismatch was caught and flagged: `src/vrag/stt/` is P's module (STT), not R's.
+No content changed in the move, only the number and this context note.
+**Status:** Accepted, implemented, tested. `src/vrag/stt/sarvam.py` only -- no retrieval, FAISS,
+corpus, embedding, tokenizer, guardrail, Track A/B, latency-budget, Render config, or frontend
+change (the frontend's existing `msg.type === 'error'` handling already renders any
+`TranscriptEvent(type="error", ...)` correctly; confirmed by re-reading `main.py`'s `/voice`
+dispatch and `frontend/index.html`'s error branch, so nothing there needed to change).
+
+**Bug (found via real-browser + real-microphone verification against the deployed
+`vrag-voice.onrender.com`, then confirmed with Render's `/v1/logs` API against the live
+container):** a silent/no-speech session left the UI stuck in LISTENING indefinitely -- no
+transcript, no error, no timeout -- because `stream_transcribe()`'s receive loop waited
+*unboundedly* (`asyncio.wait_for(..., timeout=None)`) for Sarvam's first message whenever audio
+was still being sent. The only thing that ever unblocked a genuinely silent session was Sarvam's
+own ~60s inactivity watchdog (`{"code":"inactivity_timeout","message":"No audio received for
+60s.","is_fatal":true,"status_code":408}`) -- confirmed live: a 71.42s real-microphone session (0
+utterances) got zero client-visible feedback until that watchdog fired at the 60s mark, which is
+indistinguishable from a frozen UI to a real user. Separately, the same traceback surfaced a second,
+independent bug: `_sender()`'s `finally` block unconditionally tried to send `{"event":"end"}` to
+Sarvam on cleanup, and if Sarvam had already closed the socket first (e.g. via that same watchdog),
+this raised `ConnectionClosedError` inside a detached background task (`asyncio.create_task`)
+whose exception was never awaited or retrieved -- an "unhandled Task exception" leak, harmless to
+the user but a real bug.
+
+**Fix (two, scoped as approved):**
+1. New module constant `NO_SPEECH_TIMEOUT_S = 10.0`. The receive loop now tracks
+   `received_transcript` (set on `transcript.partial`/`transcript.final`); while sending is still
+   in progress *and* nothing has been transcribed yet, the wait is bounded to 10s -- on timeout it
+   yields the existing `TranscriptEvent(type="error", text="No speech detected yet. Please try
+   again.")` mechanism (no new API contract) and ends the stream. Once a real transcript arrives,
+   the wait reverts to unbounded (matching prior behavior exactly) so a normal mid-sentence pause
+   is never mistaken for silence. The pre-existing end-of-stream grace period (now
+   `END_GRACE_S = 3.0`, promoted to a module constant alongside `NO_SPEECH_TIMEOUT_S` for
+   testability, same 3.0s value, unchanged behavior) is completely untouched by this branch.
+2. `_sender()`'s cleanup `send({"event": "end"})` is now wrapped in
+   `try/except websockets.ConnectionClosed:` (reusing the same exception class already caught at
+   the outer level) -- if Sarvam already closed its side, this logs and returns cleanly instead of
+   leaking an unretrieved task exception.
+
+**Tests (new, `tests/stt/test_sarvam_stt.py`, 6 tests):** a fake Sarvam WebSocket
+(`_FakeSarvamWS`, async context manager + `.send()`/`.recv()` against a scripted
+`(delay, message_or_exception)` schedule) stands in for the real network call, monkeypatching
+`ws_connect` -- same "fake the network boundary, exercise real control flow" convention as
+`tests/generation/test_sarvam_llm.py`'s `httpx.MockTransport`; the *production* STT path itself
+is never mocked. Proves: (a) a silent session yields the no-speech error at the configured timeout,
+well under a 2s bound, not Sarvam's 60s watchdog; (b) a real transcript arriving inside the
+(test-shrunk) no-speech window correctly reverts the wait to unbounded, so a later, longer gap
+(0.2s against a 0.05s shrunk timeout) does not truncate the session; (c) a normal
+audio-ends-then-final-transcript-then-Sarvam-closes lifecycle ends cleanly, with the sender's own
+"end" event confirmed sent; (d) an already-closed connection during the sender's cleanup produces
+no unhandled Task exception (verified via a temporary `loop.set_exception_handler` capture, not
+just "no crash") while 2 real audio chunks still went out fine beforehand; (e) real Sarvam-origin
+`error` events still relay unchanged. One test asserts `NO_SPEECH_TIMEOUT_S == 10.0` directly, the
+configured (not separately live-measured) value the user's spec calls for. Sanity-checked the
+suite's dependency on the fix itself by reverting `sarvam.py` and re-running -- collection fails
+(`ImportError: cannot import name 'NO_SPEECH_TIMEOUT_S'`), confirming the tests are wired to the
+real code, not vacuous.
+
+Full suite: 238/238 (232 + 6 new), ruff clean, mypy clean, zero warnings (checked with
+`-W error::pytest.PytestUnraisableExceptionWarning`, the class of warning that would have caught
+the pre-fix Task-exception leak).
+
+**Not yet done:** redeploy to Render (explicitly deferred by the user pending review).

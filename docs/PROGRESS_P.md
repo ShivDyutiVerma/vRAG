@@ -2,10 +2,12 @@
 
 > Mine — edit freely, any time. Never edited by Workstream R.
 
-**Last updated:** 2026-08-18 (Day 2, session 09 — same-day continuation)
+**Last updated:** 2026-08-20 (Day 4, session — single-operator, see P-021/P-022/P-023)
 **Current phase:** P4/P5 done; **live free-tier deploy of real retrieval tried and failed (real
-OOM on first `/ask`, P-020), rolled back cleanly — demo restored to stub-based, working. Next:
-check alternative free hosts with more RAM headroom (user's directive, R4)**
+OOM on first `/ask`, P-020), rolled back cleanly — demo restored to stub-based, working. Track B's
+success rate bug fixed (P-021, 0%→63.3%). Real-mic verification found and fixed a genuine STT
+stuck-UI bug (P-023) — not yet redeployed. Still open: check alternative free hosts with more RAM
+headroom (user's directive, R4)**
 
 ## Where we are, in one paragraph
 
@@ -107,6 +109,20 @@ The local test's steady-state measurement didn't capture the *peak* memory durin
 initialization, which is the actual constraint. Rolled back immediately via `git revert` (not a
 force-push, so a future ordinary push can't silently undo it), redeployed, verified the demo is
 fully restored (3/3 `/ask` calls succeeding again). See P-020 for the complete record.
+
+Ninth session (single-operator, `.workstream` briefly `R` while working both roles — see P-021/
+P-022/P-023's context notes): found and fixed a real bug masking most of Track B's success rate
+(P-021, `.get(key, default)` doesn't cover an explicit `null` value — 0%→63.3% on a real 30-call
+measurement). Then finally did next-session item 8 below for real: a live human-microphone,
+real-Chrome verification pass against the deployed `vrag-voice.onrender.com`. Found a genuine
+stuck-UI bug this way, not a hypothetical one — silent/no-speech sessions left LISTENING stuck
+indefinitely with zero feedback, because the STT receive loop only had Sarvam's own ~60s
+inactivity watchdog as a floor, confirmed via Render's `/v1/logs` against the live container.
+Fixed with a bounded 10s no-speech timeout plus a guarded sender-shutdown path to stop a separate,
+incidental unretrieved-Task-exception leak (P-023, `src/vrag/stt/sarvam.py`, 6 new tests, full
+suite 238/238). Also relocated P-022 (the R-037 pill-rendering frontend fix from the prior
+session) here once the workstream mismatch was caught — same content, corrected module ownership.
+Not yet redeployed; still pending a repeat of the real-mic pass against the live URL once it is.
 
 ## Phase exit criteria — P4/P5
 
@@ -261,4 +277,10 @@ enough runway before Aug 22.
    its own design tension: G4's groundedness check needs the *complete* answer + citations before
    it's safe to show anything, so this needs either a redesign (e.g. an incremental/best-effort G4
    check) or accepting a "commit point" partway through the stream. Not scoped yet.
-8. Click through the real mic UI on a phone. Still. Genuinely just do this one.
+8. ~~Click through the real mic UI on a phone. Still. Genuinely just do this one.~~ **Done** (real
+   Chrome + real microphone against the deployed URL) — found and fixed a genuine bug (P-023):
+   silent sessions left LISTENING stuck indefinitely. Fix is implemented and tested but **not yet
+   redeployed** — repeat this same real-mic pass against the live URL once P-023 ships, including
+   the still-outstanding real Hindi-speech case (this session's audio input was silent/muted, by
+   disclosed environment limitation, not a real spoken query) and on an actual phone specifically,
+   not just desktop Chrome.
