@@ -1997,3 +1997,49 @@ re-run to produce the official updated P50/P70/P100 numbers for `docs/LATENCY_BU
 session only did a quick local sanity check with stub retrieval, not the real campaign). FAISS,
 corpus, embedding model, tokenizer, guardrails, retrieval architecture, the 200ms total budget,
 and the frontend are all untouched, per instruction.
+
+## R-037 — Frontend: refused/abstained/degraded no longer render as one hardcoded "Abstained" pill
+
+**Date:** 2026-08-19
+**Status:** Accepted, implemented, verified in a real browser. Backend untouched (no API contract,
+schema, retrieval, guardrail, or harness change) -- `frontend/index.html` only.
+
+**Bug:** `answer_final`'s dispatch was a binary branch -- `if(ar.status === 'answered')
+goAnswered(ar); else goRefused(ar.refusal_reason);` -- so `refused`, `abstained`, and `degraded`
+all fell into `goRefused()`, which hardcoded the pill text `'Abstained · confidence too low'`
+regardless of which one actually happened, and always set `body.dataset.state = 'refused'`.
+
+**Fix:** extracted a pure `describeAnswerResponse(ar)` function (`index.html`, no DOM access) with
+one explicit branch per canonical status -- `answered`/`degraded`/`abstained`/`refused` each get
+their own `state`, headline, pill class, and pill text; an unrecognised status falls through to a
+visibly-labeled error rather than silently reusing another status's copy. `renderAnswerResponse`
+applies the result to the DOM; the WS `answer_final` handler now just calls it directly. Added one
+new CSS pill variant (`.status-pill.blocked`, ink-toned) so `refused` has a 4th genuinely distinct
+visual treatment alongside the 3 that already existed (`.ticket` gold-dashed for answered, `.warn`
+gold for degraded, base signal-pink for abstained) -- all reusing existing palette tokens, no new
+colors invented. Also fixed a real consequential bug the state-split would otherwise have
+introduced: `handlePrimaryClick`'s "click primary to start over" check only recognised
+`idle`/`answered`/`refused` as terminal states (everything used to collapse into `refused`) --
+now explicitly covers all 5 terminal states, or "Try again" on a real abstained/degraded response
+would have silently done nothing.
+
+**Verification, real browser (Chrome via automation, not just code review):**
+`frontend/test_status_rendering.html` (new) loads the real, unmodified `index.html` in an iframe
+so the script runs with its actual DOM, and exercises `window.__describeAnswerResponse` (a small
+test-only hook, zero behavior change for real usage) against real captured payloads for
+`answered`/`abstained`/`refused` (from the validated `vrag-real:v3-warmup` container, real
+retrieval, real Sarvam-backed G1/G2/G3) and one schema-valid `degraded` payload -- `AssembleStage`
+(`src/vrag/harness/stages.py`) doesn't emit `degraded` today, out of scope for this fix, so that
+one is hand-built to the exact `AnswerResponse`/`Citation` shape and labeled as such, not passed
+off as backend-captured. 16/16 assertions pass, run live in a real browser: all 4 statuses map to
+distinct `state`/pill-text/pill-class/headline; refused/degraded specifically do not say
+"Abstained"; refused's pill is exactly "Refused"; real answer text and citations survive
+untouched; an unrecognised status gets its own copy, never a silent reuse. Separately verified
+via `getComputedStyle` in the same real browser session that all 4 pill classes produce genuinely
+distinct background/border/text colors, not just distinct strings.
+
+No Node/npm/frontend framework exists in this project (single static HTML file, no build step) --
+this test needs no new dependency, just a local static server (`python -m http.server`) and the
+already-available browser automation tool; documented in the test file's own header comment.
+
+Full backend suite: 232/232 (unaffected, as expected -- no Python files touched).

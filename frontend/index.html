@@ -61,8 +61,11 @@
   [data-state="listening"] .ring{ animation-duration: 3s; }
   [data-state="working"] .ring{ animation-duration: 1.1s; border-style: solid; }
   [data-state="answered"] .ring,
+  [data-state="degraded"] .ring,
+  [data-state="abstained"] .ring,
   [data-state="refused"] .ring{ animation: none; border-style: solid; opacity:1; }
-  [data-state="refused"] .ring{ border-color: var(--spark); }
+  [data-state="degraded"] .ring{ border-color: var(--spark); }
+  [data-state="refused"] .ring{ border-color: var(--ink); }
   @keyframes spin{ to{ transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce){ .ring{ animation: none !important; } }
   .mic-circle{
@@ -157,6 +160,10 @@
   .status-pill.neutral{ background: var(--paper-dim); border-color: var(--moss); color: var(--moss); }
   .status-pill.warn{ background: #FCF0CE; border-color: var(--spark); color:#8A6A00; }
   .status-pill.ticket{ border-style: dashed; border-width:2px; background: var(--spark); border-color: var(--ink); color: var(--ink); }
+  /* refused (blocked before retrieval, e.g. G1/G2) needs its own look, distinct from abstained
+     (searched, found nothing confident, the base pink pill above) and degraded (.warn, gold) --
+     ink is the starkest token in the palette, fitting "this was blocked", not just "unsure". */
+  .status-pill.blocked{ background: #E3E8E2; border-color: var(--ink); color: var(--ink); }
   .status-pill .led{ width:8px; height:8px; border-radius:50%; background:currentColor; }
   [data-state="listening"] .status-pill .led,
   [data-state="working"] .status-pill .led{ animation: pulse 0.9s ease-in-out infinite; }
@@ -296,38 +303,97 @@
     actions.innerHTML = '';
   }
 
-  function goAnswered(answerResponse){
-    body.dataset.state = 'answered';
-    micHint.textContent = 'Answered';
-    eyebrow.textContent = 'Answered';
-    headline.textContent = "Here's what we found.";
+  // Pure: AnswerResponse -> what to render. No DOM access, so this is directly unit-testable
+  // (see frontend/test_status_rendering.html) without a browser automation harness. This is the
+  // fix point for the bug where refused/abstained/degraded all rendered as one hardcoded
+  // "Abstained" pill -- every one of the four canonical statuses gets its own branch here, and
+  // an unrecognised status falls through to a visibly-labeled error rather than silently reusing
+  // another status's copy.
+  function describeAnswerResponse(ar){
+    const stagesSkipped = ar.stages_skipped || [];
+    const citations = ar.citations || [];
+    const confidencePct = typeof ar.confidence === 'number' ? Math.round(ar.confidence * 100) : null;
+
+    if(ar.status === 'answered'){
+      return {
+        state: 'answered', micHint: 'Answered', eyebrow: 'Answered',
+        headline: "Here's what we found.",
+        body: 'answer', answer: ar.answer, citations, stagesSkipped,
+        pillClass: 'ticket',
+        pillText: `Answered · Track A · confidence ${confidencePct}% · retrieve ${ar.timings_ms.retrieve.toFixed(1)}ms`,
+        actionLabel: 'Ask another',
+      };
+    }
+    if(ar.status === 'degraded'){
+      return {
+        state: 'degraded', micHint: 'Answered (degraded)', eyebrow: 'Degraded',
+        headline: "Here's a fast answer — some steps were skipped.",
+        body: 'answer', answer: ar.answer, citations, stagesSkipped,
+        pillClass: 'warn',
+        pillText: 'Degraded · Fast answer'
+          + (confidencePct !== null ? ` · confidence ${confidencePct}%` : ''),
+        actionLabel: 'Ask another',
+      };
+    }
+    if(ar.status === 'abstained'){
+      return {
+        state: 'abstained', micHint: 'Abstained', eyebrow: 'Abstained',
+        headline: "We don't have enough to answer that.",
+        body: 'refusal',
+        refusalText: ar.refusal_reason
+          || "Nothing in what we searched clearly supports a reliable answer, so we're not going to guess.",
+        pillClass: '', pillText: 'Abstained · Not enough evidence',
+        actionLabel: 'Try again',
+      };
+    }
+    if(ar.status === 'refused'){
+      return {
+        state: 'refused', micHint: 'Refused', eyebrow: 'Refused',
+        headline: "That's not something we can help with.",
+        body: 'refusal',
+        refusalText: ar.refusal_reason || 'This request was blocked before we searched anything.',
+        pillClass: 'blocked', pillText: 'Refused',
+        actionLabel: 'Try again',
+      };
+    }
+    return {
+      state: 'refused', micHint: 'Error', eyebrow: 'Error',
+      headline: 'Something went wrong.',
+      body: 'refusal', refusalText: `Unexpected response status: ${ar.status}`,
+      pillClass: 'blocked', pillText: 'Error',
+      actionLabel: 'Try again',
+    };
+  }
+
+  function renderAnswerResponse(answerResponse){
+    const d = describeAnswerResponse(answerResponse);
+    body.dataset.state = d.state;
+    micHint.textContent = d.micHint;
+    eyebrow.textContent = d.eyebrow;
+    headline.textContent = d.headline;
     lede.textContent = '';
-    const citationsHtml = answerResponse.citations.map(c =>
-      `<span class="citation-chip">${c.passage_id} · ${answerResponse.language.toUpperCase()}</span>`
-    ).join('');
-    const skippedHtml = answerResponse.stages_skipped.length
-      ? `<div class="stages" style="margin-top:14px;">${answerResponse.stages_skipped.map(s => `<div class="stage-chip skipped">${s}</div>`).join('')}</div>`
-      : '';
-    panel.innerHTML = `
-      <p class="answer-text">${answerResponse.answer}</p>
+    if(d.body === 'answer'){
+      const citationsHtml = d.citations.map(c =>
+        `<span class="citation-chip">${c.passage_id} · ${(answerResponse.language || '').toUpperCase()}</span>`
+      ).join('');
+      const skippedHtml = d.stagesSkipped.length
+        ? `<div class="stages" style="margin-top:14px;">${d.stagesSkipped.map(s => `<div class="stage-chip skipped">${s}</div>`).join('')}</div>`
+        : '';
+      panel.innerHTML = `
+      <p class="answer-text">${d.answer || ''}</p>
       <div class="citations">${citationsHtml}</div>
       ${skippedHtml}`;
-    setPill('ticket', `Track A · confidence ${(answerResponse.confidence * 100).toFixed(0)}% · retrieve ${answerResponse.timings_ms.retrieve.toFixed(1)}ms`);
-    actions.innerHTML = '<button class="btn btn-primary" id="primaryBtn">Ask another</button>';
+    } else {
+      panel.innerHTML = `<p class="refuse-text">${d.refusalText}</p>`;
+    }
+    setPill(d.pillClass, d.pillText);
+    actions.innerHTML = `<button class="btn btn-primary" id="primaryBtn">${d.actionLabel}</button>`;
     rebindPrimary();
   }
 
-  function goRefused(reason){
-    body.dataset.state = 'refused';
-    micHint.textContent = 'No confident match';
-    eyebrow.textContent = 'No match';
-    headline.textContent = "We don't have enough to answer that.";
-    lede.textContent = '';
-    panel.innerHTML = `<p class="refuse-text">${reason || "Nothing in what we searched clearly supports a reliable answer, so we're not going to guess."}</p>`;
-    setPill('warn', 'Abstained · confidence too low');
-    actions.innerHTML = '<button class="btn btn-primary" id="primaryBtn">Try again</button>';
-    rebindPrimary();
-  }
+  // Test-only hook (frontend/test_status_rendering.html) -- adds one property to window, no
+  // behavior change for real usage.
+  if(typeof window !== 'undefined'){ window.__describeAnswerResponse = describeAnswerResponse; }
 
   function goError(detail){
     body.dataset.state = 'refused';
@@ -394,9 +460,7 @@
           }
         }
       } else if(msg.type === 'answer_final'){
-        const ar = msg.answer_response;
-        if(ar.status === 'answered') goAnswered(ar);
-        else goRefused(ar.refusal_reason);
+        renderAnswerResponse(msg.answer_response);
       } else if(msg.type === 'error'){
         goError(msg.detail);
       }
@@ -421,8 +485,13 @@
     stopMicCapture();
   }
 
+  // Every terminal (non-listening, non-working) state's primary button means "start over" --
+  // all four AnswerResponse statuses land here now that they're distinct states, not just the
+  // two that used to exist before this fix.
+  const TERMINAL_STATES = ['idle', 'answered', 'degraded', 'abstained', 'refused'];
+
   function handlePrimaryClick(){
-    if(body.dataset.state === 'idle' || body.dataset.state === 'answered' || body.dataset.state === 'refused'){
+    if(TERMINAL_STATES.includes(body.dataset.state)){
       startListening();
     } else if(body.dataset.state === 'listening'){
       stopListening();

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>vrag frontend status-rendering test</title>
+</head>
+<body>
+<!--
+  Deterministic UI-level verification for the frontend/index.html fix: refused, abstained, and
+  degraded used to all render as one hardcoded "Abstained" pill. This project has no
+  Node/npm/frontend test framework (single static HTML file, no build step) -- rather than pull
+  one in just for this, this loads the REAL, unmodified index.html in an iframe (so it gets its
+  actual DOM: mic button, panel, pill, all of it -- the script runs exactly as it does for a real
+  user, not a stubbed-out copy) and exercises the pure `describeAnswerResponse` function it
+  exposes on `window.__describeAnswerResponse` for exactly this purpose.
+
+  Payloads for answered/abstained/refused below are REAL captures from the validated production
+  container (vrag-real:v3-warmup, real retrieval, real Sarvam-backed guardrails) -- not invented.
+  `degraded` is NOT currently emitted by AssembleStage (src/vrag/harness/stages.py) -- backend
+  logic is explicitly out of scope for this fix -- so that one payload is schema-valid (matches
+  AnswerResponse/Citation exactly) but hand-constructed and labeled as such, not backend-captured.
+
+  Run: open this file directly in a browser, or (more reliably, avoids file:// iframe quirks)
+  serve the frontend/ directory with `python -m http.server` from that directory and open
+  http://localhost:8000/test_status_rendering.html. Results render on the page; the page title
+  becomes "PASS" or "FAIL: n/16" so a script can check pass/fail without parsing the DOM.
+-->
+<h1>vrag status-rendering test</h1>
+<div id="results" style="font-family: monospace; white-space: pre-wrap;">Running…</div>
+<iframe id="target" src="index.html" style="width:1px;height:1px;opacity:0;position:absolute;"></iframe>
+
+<script>
+const REAL_ANSWERED = {"status":"answered","answer":"कसरत से पहले ऐंठन को रोकना। 1. व्यायाम करने से पहले, गतिशील खिंचाव करें।","track":"extractive","citations":[{"chunk_id":"189527_4::metadata_aware::0","passage_id":"189527_4","score":0.887060821056366,"text_span":"कसरत से पहले ऐंठन को रोकना।"},{"chunk_id":"355709_1::metadata_aware::0","passage_id":"355709_1","score":0.8829068541526794,"text_span":"योद्धा प्रथम: चरण-दर-चरण।"}],"confidence":0.887060821056366,"refusal_reason":null,"language":"hin_Deva","stages_skipped":["generate"],"trace_id":"356555faad7e4f6caa26a669bad6d37f","timings_ms":{"input_guard":0.187597,"scope_guard":0.139323,"retrieve":46.354793,"ground_gate":0.087661,"extract_answer":0.011502,"output_guard":0.241212}};
+
+const REAL_ABSTAINED = {"status":"abstained","answer":null,"track":"extractive","citations":[],"confidence":0.0,"refusal_reason":"Top result confidence 0.87 is below threshold 0.8835.","language":"hi","stages_skipped":["extract_answer","generate","output_guard"],"trace_id":"4e7cb000db584dc1b5c61e04125351f6","timings_ms":{"input_guard":0.026281,"scope_guard":0.012845,"retrieve":43.023785,"ground_gate":0.030981}};
+
+const REAL_REFUSED = {"status":"refused","answer":null,"track":"extractive","citations":[],"confidence":0.0,"refusal_reason":"Empty query.","language":"hi","stages_skipped":["retrieve","ground_gate","extract_answer","generate","output_guard"],"trace_id":"91a0fc97c9644a948b2d3dbe329eb12d","timings_ms":{"input_guard":0.023205,"scope_guard":0.011663}};
+
+// NOT backend-captured -- AssembleStage never sets status="degraded" today (out of scope for
+// this fix). Schema-valid stand-in so the frontend renders this status correctly whenever/if the
+// backend starts emitting it.
+const SCHEMA_VALID_DEGRADED = {"status":"degraded","answer":"कसरत से पहले ऐंठन को रोकना।","track":"extractive","citations":[{"chunk_id":"189527_4::metadata_aware::0","passage_id":"189527_4","score":0.887060821056366,"text_span":"कसरत से पहले ऐंठन को रोकना।"}],"confidence":0.72,"refusal_reason":null,"language":"hi","stages_skipped":["generate"],"trace_id":"schema-valid-not-captured","timings_ms":{"input_guard":0.02,"scope_guard":0.01,"retrieve":40.0,"ground_gate":0.02,"extract_answer":0.01,"output_guard":0.03}};
+
+function assert(cond, label, results){
+  results.push({pass: !!cond, label});
+}
+
+function runTests(describeAnswerResponse){
+  const results = [];
+
+  const answered = describeAnswerResponse(REAL_ANSWERED);
+  const degraded = describeAnswerResponse(SCHEMA_VALID_DEGRADED);
+  const abstained = describeAnswerResponse(REAL_ABSTAINED);
+  const refused = describeAnswerResponse(REAL_REFUSED);
+  const unknown = describeAnswerResponse({status: 'made_up_status', timings_ms: {}});
+
+  // Each of the 4 canonical statuses maps to its own `state` value.
+  assert(answered.state === 'answered', 'answered -> state "answered"', results);
+  assert(degraded.state === 'degraded', 'degraded -> state "degraded"', results);
+  assert(abstained.state === 'abstained', 'abstained -> state "abstained"', results);
+  assert(refused.state === 'refused', 'refused -> state "refused"', results);
+
+  // The actual bug being fixed: refused/abstained/degraded used to render IDENTICAL pill text
+  // ("Abstained · confidence too low") regardless of which one it really was. All four pill
+  // texts must now be mutually distinct.
+  const pillTexts = [answered.pillText, degraded.pillText, abstained.pillText, refused.pillText];
+  const uniquePillTexts = new Set(pillTexts);
+  assert(uniquePillTexts.size === 4, 'all 4 statuses produce distinct pill text: ' + JSON.stringify(pillTexts), results);
+
+  // Headlines must also be mutually distinct (a second, independent signal beyond the pill).
+  const headlines = [answered.headline, degraded.headline, abstained.headline, refused.headline];
+  assert(new Set(headlines).size === 4, 'all 4 statuses produce distinct headlines', results);
+
+  // Specifically guard against the exact regression: refused/degraded must NOT say "Abstained".
+  assert(!refused.pillText.toLowerCase().includes('abstained'), 'refused pill does not say "Abstained"', results);
+  assert(!degraded.pillText.toLowerCase().includes('abstained'), 'degraded pill does not say "Abstained"', results);
+  assert(refused.pillText === 'Refused', 'refused pill text is exactly "Refused": got ' + JSON.stringify(refused.pillText), results);
+
+  // Required labels per the spec: answered->Answered, degraded->Degraded/Fast answer,
+  // abstained->Abstained/Not enough evidence, refused->Refused.
+  assert(answered.pillText.startsWith('Answered'), 'answered pill starts with "Answered"', results);
+  assert(degraded.pillText.includes('Degraded') && degraded.pillText.includes('Fast answer'), 'degraded pill says "Degraded" and "Fast answer"', results);
+  assert(abstained.pillText.includes('Abstained') && abstained.pillText.includes('Not enough evidence'), 'abstained pill says "Abstained" and "Not enough evidence"', results);
+
+  // Distinct pill CSS classes -- visual, not just textual, distinction.
+  const pillClasses = [answered.pillClass, degraded.pillClass, abstained.pillClass, refused.pillClass];
+  assert(new Set(pillClasses).size === 4, 'all 4 statuses use distinct pill CSS classes: ' + JSON.stringify(pillClasses), results);
+
+  // Real content is preserved, not dropped, for the answer-bearing statuses.
+  assert(answered.answer === REAL_ANSWERED.answer, 'answered keeps the real answer text', results);
+  assert(answered.citations.length === 2, 'answered keeps all real citations', results);
+  assert(degraded.answer === SCHEMA_VALID_DEGRADED.answer, 'degraded keeps its answer text', results);
+  assert(abstained.refusalText === REAL_ABSTAINED.refusal_reason, 'abstained surfaces the real refusal_reason', results);
+  assert(refused.refusalText === REAL_REFUSED.refusal_reason, 'refused surfaces the real refusal_reason', results);
+
+  // An unrecognised status must fail loudly/visibly, never silently reuse another status's copy.
+  assert(unknown.pillText !== answered.pillText && unknown.pillText !== abstained.pillText, 'unrecognised status gets its own (error) copy, not a silent reuse', results);
+
+  return results;
+}
+
+function render(results){
+  const failed = results.filter(r => !r.pass);
+  const el = document.getElementById('results');
+  el.textContent = results.map(r => (r.pass ? 'PASS' : 'FAIL') + '  ' + r.label).join('\n');
+  document.title = failed.length === 0 ? 'PASS' : `FAIL: ${failed.length}/${results.length}`;
+  window.__testResults = results; // for a script-driven check (e.g. via a browser automation tool)
+}
+
+document.getElementById('target').addEventListener('load', () => {
+  try {
+    const fn = document.getElementById('target').contentWindow.__describeAnswerResponse;
+    if(typeof fn !== 'function'){
+      throw new Error('window.__describeAnswerResponse was not exposed by index.html -- test hook missing or removed');
+    }
+    render(runTests(fn));
+  } catch(err){
+    document.getElementById('results').textContent = 'FAIL (exception): ' + err.message;
+    document.title = 'FAIL: exception';
+  }
+});
+</script>
+</body>
+</html>
