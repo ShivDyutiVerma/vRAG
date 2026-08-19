@@ -1997,3 +1997,155 @@ re-run to produce the official updated P50/P70/P100 numbers for `docs/LATENCY_BU
 session only did a quick local sanity check with stub retrieval, not the real campaign). FAISS,
 corpus, embedding model, tokenizer, guardrails, retrieval architecture, the 200ms total budget,
 and the frontend are all untouched, per instruction.
+
+## R-037 — Forensic investigation: "भारत की राजधानी क्या है?" abstained at confidence 0.83 — evidence exists but is outranked, not a TAU/calibration bug
+
+**Date:** 2026-08-19/20
+**Status:** Investigation only, per explicit user instruction — no production code, TAU, or index
+changed.
+
+**Trigger:** User tested the live voice UI with "भारत की राजधानी क्या है?" ("What is India's
+capital?") and got `"Top result confidence 0.83 is below threshold 0.8835"` / abstained.
+
+**Real evidence gathered (not assumed):**
+1. **Actual Sarvam transcript** (Render `/v1/logs`, `srv-da1fhk6417fc73aduutg`, 2026-08-19T18:27:52Z,
+   request_id `20260819_040b199c-dfbb-4cfc-863d-e80b35948401`): the transcript that actually reached
+   the backend was **"भारत का राजधानी क्या है?"** — "का" not "की" (grammatically non-standard;
+   राजधानी is feminine). Either an STT mis-hear or the user's own spoken register — can't distinguish
+   from the transcript alone. The same test burst logged 3 earlier draft utterances in the same ~34s
+   window ("पता ही है ना...", "व्हाट इज दी कैपिटल ऑफ इंडिया?", "भारत का कैपिटल क्या है?") before this
+   final one — consistent with the user iterating phrasings before landing on the one that got sent.
+2. **Reproduced retrieval directly against the exact production artifacts** — `data/index/
+   metadata_aware_sqfp16` (the sqfp16 quantized index, matches `Dockerfile`'s `index-metadata_aware-
+   v3` release, not the plain fp32 `metadata_aware` dir) + `LiteE5Embedder` against the local
+   `embedder-lite-onnx-v2` bundle. Real top-1 score for the actual transcript: **0.8342** — matches
+   the user's reported 0.83 (`{top1:.2f}` formatting) almost exactly, confirming both the reproduction
+   is faithful and the report is real. The user's *stated* phrasing ("की") scores 0.8347 — a ~0.0005
+   difference, so the STT grammar substitution is **not** what caused the abstention.
+3. **The corpus does contain the correct fact**, but phrased indirectly and ranked low: chunk
+   `625589_6` ("...भारत की राजधानी दिल्ली में आम तौर पर निम्नलिखित भाषाएं बोली जाती हैं...", a passage
+   primarily about languages spoken in Delhi, not a standalone capital-fact sentence) is the *only*
+   corpus chunk of 99,767 that pairs "भारत" with "राजधानी" in a directly answering way. It ranks
+   **#10** (score 0.8129) for the "की" phrasing and **does not appear in the top 10 at all** for the
+   real "का" transcript. Zero chunks contain "New Delhi" (literal English) anywhere in the corpus;
+   14 chunks contain "नई दिल्ली" but all are incidental (lost-phone report, SUV review, time-zone
+   converter, inflation news) — none state the capital fact.
+4. **Top-ranked results are dominated by same-template "X is the capital of Y" boilerplate for
+   *other* countries**: London/UK (5 of top 10, near-duplicate MS MARCO passages), Islamabad/
+   Pakistan, Leh/Ladakh, Munich/Germany, Copenhagen/Denmark — all scoring 0.81-0.83, i.e. in the
+   same band as the real India-Delhi evidence, sometimes higher. This is a genuine embedding
+   behavior on this corpus: the query embeds close to the *pattern* "[country] की राजधानी [city] है"
+   regardless of which country, and this MS MARCO-XI corpus is thick with that exact template for
+   many countries, none of which is a bug — it's the corpus's real composition.
+5. **Consistent with, not contradicted by, existing measured numbers.** A3's 500-query held-out
+   eval (dense-only, `docs/EVAL_RESULTS.md` §3): Recall@1=0.322, Recall@5=0.652, Recall@10=0.748 —
+   the correct passage misses the top-10 entirely on ~25% of held-out queries by design/measurement,
+   so a specific query whose one relevant chunk sits outside top-10 is within the system's known,
+   already-documented quality ceiling, not an anomaly. G3's own calibration (R-015/P-015, applied
+   `TAU=0.8835`): in-domain false-refusal is **19.3%** at this operating point, a deliberate,
+   data-driven tradeoff (the alternative, hitting the false-refusal<10% target, drops correct-refusal
+   to 38%) — this query plausibly falls in that accepted ~1-in-5 false-refusal band.
+
+**Conclusion (answers the user's items 6-8 precisely, not with a binary yes/no):** the relevant
+evidence exists in the corpus, but dense retrieval ranks it below several off-topic same-template
+passages for other countries' capitals, so it never reaches G3's top-1 confidence check. This is
+**not** a TAU-calibration bug (the correct chunk isn't even top-1, so no TAU value would have fixed
+this without also picking up all the off-topic capital sentences it's competitive with) and **not**
+simply "out of corpus" either (the fact is present, just poorly ranked for this exact phrasing).
+Root cause is retrieval ranking on a corpus saturated with same-template capital-of-X boilerplate,
+which the A3/A4 ablations (R-010, R-014) didn't specifically probe for since they measure aggregate
+Recall@k, not per-query "was the winner a same-template distractor." Abstaining was the *safe*
+outcome here — the actual top-1 (London/UK) would have been a wrong, ungrounded answer if used.
+
+**Not done, per explicit instruction:** no TAU change, no retrieval change, no reranking added. If a
+fix is wanted later, the shape of one is now evidence-backed rather than guessed: this looks like a
+reranking-worthy case specifically (a cross-encoder *should* excel at "which of these 10
+near-identical capital-sentences is about the queried country" — but A4, R-014, already measured
+FlashRank/cross-encoder as net-negative on this corpus's Hindi text in aggregate, so any revisit
+needs the same query-level diagnostic rigor A4 used, not just "try reranking again").
+
+## R-038 — R-037 follow-up: does reranking specifically fix same-template-distractor queries? Targeted experiment says no, and it's worse than that
+
+**Date:** 2026-08-20
+**Status:** Experiment only, per explicit user instruction. **Reranking NOT enabled in production.**
+No production code, index, or TAU touched — `data/index/metadata_aware` (A4's own eval build) +
+`E5Embedder`, matching A4's exact methodology for direct comparability, not the production
+sqfp16/Lite combo R-037 used.
+
+**Question:** R-037 found the India-capital query fails because dense retrieval ranks real evidence
+below same-template "[country] की राजधानी [city] है" distractors for *other* countries. Does the
+already-measured A4 cross-encoder (`cross-encoder/ms-marco-MiniLM-L6-v2`) specifically fix *this*
+failure mode, even though A4 found it net-negative in aggregate?
+
+**Targeted diagnostic subset construction** (derived from the existing 500 held-out queries, never
+written back to `eval/heldout_queries.json` — a labeled filter, kept separate): scanned all 500 at
+dense top-20. 339/500 miss@1; of those, 244/500 also hit@20 (the R-037 pattern — evidence exists
+nearby but outranked, not simply absent). Among *those* 244, took the ones whose wrong top-1 score
+was at or above the distribution's own median (0.9017, real number from this run, not guessed) —
+"dense was confidently wrong," matching the India-capital case's own profile (0.83, a high score
+for a wrong answer). **Subset size: 122/500 (24.4%).**
+
+**Results (full detail: `eval/ablation_ledger.csv` rows `r038_targeted_dense_*` /
+`r038_targeted_crossencoder_*`):**
+
+| Config | Recall@1 | Recall@5 | Recall@10 | MRR@10 | p50 / p95 / p100 latency |
+|---|---|---|---|---|---|
+| A: dense-only top-10 (production) | 0.0000* | 0.7049 | 0.9098 | 0.2763 | 0.58 / 1.01 / 1.64 ms |
+| B: dense top-20 + cross-encoder → top-10 | 0.1230 | 0.3934 | 0.6230 | 0.2494 | 57.4 / 77.5 / 89.8 ms |
+
+*Recall@1=0 for config A is tautological — the subset is defined as miss@1, so this isn't a new
+finding, just confirming the filter worked.
+
+**Fixes vs. breaks (rank-1 only):** reranking fixed 15/122 rank-1 misses (0.0 → 0.1230 recall@1) —
+a real, non-trivial, but modest win, and the only genuinely positive number in this experiment.
+Broke 0/122 at rank-1 — but this is **structural, not evidence of safety**: every query in this
+subset was already wrong at rank-1 for dense, so there was nothing left to break there. It says
+nothing about whether reranking would hurt currently-correct queries elsewhere (A4's full-500 run
+already shows it does: recall@1 0.322→0.048 in aggregate).
+
+**The real finding is recall@5/@10, on this exact same targeted subset**: 0.7049→0.3934 and
+0.9098→0.6230 — both regress sharply. The reranker promotes *other* same-template distractors
+(different countries' capitals) into the top-10 window it's selecting from, pushing the
+already-present-but-lower-ranked correct passage back out. This is the opposite of what the
+reranking hypothesis predicted — a cross-encoder was expected to be *better* at telling same-
+template near-duplicates apart, not worse.
+
+**Qualitative case — "भारत की राजधानी क्या है?" itself, run through both configs on this same
+index/embedder:** dense top-10 has the correct Delhi passage (`625589_6`) at rank 9, behind
+London×4/Islamabad/Leh/Munich. Reranking does **not** fix this — it makes it worse: the reranked
+top-10 puts Delhi at rank 8, but only after promoting **seven different countries' capital
+passages above it that dense hadn't even surfaced there** — Georgia (Tbilisi), Chile (Santiago),
+Malta (Valletta), Denmark (Copenhagen), Austria/Slovakia/Hungary (Vienna/Bratislava/Budapest),
+Rwanda (Kigali), Uruguay (Minas). The reranker is, if anything, *more* susceptible to the
+capital-of-X template than dense embedding similarity was, on this exact flagship example.
+
+**Comparison to A4 (full 500, `docs/EVAL_RESULTS.md` §4 / ledger rows `a4_*`):** dense
+Recall@1/5/10 = 0.322/0.652/0.748; cross-encoder = 0.048/0.228/0.336 — severe net-negative in
+aggregate. On this *targeted* subset specifically selected to favor reranking's hypothesized
+strength, cross-encoder's recall@1 is better than A4's aggregate number (0.1230 vs. 0.048, as
+expected — this subset is enriched for exactly the case reranking should help with) but recall@5
+(0.3934) and recall@10 (0.6230) are still clearly worse than dense's own numbers *on the identical
+subset* (0.7049/0.9098). **This is not a targeted improvement — it's the same net-negative result
+A4 already found, confirmed again on the subset built specifically to give reranking its best
+chance.**
+
+**Answer to the stated question — "Does reranking solve this specific same-template distractor
+problem enough to justify its latency cost, without damaging overall Hindi retrieval quality?":
+No.** A modest, real rank-1 benefit on 15/122 targeted cases does not justify a ~100x latency
+increase (0.58ms → 57.4ms p50 — a single stage eating over a quarter of the entire 200ms budget)
+combined with a sharp recall@5/@10 regression on the very same subset, and an unambiguous
+worsening of the flagship motivating example. Root cause appears to be that
+`ms-marco-MiniLM-L6-v2` (English-trained, per its name) doesn't discriminate country identity
+within the "capital of X" template any better than — arguably worse than — multilingual E5's dense
+embeddings do on this Hindi machine-translated text; A4 already found the same model weak on this
+corpus's language specifically (R-014's diagnostics), and this targeted run adds evidence that the
+weakness isn't confined to aggregate noise, it reproduces on the exact failure pattern reranking
+was hypothesized to fix.
+
+**Not done, per explicit instruction:** reranking is not enabled in production; TAU untouched;
+retrieval untouched; deployment untouched. If this is revisited, the open lever isn't "try
+reranking again" (twice-measured net-negative now, aggregate and targeted) — it's either a
+multilingual-specific or larger reranker (untested, real latency/memory cost to measure first) or
+a corpus-level fix (e.g. deduplicating/downweighting the "X is the capital of Y" template's
+extreme overrepresentation across many countries), neither of which this experiment was scoped to
+try.
