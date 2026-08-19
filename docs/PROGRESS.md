@@ -62,6 +62,19 @@ quality cost, not recommended since fp16 already clears the bar for free. Offlin
 not wired in, no new release asset, not deployed. See `docs/DECISIONS_R.md` R-033 for the full
 tradeoff table; a real Docker re-verification is the honest next step, not yet done.
 
+**R4 RESOLVED 2026-08-19 (R-034).** Implemented `quantization="sqfp16"` in
+`src/vrag/index/dense.py` (opt-in, default unchanged), rebuilt as `index-metadata_aware-v3`
+(byte-identical to v2 except `dense/faiss.index`, -76.6MB), updated `Dockerfile`'s one download
+line. Real `docker build` + `docker run -m 512m --memory-swap 512m`: startup 204.4MiB, first real
+query **survived** at peak 394.2MiB (previously OOM-killed 2/2 at this exact stage, R-031/R-032),
+10 real queries survived at peak 397.8MiB, `OOMKilled: false`, real citations confirmed, ~114MB
+headroom. Recall@10=0.748/MRR@10=0.45550 vs. the 0.750/0.45627 baseline — within the established
+HNSW-rebuild noise floor, not a regression. Query latency 12-42ms per real query, well under the
+200ms budget. One open, non-blocking observation flagged for G3's owner: 3/10 real queries
+abstained on the confidence gate, possibly fp16 score-precision sensitivity near the calibrated
+threshold — not confirmed as a regression. Full record: `docs/DECISIONS_R.md` R-034,
+`docs/RISKS.md` R4.
+
 Current priority: deployment remains parked by the user's direction, but now has real, favorable
 numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
 `t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)

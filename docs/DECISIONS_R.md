@@ -1741,3 +1741,127 @@ measured fallback, not a guess.
   R-031/R-032's exact validation, not assuming the offline number transfers.
 - **Not wired into `src/vrag/index/dense.py`, not rebuilt into `index-metadata_aware-v3`, not
   deployed anywhere.** This ADR reports a measured, promising option; it does not implement it.
+
+## R-034 — sqfp16 implemented, deployed to a real Docker container, real 512MB Docker OOM RESOLVED
+
+**Date:** 2026-08-19
+**Status:** Accepted and implemented. **R4 is resolved** — the real Docker `-m 512m` OOM found in
+R-031/R-032 no longer reproduces. Real retrieval survives full initialization and 10 real queries
+under the true 512MB limit with real headroom, real citations, and no measurable quality or
+latency regression. This is a live, Docker-verified result, not an offline projection.
+
+**Scope, exactly as instructed:** only `src/vrag/index/dense.py` (the index construction/build
+path) and `Dockerfile` (the one line pointing at the index release asset) changed. Corpus size,
+embedding model, tokenizer, `SQLiteChunkLookup`, BM25/sparse behaviour, and
+retrieval/fusion/ranking logic are all byte-for-byte or code-for-code unchanged.
+
+**Implementation (`src/vrag/index/dense.py`):** added a `quantization: Literal["none", "sqfp16"]
+= "none"` constructor parameter. `"none"` (the default — every existing caller that never passes
+this argument, including every other ablation script and the full test suite, builds the exact
+same `IndexHNSWFlat` it always has, confirmed by `test_default_quantization_still_builds_a_plain_
+flat_index`) is unchanged. `"sqfp16"` builds `IndexHNSWSQ(dim, ScalarQuantizer.QT_fp16, m,
+METRIC_INNER_PRODUCT)` — same M/efConstruction/efSearch/metric as before, only the vector storage
+changes. `add()` now trains the index first if `not self._index.is_trained` (a no-op for flat
+storage, required once for the scalar quantizer's per-dimension codec). `save()`/`load()` persist/
+restore the `quantization` choice in `meta.json`, defaulting to `"none"` when absent so v1/v2
+archives (which predate this field) still load correctly. Deliberately not a general multi-
+quantizer framework — the int8 option R-033 measured and rejected was not implemented, per
+instruction. Two real, targeted mypy fixes needed (`.hnsw` attribute access and the
+`ScalarQuantizer` arg both hit faiss's known-imprecise stubs — the same class of issue
+`set_ef_search()` already carried an ignore comment for; not new problems, just newly triggered by
+routing index construction through a helper function instead of an inline literal constructor
+call, which broke mypy's narrowing).
+
+**Index rebuild (`scripts/build_index_sqfp16.py`, new):** reconstructs all 99,767 real vectors
+from the CURRENT production `dense/faiss.index` via `faiss.Index.reconstruct()` — no re-embedding,
+no re-chunking, so this is provably the exact same vectors R-033 measured, not a re-derived
+approximation that could silently drift (e.g. if `working_subset.jsonl` had changed since v2 was
+built). Builds the new `sqfp16` dense index from them, then copies `chunk_lookup.json`,
+`chunk_lookup.sqlite3`, and `sparse/` **byte-for-byte, unmodified** from the current v2 directory
+— nothing about the corpus, SQLite lookup, or BM25 index was rebuilt or touched.
+
+**Release asset:** `index-metadata_aware-v3` — identical to v2 in every file except
+`dense/faiss.index` (180.4MB → 103.8MB, -76.6MB). Asset sha256:
+`fbe0eaac14a021c966fd3786cdae9c942115010ddb84895c78e0cb9c37e2545d`; the changed inner file's
+sha256: `b8b5d22862583f7392e90580378686400b75aae6d23e039899274367f6ed256e`, both recorded in the
+release notes. `Dockerfile`'s index-download step is the only line changed (v2 tag → v3 tag).
+
+**Loader:** required no change. `DenseIndex.load()` already read the index type from the file
+itself (`faiss.read_index()` auto-detects), throwing away the constructor's default index —
+confirmed true for `IndexHNSWSQ` the same as every other type, not newly verified only now.
+`load_built_index_lean()`, `HybridRetriever`, and `retrieve()` never reference a concrete index
+class at all.
+
+**Regression tests (`tests/index/test_dense.py`, 7 new, 16 total in the file):**
+`test_default_quantization_still_builds_a_plain_flat_index`, `test_unknown_quantization_rejected`,
+`test_sqfp16_index_loads_successfully`, `test_sqfp16_index_metric_is_inner_product`,
+`test_sqfp16_index_hnsw_parameters_match_production_defaults` (verifies M via
+`hnsw.nb_neighbors(1)` — faiss has no direct `.M` readback, confirmed the mapping
+`nb_neighbors(1)==M`/`nb_neighbors(0)==2*M` directly against a live index before writing the
+assertion, not assumed), `test_sqfp16_index_returns_valid_chunk_ids` (every returned ID was
+actually added, no duplicates, exact match ranks first), `test_sqfp16_and_flat_agree_on_top_hit_
+for_a_clear_match`. Full suite: 223/223, ruff clean, mypy clean.
+
+**Re-verification against the real built artifact, not just R-033's ablation script's temp copy
+(`scripts/verify_index_sqfp16.py`, new), full 500-query held-out set:**
+
+| Metric | Reference baseline | R-033 ablation (temp copy) | **This artifact (index-metadata_aware-v3)** |
+|---|---|---|---|
+| Recall@1 | 0.330 | 0.330 | 0.330 |
+| Recall@5 | 0.644 | 0.642 | 0.642 |
+| Recall@10 | 0.750 | 0.750 | 0.748 |
+| MRR@10 | 0.45627 | 0.45610 | 0.45550 |
+| search P50/P95/P100 | ~0.4/~0.5/~0.9ms (fp32) | 1.42/1.87/2.41ms | 1.46/1.93/2.57ms |
+
+All differences from the original reference are within the single-query noise floor R-033 already
+established (HNSW's own unseeded construction RNG — confirmed there via a direct fp32-vs-fp32
+independent-rebuild comparison, not assumed here to still apply). Not a quantization-driven
+regression: this is a second independent `sqfp16` build (different from R-033's ablation-script
+copy) landing within the same noise band as two independent *fp32* rebuilds landed against each
+other.
+
+**Real Docker `-m 512m` validation — the actual test that matters, not an extrapolation:**
+built `vrag-real:v3` from the updated `Dockerfile` (`docker build --no-cache`), ran with
+`-m 512m --memory-swap 512m` (swap disabled, true hard ceiling) and
+`VRAG_REQUIRE_REAL_RETRIEVAL=1` (same fail-loud flag from R-031/R-032 — did not trip).
+
+| | R-031/R-032 (v2, fp32) | **R-034 (v3, sqfp16)** |
+|---|---|---|
+| Startup (FAISS+SQLite loaded, embedder not yet touched) | ~276-298MB | **204.4MiB** |
+| `/healthz` | `{"status":"ok","retrieval":"real"}` | `{"status":"ok","retrieval":"real"}` |
+| First real query | **OOM-killed (exit 137), reproduced 2/2** | **Survived.** peak 394.2MiB, `retrieve`=1125.8ms (one-time — see below) |
+| After 10 real queries | never reached | **Survived all 10.** peak 397.8MiB, `OOMKilled: false` |
+| Headroom under 512MB | negative (crashed) | **~114MB** |
+
+`/ask` returned real citations with real `chunk_id`/`passage_id`/`score` fields (e.g.
+`"chunk_id":"189527_4::metadata_aware::0"`) on 6 of 10 real queries — not `stub-chunk-001`,
+directly confirming real retrieval, not the Day-0 fallback. Memory stayed flat (394.2MiB →
+397.8MiB, +3.6MiB across 9 further queries) — not leak-shaped, matches R-032's "no per-request
+growth" finding, the one-time cost was the embedder's first construction, same as before.
+
+**Two honest observations, neither disqualifying, both worth recording:**
+- **First-query latency is 1.1s**, not the ~12-42ms every subsequent query measured. This is the
+  same lazy `LiteE5Embedder._ensure_loaded()` cost R-032 already diagnosed (ONNX session +
+  SentencePieceProcessor construction, deferred to first real embedder use even though the
+  retriever singleton itself was eager-loaded via `VRAG_REQUIRE_REAL_RETRIEVAL=1`) — **not caused
+  by or specific to this change**, the same cost existed with the fp32 index and would recur
+  identically there too. Not addressed here — out of scope for an index-storage-only change, and
+  not one of R4's stated acceptance criteria (which are about surviving the memory limit, not
+  first-request latency).
+- **3 of the 10 real queries abstained** (G3 confidence 0.86-0.88, just under the calibrated 0.8835
+  threshold) where the other 7 answered normally with real citations. G3's threshold was
+  calibrated against fp32 scores (docs/DECISIONS_P.md); fp16 quantization introduces small score
+  perturbations that could plausibly nudge a borderline case across that specific cutoff in either
+  direction. Not measured directly against a fp32 Docker run on the same live queries (would
+  require a second Docker build/run, out of scope for "keep this strictly controlled" and "do not
+  change any other memory-related architecture during this test") — flagged honestly as a
+  plausible interaction for G3's owner to be aware of, not confirmed as a regression, and not
+  blocking R4 (R4's acceptance criteria are about memory/OOM/Recall@10/MRR@10/latency, not G3's
+  abstention rate).
+
+**R4 verdict: RESOLVED.** All six stated acceptance criteria met: container survives full
+initialization and first query under 512MB; no OOM kill (10/10 real queries); real retrieval
+active (`/healthz`, real citations); Recall@10 0.748 vs. 0.750 baseline (within the established
+noise floor, not a material regression); MRR@10 0.45550 vs. 0.45627 baseline (~0.17% relative,
+effectively unchanged); query latency 12-42ms per real query, comfortably compatible with the
+200ms budget. `docs/RISKS.md` R4 updated accordingly.

@@ -26,13 +26,16 @@ RUN pip install --no-cache-dir -e ".[retrieval-lean]"
 
 COPY frontend/ ./frontend/
 
-# Pre-built retrieval index (docs/DECISIONS_R.md R-018/R-021), downloaded at build time rather than
-# built in the container (AGENT_BUILD_SPEC.md §5.3). v2 adds chunk_lookup.sqlite3, which is what
-# load_built_index_lean() (src/vrag/index/persistence.py) actually reads — v1's eager
-# chunk_lookup.json-only layout no longer matches the code path this image runs.
+# Pre-built retrieval index (docs/DECISIONS_R.md R-018/R-021/R-033/R-034), downloaded at build
+# time rather than built in the container (AGENT_BUILD_SPEC.md §5.3). v3 is byte-identical to v2
+# in every file except dense/faiss.index, which is IndexHNSWSQ + ScalarQuantizer.QT_fp16 instead
+# of IndexHNSWFlat (2 bytes/dim vs 4 bytes/dim vector storage, same M/efConstruction/efSearch/
+# metric) -- -76.6MB, zero measured retrieval-quality regression (R-033/R-034). Corpus,
+# chunk_lookup.sqlite3 (R-021, still what load_built_index_lean() reads), and the sparse/BM25
+# index are all unchanged from v2.
 RUN mkdir -p data/index \
     && curl -fsSL --retry 5 --retry-delay 2 --http1.1 \
-       "https://github.com/ShivDyutiVerma/vRAG/releases/download/index-metadata_aware-v2/metadata_aware_index_v2.tar.gz" \
+       "https://github.com/ShivDyutiVerma/vRAG/releases/download/index-metadata_aware-v3/metadata_aware_index_v3.tar.gz" \
        -o /tmp/index.tar.gz \
     && tar --no-same-owner -xzf /tmp/index.tar.gz -C data/index \
     && rm /tmp/index.tar.gz
