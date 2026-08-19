@@ -75,6 +75,15 @@ abstained on the confidence gate, possibly fp16 score-precision sensitivity near
 threshold — not confirmed as a regression. Full record: `docs/DECISIONS_R.md` R-034,
 `docs/RISKS.md` R4.
 
+**Both R-034 open observations closed 2026-08-19 (R-035).** Cold start: `is_retrieval_real()`
+now runs a real warmup embedding at startup before the app accepts any request — first-query
+`retrieve` dropped from 1125.8ms to 42.2ms in a real Docker re-verification (indistinguishable
+from steady-state), and `/healthz` is provably unreachable until warmup completes. Grounding
+threshold: real 500-query FP32-vs-FP16 comparison via the real unmodified G3 gate found zero
+decision changes (371 answered/129 abstained, identical both ways) — the earlier 3/10 abstention
+observation was sampling noise, not a real fp16 effect. TAU/MARGIN left untouched, no retuning
+needed. Full record: `docs/DECISIONS_R.md` R-035.
+
 Current priority: deployment remains parked by the user's direction, but now has real, favorable
 numbers to work with whenever it's picked back up (`docs/RISKS.md` R4). Next up otherwise:
 `t_e2e_voice` (the WebSocket voice benchmark — audio assets are ready, the client isn't built yet)

@@ -139,14 +139,37 @@ def _get_real_retriever() -> HybridRetriever | None:
     return _retriever
 
 
+_warmup_ok: bool | None = None  # None = not attempted yet; True/False = a real attempt's result
+
+
 def is_retrieval_real() -> bool:
-    """True once the real retriever (FAISS + LiteE5Embedder) has loaded successfully, False if
-    only the Day-0 stub is available. Triggers the same lazy load `retrieve()` uses (memoized,
-    so calling this first and then `retrieve()` costs nothing extra) — added for the API layer's
-    `/healthz` and eager-startup hooks (src/vrag/api/main.py) to report real readiness instead of
-    just "the FastAPI process is up", without changing `retrieve()`'s own "never raises"
-    contract."""
-    return _get_real_retriever() is not None
+    """True once the real retriever (FAISS + LiteE5Embedder) has loaded successfully AND has
+    completed one real warmup embedding — not just that construction was attempted. "Loaded" and
+    "warm" are different costs: `LiteE5Embedder._ensure_loaded()` (the ONNX session +
+    SentencePieceProcessor construction, ~205MB and real wall-clock time, docs/DECISIONS_R.md
+    R-032) is itself lazy, deferred to the first real `embed_queries()` call — so a caller that
+    only checked "did the retriever object construct" would still let a real request pay that
+    ~1.1s cold-start cost. Triggers the same lazy retriever load `retrieve()` uses (memoized) plus
+    a one-time real warmup embedding (also memoized, R-035) — added for the API layer's
+    `/healthz` and startup hook (src/vrag/api/main.py) to report true readiness, not just "the
+    FastAPI process is up" or "the retriever object exists". A warmup failure here doesn't change
+    `retrieve()`'s own "never raises" contract — it just means this returns False (stub path)
+    exactly like a real retriever load failure already did before this existed."""
+    global _warmup_ok
+    retriever = _get_real_retriever()
+    if retriever is None:
+        return False
+    if _warmup_ok is None:
+        try:
+            retriever._embedder.embed_queries(["warmup"])
+            _warmup_ok = True
+        except Exception:
+            logger.exception(
+                "Real retriever loaded but the warmup embedding failed — falling back to the "
+                "stub (same failure mode as a load failure, just caught one step later)"
+            )
+            _warmup_ok = False
+    return _warmup_ok
 
 
 async def retrieve(query: str, k: int = 5) -> list[RetrievedChunk]:

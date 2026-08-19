@@ -43,16 +43,22 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Forces `retrieve()`'s lazy retriever singleton (src/vrag/retrieval/interface.py) to load
-    at boot instead of on first `/ask` — otherwise a Docker memory test's "startup peak" would
-    miss the FAISS+embedder load entirely (it'd happen on the first request instead) and
-    /healthz would report ready before retrieval actually is. `retrieve()`'s own "never raises"
-    contract is untouched — this only decides *when* the existing lazy load happens, not whether
-    a failure degrades to the stub.
+    """Forces `retrieve()`'s lazy retriever singleton — FAISS + SQLite load, ONNX session +
+    SentencePieceProcessor construction, and one real warmup embedding
+    (`is_retrieval_real()`, src/vrag/retrieval/interface.py, R-035) — to happen at boot, before
+    `yield`, instead of on first `/ask`. FastAPI/uvicorn don't accept ANY request (including
+    `/healthz`) until this coroutine reaches `yield`, so this is what makes "no cold starts" and
+    "`/healthz` only ready after real warmup" true structurally, not just by convention: there is
+    no window where the process is accepting traffic but retrieval isn't actually warm yet.
+    Before R-035, this only forced the retriever *object* to load — `LiteE5Embedder._ensure_
+    loaded()` was still lazy, so the first real query paid a real ~1.1s ONNX/SentencePiece
+    construction cost that this hook didn't cover (docs/DECISIONS_R.md R-032/R-035). `retrieve()`'s
+    own "never raises" contract is untouched — this only decides *when* the existing lazy load
+    (now including warmup) happens, not whether a failure degrades to the stub.
 
     VRAG_REQUIRE_REAL_RETRIEVAL=1 (unset by default, never set in the Dockerfile) makes a failed
-    load fatal at startup instead of silently degrading — opt-in, for validation runs where a
-    healthy-looking stub-backed container would be a false pass (docs/RISKS.md R4), not a
+    load-or-warmup fatal at startup instead of silently degrading — opt-in, for validation runs
+    where a healthy-looking stub-backed container would be a false pass (docs/RISKS.md R4), not a
     production default; the graceful degradation P built for a flaky/partial deploy stays intact
     unless this is explicitly requested."""
     real = is_retrieval_real()

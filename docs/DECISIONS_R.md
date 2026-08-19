@@ -1865,3 +1865,97 @@ active (`/healthz`, real citations); Recall@10 0.748 vs. 0.750 baseline (within 
 noise floor, not a material regression); MRR@10 0.45550 vs. 0.45627 baseline (~0.17% relative,
 effectively unchanged); query latency 12-42ms per real query, comfortably compatible with the
 200ms budget. `docs/RISKS.md` R4 updated accordingly.
+
+## R-035 — Two R-034 follow-ups: eager warmup kills the 1.1s cold start; FP32-vs-FP16 grounding-gate comparison finds zero decision changes
+
+**Date:** 2026-08-19
+**Status:** Accepted and implemented (part 1); accepted as a diagnostic finding, no threshold
+change made (part 2, per explicit instruction). Retrieval architecture, FAISS, corpus size,
+embedding model, tokenizer, and deployment memory configuration are all unchanged.
+
+### Part 1 — cold-start warmup
+
+**Root cause:** R-034's Docker validation measured a 1.1s first-request `retrieve` cost. R-031's
+eager-startup `lifespan` hook already forced `_get_real_retriever()` to run at boot (loading
+FAISS + SQLite, constructing the `LiteE5Embedder` *object*) — but `LiteE5Embedder._ensure_
+loaded()` (the actual ONNX `InferenceSession` + `SentencePieceProcessor` construction R-032 found
+costs ~205MB and real wall-clock time) is itself lazy, deferred to the first real
+`embed_queries()` call. "The retriever object exists" and "the embedder has actually run once"
+were two different costs, and only the first was covered at startup.
+
+**Fix (`src/vrag/retrieval/interface.py`):** `is_retrieval_real()` now means "loaded AND warm",
+not just "loaded" — after `_get_real_retriever()` succeeds, it runs one real, memoized warmup
+embedding (`retriever._embedder.embed_queries(["warmup"])`) the first time it's called, catching
+and reporting `False` (not raising) if that fails, matching `retrieve()`'s existing "never take
+the whole service down" contract exactly. A `None`/`True`/`False` tri-state global
+(`_warmup_ok`) tracks "not attempted yet" vs. a real attempt's result, mirroring the existing
+`_retriever_load_attempted` pattern.
+
+**No change needed to `src/vrag/api/main.py`'s control flow** — its `_lifespan` hook already
+called `is_retrieval_real()` unconditionally before `yield`, and FastAPI/uvicorn don't accept ANY
+request (including `/healthz`) until that coroutine reaches `yield`. Strengthening what
+`is_retrieval_real()` *means* was sufficient to make warmup happen at boot structurally, not by
+convention — there's no window where the process accepts traffic but isn't actually warm.
+`VRAG_REQUIRE_REAL_RETRIEVAL=1`'s fail-loud behavior now also covers a warmup failure, not just a
+load failure, for free. Docstrings updated to describe the new behavior accurately.
+
+**4 new regression tests** (`tests/retrieval/test_interface_loading.py`, 7 total in the file,
+fixture updated to also reset `_warmup_ok`): `is_retrieval_real()` false when the index is
+missing; a real warmup embedding call actually happens (asserted via a fake embedder's call log,
+not just the return value); a warmup failure is caught and returns `False` without raising; the
+warmup embedding only ever runs once across repeated calls (memoized, the real cost is paid once).
+Full suite: 227/227, ruff clean, mypy clean.
+
+**Real Docker verification** (rebuilt `vrag-real:v3-warmup` from the updated source, same
+`index-metadata_aware-v3`/`embedder-lite-onnx-v2` assets as R-034, `docker run -m 512m
+--memory-swap 512m`):
+
+`/healthz` was polled in a tight loop starting the instant `docker run` returned, to directly
+prove readiness gates on warmup rather than trusting log-line ordering: the port refused every
+connection attempt until **5.42s** after container start, at which point the **first successful
+response was already `{"status":"ok","retrieval":"real"}`** — there is no reachable window where
+the server is up but retrieval isn't warm. Memory at that first-reachable moment was already
+395.7MiB (matching R-034's post-warmup peak almost exactly), confirming the full memory cost, not
+just the object construction, had already landed before the port opened.
+
+**First real `/ask` query: `retrieve`=42.2ms** (was 1125.8ms in R-034 before this fix — same
+query, same index, same container image family, only the warmup timing changed). Two more real
+queries measured 47.7ms and 46.5ms — indistinguishable from the first, confirming there's no
+residual first-request penalty left anywhere. `curl`'s own wall-clock (267-321ms, includes
+network/TCP/event-loop overhead beyond the stage-sum) is consistent across all three calls too.
+Memory stayed at 395.7 → 397.6MiB across the 3 queries (matching R-034's "flat after first query,
+not leak-shaped" finding) — `docker inspect`: `OOMKilled: false` throughout.
+
+**Part 1 verdict:** cold start eliminated. The 1.1s first-request cost R-034 found is gone —
+verified by direct measurement, not just code reading, using the exact same real image build,
+real 500-chunk index, and real 512MB Docker limit the rest of this ADR arc has used throughout.
+
+### Part 2 — FP32 vs. FP16 grounding-gate (G3) comparison
+
+**Method** (`scripts/compare_g3_fp32_vs_fp16.py`, new): two `HybridRetriever` instances differing
+ONLY in which `DenseIndex` they wrap (fp32 `index-metadata_aware` vs. fp16
+`index-metadata_aware_sqfp16`), sharing the same `LiteE5Embedder` and `SQLiteChunkLookup` — so any
+decision difference is attributable only to the index's own returned scores, nothing else. Runs
+the real, unmodified `g3_confidence.check()` (TAU=0.8835, MARGIN=0.0, R-015/P-015 — **not
+changed**) against both retrievers' real output for every one of the 500 real held-out queries.
+
+**Result: zero decisions changed.**
+
+| | FP32 | FP16 |
+|---|---|---|
+| Answered | 371 | 371 |
+| Abstained | 129 | 129 |
+| Decisions changed vs. the other | — | **0 / 500 (0.0%)** |
+
+Top1 confidence-score differences (fp16 − fp32) across all 500 queries: mean **-0.00007**,
+population stdev **0.00131**, max absolute difference **0.0281** (one query) — and even that
+largest single-query divergence did not flip a decision, meaning it wasn't anywhere near TAU.
+
+**This directly resolves R-034's open, non-blocking observation** ("3/10 real queries abstained
+near the confidence threshold during the live Docker smoke test — possibly fp16 score-precision
+sensitivity, not confirmed"). The rigorous 500-query, same-query, real-gate comparison shows that
+observation was sampling noise from a 10-query smoke test, not a real effect: across the full
+held-out set, fp16 quantization does not change a single G3 decision. **No calibration issue
+found — TAU/MARGIN correctly left untouched, per instruction.** Per-query detail (top1 score and
+pass/fail for both indices, every query) written to `eval/g3_fp32_vs_fp16_comparison.json` for
+anyone who wants to audit the raw numbers directly.

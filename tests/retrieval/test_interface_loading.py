@@ -20,13 +20,15 @@ from vrag.index.sparse import SparseIndex
 
 @pytest.fixture(autouse=True)
 def _reset_lazy_singleton():
-    """The module caches its loaded retriever in globals — without resetting, whichever test
-    runs first would determine every later test's behaviour."""
+    """The module caches its loaded retriever (and, since R-035, warmup result) in globals —
+    without resetting, whichever test runs first would determine every later test's behaviour."""
     interface_module._retriever = None
     interface_module._retriever_load_attempted = False
+    interface_module._warmup_ok = None
     yield
     interface_module._retriever = None
     interface_module._retriever_load_attempted = False
+    interface_module._warmup_ok = None
 
 
 def test_falls_back_to_stub_when_index_dir_missing(
@@ -76,3 +78,86 @@ def test_lazy_load_only_attempted_once(
     monkeypatch.setattr(interface_module, "_INDEX_DIR", tmp_path / "would-exist-now-but-ignored")
     results = asyncio.run(interface_module.retrieve("second call", k=1))
     assert results == interface_module._STUB_CHUNKS[:1]
+
+
+# is_retrieval_real() / warmup (docs/DECISIONS_R.md R-035): "real" now means loaded AND warm --
+# the ONNX session + SentencePieceProcessor construction LiteE5Embedder defers to first real use
+# (R-032 found this costs ~205MB and real wall-clock time) must have actually happened and
+# succeeded, not just that the retriever object was constructed.
+
+
+def _save_tiny_real_index(tmp_path: Path) -> Path:
+    dense = DenseIndex(dim=2)
+    dense.add(["c1"], [[1.0, 0.0]])
+    sparse = SparseIndex()
+    sparse.build(["c1"], ["भारत की राजधानी नई दिल्ली है"])
+    chunk_lookup = {
+        "c1": Chunk(
+            chunk_id="c1", doc_id="passage-1", text="भारत की राजधानी नई दिल्ली है",
+            metadata={"language": "hi"},
+        )
+    }
+    index_dir = tmp_path / "index"
+    save_built_index(dense, sparse, chunk_lookup, index_dir)
+    return index_dir
+
+
+def test_is_retrieval_real_false_when_index_dir_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(interface_module, "_INDEX_DIR", tmp_path / "does-not-exist")
+    assert interface_module.is_retrieval_real() is False
+
+
+def test_is_retrieval_real_calls_a_real_warmup_embedding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(interface_module, "_INDEX_DIR", _save_tiny_real_index(tmp_path))
+
+    calls: list[list[str]] = []
+
+    class _FakeEmbedder:
+        def embed_queries(self, texts: list[str]) -> list[list[float]]:
+            calls.append(texts)
+            return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr("vrag.index.embedder.LiteE5Embedder", lambda: _FakeEmbedder())
+
+    assert interface_module.is_retrieval_real() is True
+    assert len(calls) == 1  # the warmup call actually happened, not just retriever construction
+    assert calls[0]  # a real (non-empty) dummy query was embedded, not an empty batch
+
+
+def test_is_retrieval_real_false_and_does_not_raise_when_warmup_embedding_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(interface_module, "_INDEX_DIR", _save_tiny_real_index(tmp_path))
+
+    class _BrokenEmbedder:
+        def embed_queries(self, texts: list[str]) -> list[list[float]]:
+            raise RuntimeError("ONNX session failed to construct")
+
+    monkeypatch.setattr("vrag.index.embedder.LiteE5Embedder", lambda: _BrokenEmbedder())
+
+    # must not raise -- same "never take the whole service down" contract as a load failure
+    assert interface_module.is_retrieval_real() is False
+
+
+def test_warmup_embedding_only_happens_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(interface_module, "_INDEX_DIR", _save_tiny_real_index(tmp_path))
+
+    calls: list[list[str]] = []
+
+    class _FakeEmbedder:
+        def embed_queries(self, texts: list[str]) -> list[list[float]]:
+            calls.append(texts)
+            return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr("vrag.index.embedder.LiteE5Embedder", lambda: _FakeEmbedder())
+
+    assert interface_module.is_retrieval_real() is True
+    assert interface_module.is_retrieval_real() is True
+    assert interface_module.is_retrieval_real() is True
+    assert len(calls) == 1  # memoized -- the real warmup cost is paid once, not per call
