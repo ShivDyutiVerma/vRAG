@@ -5,28 +5,28 @@
     "chunk_lookup_backend": "sqlite (lean, matches production)",
     "stages": {
       "baseline": {
-        "rss_bytes": 19628032,
-        "peak_wset_bytes": 19628032
+        "rss_bytes": 19562496,
+        "peak_wset_bytes": 19562496
       },
       "after_index_load": {
-        "rss_bytes": 177901568,
-        "peak_wset_bytes": 177901568
+        "rss_bytes": 178233344,
+        "peak_wset_bytes": 178233344
       },
       "after_chunk_lookup_load": {
-        "rss_bytes": 206962688,
-        "peak_wset_bytes": 209760256
+        "rss_bytes": 208379904,
+        "peak_wset_bytes": 210305024
       },
       "after_embedder_construct": {
-        "rss_bytes": 207015936,
-        "peak_wset_bytes": 209760256
+        "rss_bytes": 208400384,
+        "peak_wset_bytes": 210305024
       },
       "after_first_real_query": {
-        "rss_bytes": 406433792,
-        "peak_wset_bytes": 492597248
+        "rss_bytes": 406122496,
+        "peak_wset_bytes": 492683264
       },
       "steady_state_after_5_queries": {
-        "rss_bytes": 406478848,
-        "peak_wset_bytes": 492597248
+        "rss_bytes": 406159360,
+        "peak_wset_bytes": 492683264
       }
     }
   },

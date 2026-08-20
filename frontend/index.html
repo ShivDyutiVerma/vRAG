@@ -217,8 +217,8 @@
       </div>
 
       <div class="content">
-        <p class="eyebrow" id="eyebrow">Voice · Hindi · &lt;200ms</p>
-        <h1 id="headline">Ask in <span class="script-accent">हिंदी</span>. Grounded in seconds.</h1>
+        <p class="eyebrow" id="eyebrow">Voice · 14 languages</p>
+        <h1 id="headline">Ask in <span class="script-accent">14 languages</span>. Grounded in seconds.</h1>
         <p class="lede" id="lede">Speak your question. We transcribe it with Sarvam, search real passages, and answer only when we're sure — citing exactly what we found.</p>
 
         <div class="dynamic-panel" id="dynamicPanel">
@@ -271,8 +271,8 @@
   function goIdle(){
     body.dataset.state = 'idle';
     micHint.textContent = 'Tap the mic to start';
-    eyebrow.textContent = 'Voice · Hindi · <200ms';
-    headline.innerHTML = 'Ask in <span class="script-accent">हिंदी</span>. Grounded in seconds.';
+    eyebrow.textContent = 'Voice · 14 languages';
+    headline.innerHTML = 'Ask in <span class="script-accent">14 languages</span>. Grounded in seconds.';
     lede.textContent = "Speak your question. We transcribe it with Sarvam, search real passages, and answer only when we're sure — citing exactly what we found.";
     panel.innerHTML = '<ul class="features"><li>Real voice input via Sarvam streaming STT</li><li>Six chunking strategies tested, best one shipped</li><li>Answers target under 200ms server-side</li><li>Says "I don\'t know" when it doesn\'t know</li></ul>';
     setPill('neutral', 'Tap the mic to start');

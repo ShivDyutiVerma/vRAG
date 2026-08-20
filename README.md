@@ -1,17 +1,26 @@
-# vRAG — Voice-Grounded RAG in Hindi
+# vRAG — Voice-Grounded RAG, 14 Languages (Local) / Hindi (Deployed)
 
-**Live demo:** https://vrag-voice.onrender.com
+**Two real, distinct systems exist in this repo right now — read this before judging either one:**
 
-Speak a Hindi question → real Sarvam speech-to-text → hybrid-evaluated dense retrieval over
-99,767 real MSMARCO-XI passages → a grounded, cited answer, or an honest refusal when the
-evidence isn't there. Built for a hackathon with a hard constraint: **server-side answer latency
-under 200ms** — the numbers below show exactly where that holds and where it doesn't, measured,
-not asserted.
+| | **Deployed (live)** | **Local candidate (newer, not deployed)** |
+|---|---|---|
+| Languages | Hindi only | 14 (13 MSMARCO-XI languages + English) |
+| Corpus | 99,767 chunks | 107,678 chunks |
+| Where it runs | Render free tier — **currently returning 502**, checked 2026-08-20, not touched (see below) | Your machine only — `data/index/multilingual_100k/`, gitignored, no GitHub release asset |
+| How to run it | `docker run` — verified working locally today, see [§13](#13-local-docker-instructions) | `VRAG_INDEX_DIR=...` + local rebuild, see [§12A](#12a-the-multilingual-candidate--local-only-not-deployed) |
 
-**60-second quickstart:** open the live URL above, tap the mic, ask something in Hindi
-("भारत में मानसून कब आता है?"). Real STT, real retrieval, real citations. See
-[Known limitations](#known-limitations) before judging by voice alone — the real human-microphone
-leg of verification is still pending (below).
+Speak a question → real Sarvam speech-to-text → dense retrieval over real MSMARCO-XI passages →
+a grounded, cited answer, or an honest refusal when the evidence isn't there. Built for a
+hackathon with a stated latency target: **server-side answer latency under 200ms** — the numbers
+throughout this document show exactly where that holds and where it doesn't, measured, not
+asserted, and every claim below is dated to when it was actually checked.
+
+**Quickstart, honestly:** the live URL above is currently down (502, see [§12](#12-live-demo)).
+The fastest way to see the real system working today is local Docker (§13, Hindi-only, verified
+minutes before this was written) or the local multilingual candidate (§12A, 14 languages, more
+setup). See [Known limitations](#15-known-limitations) before judging by voice alone — real
+human-microphone verification is still pending for both systems (text/audio-file paths are real
+and verified; a live mic in an actual browser has not been tested end-to-end by a human).
 
 ---
 
@@ -28,6 +37,7 @@ leg of verification is still pending (below).
 9. [Memory optimization story](#9-memory-optimization-story)
 10. [Latency results](#10-latency-results)
 11. [The Render Free CPU limitation, honestly](#11-the-render-free-cpu-limitation-honestly)
+12A. [The multilingual candidate — local only, not deployed](#12a-the-multilingual-candidate--local-only-not-deployed)
 12. [Live demo](#12-live-demo)
 13. [Local Docker instructions](#13-local-docker-instructions)
 14. [Evaluation results](#14-evaluation-results)
@@ -303,7 +313,17 @@ gap (untested — would need its own real measurement).
 
 **https://vrag-voice.onrender.com**
 
-Verified 2026-08-20, against the current deployed commit:
+**⚠️ Re-checked 2026-08-20 (Phase 6 of this session, after the multilingual work below): the live
+URL currently returns `502 Bad Gateway` on `GET /healthz`, from Render's own edge, on two attempts
+15 seconds apart (to rule out a simple cold-start hiccup — a cold start times out slowly, it
+doesn't fail fast with a clean 502).** Cause not diagnosed — could be the free-tier instance being
+fully decommissioned after extended inactivity, a crash, or something else. **Not touched, not
+redeployed, per this phase's explicit instructions** (deployment work is out of scope). Reported
+here rather than left as a silent contradiction with the "✅ Live HTTPS URL" verification below,
+which was real and true when it was performed, earlier the same day:
+
+Verified 2026-08-20 (earlier the same day, before the deployment went unreachable), against the
+current deployed commit:
 - `GET /healthz` → `{"status":"ok","retrieval":"real"}`
 - 5 real `/ask` calls: 2 answered with real citations (real `chunk_id`/`passage_id`/scores, never
   the Day-0 stub), 3 correctly abstained with genuinely distinct confidence scores
@@ -320,12 +340,136 @@ speech content. **A real spoken query on the live URL, from an actual device wit
 microphone, has not been performed and is explicitly called out here as outstanding**, not
 claimed.
 
+## 12A. The multilingual candidate — local only, not deployed
+
+Built across a separate work session (six phases, `docs/DECISIONS.md` ADR-008 through ADR-015).
+**Never deployed. Lives only at `data/index/multilingual_100k/` on the machine that built it —
+gitignored, no GitHub release asset, no Docker image built for it.** Everything below is real and
+measured; none of it changes what's live at the URL above (still Hindi-only, currently down, see
+§12).
+
+**What it is:** the same harness, guardrails, and API — pointed at a bigger, real multilingual
+corpus instead of the Hindi-only one, via an opt-in `VRAG_INDEX_DIR` environment variable (unset
+by default, so a fresh clone/CI/the existing Docker image behave exactly as before this work).
+
+| | Value | Source |
+|---|---|---|
+| Chunks | 107,678 | real build, `data/index/multilingual_100k/` |
+| Languages | 14 (as, bn, en, gu, hi, kn, ml, mr, ne, or, pa, sa, ta, ur) | `src/vrag/languages.py` |
+| Retrieval | Dense-only FAISS HNSW32+SQfp16, **language-filtered** (+8.7-9.1pp Recall@10 over unfiltered, every size tested) | ADR-009/ADR-011 |
+| Steady RSS (warm, lean SQLite lookup) | **406.2MB** | isolated-subprocess audit, re-run 2026-08-20 |
+| Peak RSS | **492.7MB** | same audit |
+| Startup RAM (index + lookup loaded, embedder not yet warm) | ~208MB | same audit |
+| Pipeline latency, P50/P70/P95/P100 (local, 500 real samples) | **13.0 / 13.7 / 15.5 / 39.0ms** | `scripts/bench_latency.py`, re-run 2026-08-20 against this candidate |
+| `retrieve` stage, P50/P100 | 11.2 / 36.5ms | same run |
+| Recall@1 / @5 / @10, MRR@10 (532-query real held-out set, filtered) | 0.222 / 0.573 / 0.679 / 0.362 | ADR-013 |
+| G3 abstention rate (same 532-query set) | **66.5%** — substantially higher than the Hindi-only baseline's 25.8% | ADR-013 |
+
+**Why abstention is high, and why `TAU=0.8835` was deliberately left unchanged:** two dedicated
+recalibration phases (ADR-013, ADR-014) investigated this and found the real cause is a **weak
+underlying signal**, not a bad threshold. Top-1 cosine score barely separates correct from
+incorrect retrieval on this multilingual, mixed-script corpus (correct-hit median 0.885, wrong-hit
+median 0.869 — heavy overlap; wrong-hit scores go as high as 0.946). A full TAU sweep (61 points
+across the observed range) found no threshold that cuts abstention without proportionally
+increasing wrong answers. A follow-up experiment tried 15 cheap deterministic signals (score
+dispersion, lexical/entity overlap, language consistency, score concentration — no neural model,
+no LLM) plus 4 combinations: two signals beat top1 on aggregate AUC, but every candidate — checked
+against the exact "capital of India" failure case this whole effort exists to prevent — either
+answered it with the wrong evidence directly, or only avoided that by chance in a way that failed
+7 of the 10 highest-confidence *wrong* queries in the set. The real, apples-to-apples number:
+every candidate signal traded **~2.3-2.6 new wrong answers for every 1 new correct answer
+recovered** on queries the current system safely abstains on today. All rejected. **TAU=0.8835,
+MARGIN=0.0 remain exactly as calibrated for the Hindi-only corpus** — this is reported as a real,
+unresolved limitation (fixing it needs a better *signal*, e.g. a per-language reranker or a
+stronger embedder — both out of scope here), not silently patched to look better.
+
+**Real end-to-end test, 2026-08-20 (`scripts/e2e_demo_readiness_test.py` +
+`scripts/e2e_bonus_answered_cases.py`, 19 real cases total, results in
+`eval/e2e_demo_readiness_results.json` / `eval/e2e_bonus_answered_results.json`):**
+
+- **Real voice tested once** (Hindi, `eval/audio/query_000.wav` through the real Sarvam realtime
+  STT connection — real network call, real API key). **Found a real limitation in the process**:
+  Sarvam transcribed the spoken Hindi as Romanized text ("Aap kis umr ke bachche ka dawa kar sakte
+  hain?") and its own language auto-detection labeled it `en-IN`, not Hindi — the query was then
+  searched against the English corpus slice and correctly abstained (weak match, as expected for
+  mismatched-language search), rather than confidently answering wrong. Safe outcome, but a real,
+  disclosed STT/language-ID gap worth knowing about before relying on voice for non-English/
+  non-clearly-scripted speech. Every other language below was tested via text (permitted — voice
+  requires physically speaking 9+ languages, which wasn't done; **no voice result is fabricated**).
+- **Answered, with correct in-language generation** (real, not translated to Hindi): English,
+  Bengali, Marathi, Tamil, Kannada, Urdu, Gujarati, Assamese — 8 of the 9 text-tested languages
+  produced at least one real grounded answer in its own script during this test pass (Hindi
+  answered too, via case 13 below). Every `generation_language` matched the query's language
+  exactly.
+- **The flagship regression case, both languages, both correctly safe:** "भारत की राजधानी क्या
+  है?" (Hindi, top1=0.821) and "What is the capital of India?" (English, tested against the real
+  English corpus slice this time, top1=0.817) — both abstain. Neither confidently cites the wrong
+  country's capital (the Hindi query's top-1 hit is still the same Bangkok/Thailand passage found
+  in earlier phases; the English query's top-1 hit is an unrelated "world's most expensive cities"
+  passage — a different wrong passage, same correct outcome).
+- **A real successful grounded answer** (the "this is what working looks like" case): "क्या मोनो
+  खाँसी का कारण बनता है?" (Hindi) → answered correctly in Hindi, confidence 0.885, citing the
+  actually-relevant passage — not cherry-picked far above threshold, a realistic pass.
+- **Unsupported language correctly refused before any retrieval call**: a Telugu-script test
+  query (`te-IN` — Sarvam can transcribe Telugu, but MSMARCO-XI has no Telugu training data to
+  index it against) was refused by G2 in 0.08ms, `retrieve()` never called.
+- **A genuinely unanswerable question correctly abstained**, not hallucinated: a constructed,
+  out-of-domain English question found no confident evidence and abstained (top1=0.808).
+
+**A real disk-footprint finding, not a RAM finding** (the RAM numbers above are the true runtime
+footprint, verified via the isolated-subprocess audit — this doesn't change them): the local
+`data/index/multilingual_100k/` directory is 365MB on disk but only ~246MB of it (`dense/` +
+`chunk_lookup.sqlite3`) is ever loaded at runtime — a 120MB `chunk_lookup.json` left over from an
+earlier build step sits unused next to it. Similarly, `data/onnx/multilingual-e5-small/` is 583MB
+but the runtime code path (`LiteE5Embedder`, `DEFAULT_ONNX_FILE_NAME`) only ever opens the 118MB
+int8 `model_quint8_avx2.onnx` + 5MB `sentencepiece.bpe.model` — the 470MB FP32 `model.onnx` and
+17MB legacy `tokenizer.json` alongside them (487MB) are dead weight from an earlier download, not
+read by any code path. Neither directory is committed to git or shipped in the Docker image, so
+this doesn't affect the deployed system — flagged here because it would matter the moment either
+directory is packaged for distribution.
+
+**How to run this candidate locally** (no Docker image exists for it yet — this is the real,
+current, multi-step process, not a one-command shortcut):
+
+```bash
+git clone https://github.com/ShivDyutiVerma/vRAG.git
+cd vRAG
+cp .env.example .env   # fill in SARVAM_API_KEY
+pip install -e ".[retrieval-lean,pipeline,dev]"
+
+# Build the multilingual corpus + index yourself -- there is no pre-built artifact to download.
+# This downloads real MSMARCO-XI data (~10M rows across 13 languages) and takes real wall-clock
+# time and bandwidth; it is not a quick judge-friendly path today.
+python scripts/build_multilingual_dataset_subset.py
+python scripts/build_multilingual_index.py --size 100k
+python scripts/add_english_to_multilingual_index.py
+
+# Point the app at the candidate you just built and run it
+VRAG_INDEX_DIR="$(pwd)/data/index/multilingual_100k" \
+  uvicorn vrag.api.main:app --app-dir src --host 127.0.0.1 --port 8000
+
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "Content-Type: application/json" \
+  --data-binary '{"query": "What is the capital of India?", "k": 5, "language": "en-IN"}'
+# (use --data-binary with a real UTF-8 JSON body for non-ASCII queries -- inline shell -d args can
+# mangle non-Latin scripts on some shells/locales, confirmed while writing this section)
+```
+
 ## 13. Local Docker instructions
+
+**This section builds the deployed Hindi-only system.** For the newer 14-language local candidate,
+see [§12A](#12a-the-multilingual-candidate--local-only-not-deployed) instead — no Docker image
+exists for it yet. Re-verified working 2026-08-20, independent of the live URL's current 502
+(§12): `docker run` locally against the already-built `vrag-real:v3` image, real `/healthz` →
+`{"status":"ok","retrieval":"real"}`, real `/ask` call → real retrieval (cold P50 ~1.4s on the
+very first query, warm ~27ms after).
 
 ```bash
 git clone https://github.com/ShivDyutiVerma/vRAG.git
 cd vRAG
 cp .env.example .env   # fill in SARVAM_API_KEY (dashboard.sarvam.ai) -- required for STT/Track B
+# GROQ_API_KEY may be left empty -- generation uses Sarvam's own LLM endpoint
+# (src/vrag/generation/sarvam_llm.py); nothing in src/ reads GROQ_API_KEY.
 
 docker build -t vrag-local .
 docker run --rm -p 7860:7860 --env-file .env vrag-local
@@ -395,6 +539,27 @@ Stated plainly, not minimized:
 - **`t_e2e_voice` (full mic-to-answer round trip) has no dedicated benchmark script** — 95 real
   TTS-synthesized test audio files exist and are ready, the WebSocket benchmark client itself was
   not built.
+- **The live deployed URL currently returns 502** — checked 2026-08-20, not diagnosed further, not
+  touched (deployment work explicitly out of scope this session). See [§12](#12-live-demo). Local
+  Docker (Hindi-only) and the local multilingual candidate ([§12A](#12a-the-multilingual-candidate--local-only-not-deployed))
+  both verified working independently the same day.
+- **The multilingual candidate ([§12A](#12a-the-multilingual-candidate--local-only-not-deployed))
+  abstains far more often than the Hindi-only system** — 66.5% vs. 25.8%, on real per-language
+  evidence. Two dedicated investigation phases found the cause is weak retrieval-confidence signal
+  on this multilingual corpus, not a bad threshold; every cheap fix tried was rejected as unsafe
+  (traded ~2.3-2.6 wrong answers for every 1 correct one recovered). Genuinely unresolved — flagged,
+  not hidden.
+- **The multilingual candidate is not packaged for distribution** — no GitHub release asset, no
+  Docker image. Reproducing it requires rerunning the real data-download-and-build pipeline
+  locally (real time and bandwidth), documented in [§12A](#12a-the-multilingual-candidate--local-only-not-deployed),
+  not a one-command judge path today.
+- **Real voice input was tested for only one language (Hindi, one real audio file) and revealed a
+  real limitation**: Sarvam's STT romanized the Hindi speech and its own auto-detection labeled
+  the result as English, causing a language-mismatched (but still safe — correctly abstained)
+  search. Not fixed; disclosed in [§12A](#12a-the-multilingual-candidate--local-only-not-deployed).
+  The other 8 tested languages were verified via text input only (real corpus queries, real
+  pipeline, no synthetic/fabricated results) — genuine human-spoken-voice verification in those
+  languages has not been performed.
 
 ## 16. Project structure
 
@@ -420,13 +585,14 @@ docs/          architecture, decisions (per-workstream ADR logs), eval results, 
 | Requirement | Status | Evidence |
 |---|---|---|
 | Public GitHub repo | ✅ | this repo |
-| Live HTTPS URL | ✅ (with a stated CPU-latency limitation) | [§11](#11-the-render-free-cpu-limitation-honestly), [§12](#12-live-demo) |
+| Live HTTPS URL | ⚠️ **Currently down (502), checked 2026-08-20, not yet fixed** — was verified working earlier the same day; local Docker (same system) verified working today as a fallback | [§11](#11-the-render-free-cpu-limitation-honestly), [§12](#12-live-demo) |
 | Real Sarvam STT, never mocked | ✅ | `src/vrag/stt/sarvam.py`, zero mocks in `tests/` |
 | ≥5 chunking strategies, evaluated | ✅ (6 shipped) | [§5](#5-chunking-strategy) |
 | Real harness (typed stages, deadline propagation, circuit breaker, structured output) | ✅ | [§8](#8-harness-and-deadline-propagation) |
 | 5 guardrail layers, calibrated where applicable | ✅ (G4's threshold uncalibrated, disclosed) | [§7](#7-guardrails-and-refusal-behavior) |
 | P50/P70/P100 latency, real N | ✅ | [§10](#10-latency-results) |
-| Real human microphone verification | ⏳ **Pending** | [§12](#12-live-demo), [§15](#15-known-limitations) |
+| Multilingual support (14 languages) | ✅ **local candidate only, not deployed** — real, measured, higher abstention rate disclosed | [§12A](#12a-the-multilingual-candidate--local-only-not-deployed) |
+| Real human microphone verification | ⏳ **Pending** — one real STT-via-audio-file test performed (Hindi, revealed a real language-detection limitation); live browser mic by an actual human still not tested | [§12](#12-live-demo), [§12A](#12a-the-multilingual-candidate--local-only-not-deployed), [§15](#15-known-limitations) |
 | Demo video | ⏳ Not yet recorded | — |
 | Process video | ⏳ Not yet recorded | — |
 | Submission checklist / promotion grid | See `docs/SUBMISSION_CHECKLIST.md` | — |

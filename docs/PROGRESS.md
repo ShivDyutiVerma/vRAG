@@ -228,12 +228,38 @@ existing hard language filter already saturates it). An offline logistic-regress
 Raw artifacts: `eval/g3_feature_experiment_raw.json`, `eval/g3_feature_experiment_results.json`.
 No production code changed; 286/286 tests still pass.
 
-**Not started yet:** a real fix for G3's underlying signal quality (ADR-013/014 both flag this as
-needing something beyond cheap deterministic features — likely a per-language-aware reranker or a
-stronger embedder, out of scope for both calibration passes); memory optimization pass beyond what
-ADR-010 already measured; full voice-path verification with a real Sarvam key; a versioned
-multilingual eval report; local-run README updates — per the user's "stop after this experiment"
-instruction.
+**Phase 6 (final integration + demo-readiness, no deployment) done.** Full record:
+`docs/DECISIONS.md` ADR-015. G3/TAU/MARGIN frozen per ADR-013/014 — no further recalibration
+attempted. Real 19-case end-to-end test through the actual harness against
+`data/index/multilingual_100k/` (`scripts/e2e_demo_readiness_test.py` +
+`e2e_bonus_answered_cases.py`): one real voice test (Hindi, real Sarvam STT call) found a real,
+disclosed limitation — Sarvam romanized the speech and auto-detected `en-IN` instead of Hindi,
+causing a safe abstain rather than a wrong answer; 8 of 9 text-tested languages produced at least
+one real correctly-in-language answer; the capital-of-India regression stayed safe in both
+languages, now tested against each language's own real corpus slice (English against `eng_Latn`
+for the first time, not pinned to `hin_Deva`). Real latency re-measured with the project's one
+sanctioned benchmark script: **P50=13.0ms, P100=39.0ms** — confirms a stale P6-era "213-246ms"
+number is no longer current (a pre-existing budget-gate fix, R-036, already resolved it; this
+phase just measured and reported the real current number). Real memory audit re-confirmed
+406.2MB/492.7MB. Found and disclosed (not fixed): ~600MB of unused-at-runtime disk artifacts
+(leftover `chunk_lookup.json` + an un-pruned FP32 embedder download) sitting next to the real,
+lean files that are actually loaded. Frontend verified via its existing real browser test harness
+(16/16 pass) plus one live browser screenshot; made one minimal, disclosed copy fix (stale
+"Hindi · <200ms" idle-state text → "14 languages", same CSS treatment, not a redesign). **Checked
+the live Render URL read-only and found it returning 502** — not touched, not redeployed, per
+this phase's explicit scope; local Docker (the same Hindi-only system) verified working
+independently. `README.md` substantially rewritten with the real current state of both systems,
+a new §12A for the multilingual candidate (real numbers, honest reproduction instructions, no
+one-command shortcut since no distributable artifact exists yet), and every limitation from this
+whole multi-phase effort disclosed in one place. 286/286 tests pass, ruff clean, no production
+`src/` code changed.
+
+**Not started / explicitly out of scope, per instruction:** any deployment action (multilingual
+candidate stays local-only; live URL's 502 not diagnosed further); a real fix for G3's underlying
+signal quality (ADR-013/014/015 all flag this as the real remaining gap — likely needs a
+per-language-aware reranker or a stronger embedder); genuine human-spoken-voice verification in a
+live browser (only a real audio-file-through-STT test was performed); packaging the multilingual
+candidate as a distributable artifact (GitHub release / Docker image).
 
 ---
 

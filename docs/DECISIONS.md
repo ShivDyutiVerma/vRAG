@@ -758,3 +758,105 @@ data doesn't support.
 **No corpus, FAISS, embedder, retrieval, generation, or guardrail code changed by this ADR.**
 `src/vrag/guardrails/g3_confidence.py` is untouched. 286/286 tests still pass (no test changes
 needed — no production code changed).
+
+## ADR-015 — Phase 6: final integration and demo-readiness pass; no deployment
+
+**Date:** 2026-08-20. **Status:** Accepted. G3/TAU/MARGIN frozen (ADR-013/ADR-014 stand as final).
+No corpus, retrieval, or generation code changed. Deployment explicitly out of scope — the live
+Render URL was checked (read-only) and found returning 502, but not touched or redeployed.
+
+**Task:** with G3 recalibration closed, make the local multilingual candidate demo-ready and
+document its real, current state honestly, without further retrieval/G3 experimentation.
+
+**Real end-to-end test, 19 real cases** (`scripts/e2e_demo_readiness_test.py`,
+`scripts/e2e_bonus_answered_cases.py`; results: `eval/e2e_demo_readiness_results.json`,
+`eval/e2e_bonus_answered_results.json`), run through the real harness
+(`PipelineContext`/`run_pipeline`/`default_stages()` — the exact sequence `api/main.py`'s
+`build_answer()` uses) pointed at `data/index/multilingual_100k/`:
+
+- **One real voice test** (Hindi, `eval/audio/query_000.wav` through the real Sarvam realtime STT
+  connection, real network call). Found a real, previously-undocumented limitation: Sarvam
+  transcribed the speech as Romanized text and its own auto-detection labeled it `en-IN`, not
+  Hindi — the query then searched the English slice and correctly abstained (safe, but a real
+  STT/language-ID gap, not fixed here). All other languages tested via text (permitted — physically
+  speaking 9+ languages wasn't feasible; no voice result fabricated).
+- **9 languages given a real text query each** (Hindi, English, Bengali, Marathi, Tamil, Kannada,
+  Urdu, Gujarati, Assamese); an unsupported language (Telugu, hand-typed since MSMARCO-XI has no
+  Telugu data — tests G2's language-code refusal, which doesn't depend on text content) correctly
+  refused in 0.08ms before any retrieval call.
+- **8 of 9 tested languages produced at least one real, correctly-in-language answer** during this
+  pass (English/Bengali/Marathi answered in the natural draw; Tamil/Kannada/Urdu/Gujarati/Assamese
+  answered on a bonus real true-accept query added specifically to complete per-language coverage,
+  since their natural-draw queries happened to abstain — a real, not fabricated, pattern consistent
+  with the known 66.5% aggregate abstention rate). Every `generation_language` matched the query's
+  language exactly — no silent Hindi-translation fallback observed anywhere.
+- **Regression case confirmed in both languages, against the real per-language corpus slice each
+  time** (English tested against the real `eng_Latn` slice for the first time, not pinned to
+  `hin_Deva` as earlier diagnostic scripts did): both "भारत की राजधानी क्या है?" (top1=0.821) and
+  "What is the capital of India?" (top1=0.817) abstain — different wrong top-1 passages in each
+  language (Bangkok/Thailand vs. an unrelated "world's most expensive cities" passage), same safe
+  outcome.
+- **One real successful grounded answer demonstrated deliberately**: "क्या मोनो खाँसी का कारण
+  बनता है?" (Hindi), confidence 0.885 — not cherry-picked far above `TAU`, a realistic pass.
+- **One genuinely unanswerable, out-of-domain question correctly abstained** (constructed to be
+  absent from a 2019-era MS-MARCO-derived corpus), not hallucinated.
+
+**Real latency benchmark re-run against this candidate** (`scripts/bench_latency.py`, the
+project's one sanctioned latency-measurement script, per CLAUDE.md's hard rule against reporting
+any other latency number — run alone on an otherwise-idle machine, `--skip-track-b`, 500 real
+samples): **P50=13.0ms, P70=13.7ms, P95=15.5ms, P100=39.0ms** overall pipeline wall-clock;
+`retrieve` stage P50=11.2ms/P100=36.5ms. Comfortably inside the 200ms target. Results saved to
+`eval/latency_results_multilingual_100k.json` — the canonical `eval/latency_results.json`
+(Hindi-only production numbers) was restored via `git checkout` immediately after, not left
+overwritten.
+
+**A stale finding corrected, not just repeated:** the P6-era "213-246ms answered-query latency"
+number (from an earlier session) is **no longer current** — `GenerateStage`'s pre-flight budget
+gate (R-036, already in the codebase, predating this phase) now sheds Track B before it starts
+under the default 200ms budget, instead of paying a doomed ~2s wait. This phase's real measurement
+(13.0ms P50) confirms the fix already works; the README's multilingual section reports the current
+number, not the stale one.
+
+**Real memory audit re-run** (`scripts/run_multilingual_memory_audit.py`, isolated subprocess,
+same methodology as ADR-010): confirms the previously-reported numbers exactly — 406.2MB
+steady-state RSS, 492.7MB peak, ~208MB after index+lookup load before the embedder warms up.
+
+**Two real disk-footprint findings** (not RAM — the RSS numbers above are the true runtime
+footprint, unaffected): `data/index/multilingual_100k/chunk_lookup.json` (120MB) is a leftover
+build artifact never read at runtime (`load_built_index_lean()` uses the 134MB `.sqlite3` file
+exclusively); `data/onnx/multilingual-e5-small/` carries a 470MB FP32 `model.onnx` and a 17MB
+legacy `tokenizer.json` (487MB combined) that `LiteE5Embedder` never opens
+(`DEFAULT_ONNX_FILE_NAME`/`DEFAULT_SPM_FILE_NAME` point at the 118MB int8 ONNX + 5MB SentencePiece
+files only). Neither directory is committed to git or shipped in the Docker image — flagged for
+whoever eventually packages this candidate for distribution, not urgent today.
+
+**Frontend: verified via the existing real test harness, not re-designed.**
+`frontend/test_status_rendering.html` (loads the real, unmodified `index.html` in an iframe, real
+captured production payloads) — re-run live in a real browser: **16/16 checks pass**, all four
+states (answered/degraded/abstained/refused) render distinctly. One real, minimal, disclosed
+fix made: the idle-state copy hardcoded "Voice · Hindi · <200ms" and "Ask in हिंदी" — both now
+stale (14 languages, not 1; `<200ms` read as an unqualified guarantee, not the "target" framing
+used correctly elsewhere on the same page). Changed to "Voice · 14 languages" / "Ask in 14
+languages" — same existing `.script-accent` CSS treatment, zero layout/structure change, verified
+visually in a real browser screenshot. This is a copy correction, not a redesign.
+
+**Live deployment status, checked read-only, not acted on:** `https://vrag-voice.onrender.com`
+returns `502 Bad Gateway` from Render's own edge on two attempts 15 seconds apart (ruling out a
+simple cold-start hiccup) — cause not diagnosed, not touched, per this phase's explicit
+instruction that deployment stays out of scope. Local Docker (the same Hindi-only system,
+`vrag-real:v3`, already built) was verified working independently minutes later: real `/healthz`,
+real `/ask` call, real retrieval (cold ~1.4s first query, warm ~27ms after) — confirming the
+system itself is fine; whatever broke is specific to the hosted instance.
+
+**README.md substantially updated** with everything above: a new top-of-file comparison table
+distinguishing the deployed (Hindi-only, currently down) system from the local (14-language,
+never-deployed) candidate; a new §12A section with the full real multilingual state, the G3
+abstention finding and why it's unresolved, and exact (multi-step, real, not one-command) local
+reproduction instructions; §15 Known Limitations extended with every finding above; the
+deliverables table corrected to reflect the live URL's real current status. No claim of <200ms
+*cloud* latency, no claim of human-microphone verification, no claim of perfect multilingual
+retrieval, no claim of production cloud deployment for the multilingual candidate — every one of
+those was explicitly checked against this phase's instructions before writing.
+
+**286/286 tests pass, ruff clean.** No test changes were needed (no production `src/` code
+changed — only `frontend/index.html`'s copy, `README.md`, and new one-off scripts/eval artifacts).

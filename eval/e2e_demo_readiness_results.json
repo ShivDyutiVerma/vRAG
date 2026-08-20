@@ -1,0 +1,871 @@
+[
+  {
+    "wav_file": "eval\\audio\\query_000.wav",
+    "expected_query_from_manifest": "आप किस उम्र के बच्चे का दावा कर सकते हैं",
+    "stt_transcript": "Aap kis umr ke bachche ka dawa kar sakte hain?",
+    "stt_detected_language": "en-IN",
+    "stt_ms": 2416.5837000036845,
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.85 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "eng_Latn::795581_1::metadata_aware::0",
+        "passage_id": "eng_Latn::795581_1",
+        "score": 0.8502492308616638,
+        "language": "eng_Latn",
+        "text_preview": "Our cookie policy has changed. Review our cookies policy for more details and to change your cookie preference. By conti"
+      },
+      {
+        "chunk_id": "eng_Latn::716381_1::metadata_aware::0",
+        "passage_id": "eng_Latn::716381_1",
+        "score": 0.8337964415550232,
+        "language": "eng_Latn",
+        "text_preview": "Top Comments. Delete. NSFW. Aug 18, 2011 at 11:12AM EDT. …………………………………………………………………………………………………… ,,,---~‘’¯’\\, …………………_,,"
+      },
+      {
+        "chunk_id": "eng_Latn::261798_6::metadata_aware::0",
+        "passage_id": "eng_Latn::261798_6",
+        "score": 0.8325612545013428,
+        "language": "eng_Latn",
+        "text_preview": "© 2018 The Hollywood Reporter All rights reserved. Terms of Use | Privacy | Sitemap | About Our Ads"
+      },
+      {
+        "chunk_id": "eng_Latn::843488_3::metadata_aware::0",
+        "passage_id": "eng_Latn::843488_3",
+        "score": 0.8300351500511169,
+        "language": "eng_Latn",
+        "text_preview": "You're browsing the GameFAQs Message Boards as a guest. Sign Up for free (or Log In if you already have an account) to b"
+      }
+    ],
+    "top1_score": 0.8502492308616638,
+    "retrieved_language": "eng_Latn",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.3621,
+      "scope_guard": 0.0211,
+      "retrieve": 81.8083,
+      "ground_gate": 0.0426
+    },
+    "total_wall_ms": 82.55730000382755,
+    "id": 1,
+    "label": "hindi_voice"
+  },
+  {
+    "status": "answered",
+    "answer": "Daniella Monet Articles Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million.",
+    "answer_language": "eng_Latn",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.9080265164375305,
+    "refusal_reason": null,
+    "refusal_layer": null,
+    "citations": [
+      {
+        "chunk_id": "eng_Latn::115346_0::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_0",
+        "score": 0.9080265164375305,
+        "text_span": "Daniella Monet Articles Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million."
+      },
+      {
+        "chunk_id": "eng_Latn::115346_6::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_6",
+        "score": 0.8999354839324951,
+        "text_span": "Daniella Monet Articles. Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million. Daniella Mo..."
+      }
+    ],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "eng_Latn::115346_0::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_0",
+        "score": 0.9080265164375305,
+        "language": "eng_Latn",
+        "text_preview": "Daniella Monet Articles Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer"
+      },
+      {
+        "chunk_id": "eng_Latn::115346_6::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_6",
+        "score": 0.8999354839324951,
+        "language": "eng_Latn",
+        "text_preview": "Daniella Monet Articles. Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singe"
+      },
+      {
+        "chunk_id": "eng_Latn::115346_9::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_9",
+        "score": 0.8930950164794922,
+        "language": "eng_Latn",
+        "text_preview": "Daniella Monet: Net Worth: $3 Million: Date Of Birth: March 1, 1989: Place Of Birth: West Hills, Los Angeles, California"
+      },
+      {
+        "chunk_id": "eng_Latn::115346_4::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_4",
+        "score": 0.8878138065338135,
+        "language": "eng_Latn",
+        "text_preview": "Daniella Monet Net Worth is $3 Million Daniella Monet Biography Daniella Monet Zuvic, known professionally as Daniella M"
+      },
+      {
+        "chunk_id": "eng_Latn::115346_3::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_3",
+        "score": 0.8852165341377258,
+        "language": "eng_Latn",
+        "text_preview": "$3 Million 1989 5 ft 2 in (1.6 m) Actor Actors California Dancer Dani Daniella Monet Daniella Monet Net Worth Daniella M"
+      }
+    ],
+    "top1_score": 0.9080265164375305,
+    "retrieved_language": "eng_Latn",
+    "generation_language": "en-IN",
+    "timings_ms": {
+      "input_guard": 0.0247,
+      "scope_guard": 0.0187,
+      "retrieve": 25.597,
+      "ground_gate": 0.0228,
+      "extract_answer": 0.0106,
+      "output_guard": 0.0653
+    },
+    "total_wall_ms": 25.84249999927124,
+    "id": 2,
+    "label": "english_text",
+    "query": "daniella monet net worth",
+    "language_supplied": "en-IN"
+  },
+  {
+    "status": "answered",
+    "answer": "জিপ কোড: 91381: শহর: স্টিভেনসন র‍্যাঞ্চ: রাজ্য: সিএ [ক্যালিফোর্নিয়া] কাউন্টিস: এলওএস অ্যাঞ্জেলেস, সিএ: মাল্টি কাউন্টি: নং: শহর ছদ্মনাম: স্টিভেনসন র‍্যাঞ্চ নিউহল সান্তা ক্লারিটা ভ্যালেন্সিয়া স্টিভেনসন আরএনএইচ: এলাকা কোড: 661: শহরের ধরন: বি [ব্রাঞ্চ] শ্রেণীবিভাগ: [অ-অনন্য] সময় অঞ্চল: প্যাসিফিক (জিএমটি -08:00) দিনের আলো সঞ্চয়: হ্যাঁ: অক্ষাংশ: 34.37075: দ্রাঘিমাংশ: -118.616305: উচ্চতা: 267 ফুট: রাজ্য এফআইপিএস:",
+    "answer_language": "ben_Beng",
+    "query_language_recorded": "bn-IN",
+    "confidence": 0.8891041278839111,
+    "refusal_reason": null,
+    "refusal_layer": null,
+    "citations": [
+      {
+        "chunk_id": "ben_Beng::1170381_0::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_0",
+        "score": 0.8891041278839111,
+        "text_span": "জিপ কোড: 91381: শহর: স্টিভেনসন র‍্যাঞ্চ: রাজ্য: সিএ [ক্যালিফোর্নিয়া] কাউন্টিস: এলওএস অ্যাঞ্জেলেস, সিএ: মাল্টি কাউন্টি: নং: শহর ছদ্মনাম: স্টিভেনসন র‍্যাঞ্চ নিউহল সান্তা ক্লারিটা ভ্যালেন্সিয়া স্টিভেনসন আরএনএইচ: এলাকা কোড: 661: শহরের ধরন: বি [ব্রাঞ্চ] শ্রেণীবিভাগ: [অ-অনন্য] সময় অঞ্চল: প্যাসিফিক (জিএমটি -08:00) দিনের আলো সঞ্চয়: হ্যাঁ: অক্ষাংশ: 34.37075: দ্রাঘিমাংশ: -118.616305: উচ্চতা: 267 ফুট: রাজ্য এফআইপিএস:"
+      },
+      {
+        "chunk_id": "ben_Beng::1170381_3::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_3",
+        "score": 0.8753359317779541,
+        "text_span": "জিপ কোড ৯১৩৮১, স্টিভেনসন র‍্যাঞ্চ, সিএ। প্রতিটি মার্কিন জিপ কোডের জন্য এই সমস্ত তথ্য পান ১টি সহজে ব্যবহারযোগ্য ডাটাবেসে। এই জিপ কোড এবং অন্যান্যগুলির সীমানা যেকোনো মানচিত্র প্ল্যাটফর্মে ম্যাপ করুন।"
+      }
+    ],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "ben_Beng::1170381_0::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_0",
+        "score": 0.8891041278839111,
+        "language": "ben_Beng",
+        "text_preview": "জিপ কোড: 91381: শহর: স্টিভেনসন র‍্যাঞ্চ: রাজ্য: সিএ [ক্যালিফোর্নিয়া] কাউন্টিস: এলওএস অ্যাঞ্জেলেস, সিএ: মাল্টি কাউন্টি: "
+      },
+      {
+        "chunk_id": "ben_Beng::1170381_3::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_3",
+        "score": 0.8753359317779541,
+        "language": "ben_Beng",
+        "text_preview": "জিপ কোড ৯১৩৮১, স্টিভেনসন র‍্যাঞ্চ, সিএ। প্রতিটি মার্কিন জিপ কোডের জন্য এই সমস্ত তথ্য পান ১টি সহজে ব্যবহারযোগ্য ডাটাবেসে।"
+      },
+      {
+        "chunk_id": "ben_Beng::1170381_1::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_1",
+        "score": 0.8734464049339294,
+        "language": "ben_Beng",
+        "text_preview": "জিপ কোড ৯১৩৮১ - স্টিভেনসন র‍্যাঞ্চ সিএ ক্যালিফোর্নিয়া, ইউএসএ - লস অ্যাঞ্জেলেস কাউন্টি হোম | পণ্য | জিপ কোড সম্পর্কে জান"
+      },
+      {
+        "chunk_id": "ben_Beng::1170381_5::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_5",
+        "score": 0.8613242506980896,
+        "language": "ben_Beng",
+        "text_preview": "স্টিভেনসন র‍্যাঞ্চ, সিএ গ্রহণযোগ্য: নিউহল, সান্তা ক্লারিটা, স্টিভেনসন আরএনএইচ, ভ্যালেন্সিয়া পরিসংখ্যান এবং ১৯৩৮১ জিপ কো"
+      },
+      {
+        "chunk_id": "ben_Beng::1170381_7::metadata_aware::0",
+        "passage_id": "ben_Beng::1170381_7",
+        "score": 0.8510066270828247,
+        "language": "ben_Beng",
+        "text_preview": "স্টিভেনসন র‍্যাঞ্চ, ক্যালিফোর্নিয়া: স্টিভেনসন র‍্যাঞ্চ হল ক্যালিফোর্নিয়ার লস এঞ্জেলেস কাউন্টির একটি জনগণনা-নির্ধারিত স"
+      }
+    ],
+    "top1_score": 0.8891041278839111,
+    "retrieved_language": "ben_Beng",
+    "generation_language": "bn-IN",
+    "timings_ms": {
+      "input_guard": 0.028,
+      "scope_guard": 0.0125,
+      "retrieve": 30.121,
+      "ground_gate": 0.0214,
+      "extract_answer": 0.0115,
+      "output_guard": 0.1515
+    },
+    "total_wall_ms": 30.42229999846313,
+    "id": 3,
+    "label": "bengali_text",
+    "query": "স্টিভেনসন র‍্যাঞ্চ এলাকা কোড",
+    "language_supplied": "bn-IN"
+  },
+  {
+    "status": "answered",
+    "answer": "डिसेंबर २०११ मध्ये मनिला येथून दिसलेल्या ग्रहणाप्रमाणे चंद्र. पुढील तारखांवर सुमारे सहा महिन्यांच्या अंतराने चार आगामी रक्त चंद्र उदयास येतील: १५ एप्रिल; ८ ऑक्टोबर; ४ एप्रिल २०१५; आणि २८ सप्टेंबर २०१५.",
+    "answer_language": "mar_Deva",
+    "query_language_recorded": "mr-IN",
+    "confidence": 0.8946077823638916,
+    "refusal_reason": null,
+    "refusal_layer": null,
+    "citations": [
+      {
+        "chunk_id": "mar_Deva::878826_4::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_4",
+        "score": 0.8946077823638916,
+        "text_span": "डिसेंबर २०११ मध्ये मनिला येथून दिसलेल्या ग्रहणाप्रमाणे चंद्र. पुढील तारखांवर सुमारे सहा महिन्यांच्या अंतराने चार आगामी रक्त चंद्र उदयास येतील: १५ एप्रिल; ८ ऑक्टोबर; ४ एप्रिल २०१५; आणि २८ सप्टेंबर २०१५."
+      },
+      {
+        "chunk_id": "mar_Deva::878826_1::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_1",
+        "score": 0.8885864019393921,
+        "text_span": "नासाच्या म्हणण्यानुसार, पृथ्वीच्या वातावरणात काय आहे यावर नेमका रंग अवलंबून आहे. चार रक्त चंद्र पुढील तारखांवर सुमारे सहा महिन्यांच्या अंतराने येतील: १५ एप्रिल २०१४; ८ ऑक्टोबर २०१४; ४ एप्रिल २०१५ आणि २८ सप्टेंबर २०१५."
+      }
+    ],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "mar_Deva::878826_4::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_4",
+        "score": 0.8946077823638916,
+        "language": "mar_Deva",
+        "text_preview": "डिसेंबर २०११ मध्ये मनिला येथून दिसलेल्या ग्रहणाप्रमाणे चंद्र. पुढील तारखांवर सुमारे सहा महिन्यांच्या अंतराने चार आगामी र"
+      },
+      {
+        "chunk_id": "mar_Deva::878826_1::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_1",
+        "score": 0.8885864019393921,
+        "language": "mar_Deva",
+        "text_preview": "नासाच्या म्हणण्यानुसार, पृथ्वीच्या वातावरणात काय आहे यावर नेमका रंग अवलंबून आहे. चार रक्त चंद्र पुढील तारखांवर सुमारे सह"
+      },
+      {
+        "chunk_id": "mar_Deva::878826_2::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_2",
+        "score": 0.8797683119773865,
+        "language": "mar_Deva",
+        "text_preview": "त्यामुळे: चंद्रग्रहण = ज्यू लोक आणि इस्रायलसाठी वाईट शगुन; रक्तचंद्र = येणारी तलवार; सूर्यग्रहण = जगासाठी वाईट शगुन. इस्"
+      },
+      {
+        "chunk_id": "mar_Deva::1028860_7::metadata_aware::0",
+        "passage_id": "mar_Deva::1028860_7",
+        "score": 0.8737071752548218,
+        "language": "mar_Deva",
+        "text_preview": "हे केव्हा आणि कुठे शोधले गेले? हा दिवस १२ तासांमध्ये का विभागला गेला आणि प्रत्येक तास ६० मिनिटांमध्ये विभागला गेला आणि न"
+      },
+      {
+        "chunk_id": "mar_Deva::878826_6::metadata_aware::0",
+        "passage_id": "mar_Deva::878826_6",
+        "score": 0.8731896877288818,
+        "language": "mar_Deva",
+        "text_preview": "पासओव्हर आणि सुक्कोथच्या पहिल्या दिवशी एकामागून एक, रक्त-लाल चंद्र पडले आहेत, आठव्यांदा २०१४ आणि २०१५ मध्ये आले. बायबलमध"
+      }
+    ],
+    "top1_score": 0.8946077823638916,
+    "retrieved_language": "mar_Deva",
+    "generation_language": "mr-IN",
+    "timings_ms": {
+      "input_guard": 0.0164,
+      "scope_guard": 0.0129,
+      "retrieve": 24.7193,
+      "ground_gate": 0.017,
+      "extract_answer": 0.0077,
+      "output_guard": 0.0713
+    },
+    "total_wall_ms": 24.924599994847085,
+    "id": 4,
+    "label": "marathi_text",
+    "query": "कोणता महिना आहे रक्त चंद्र",
+    "language_supplied": "mr-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "ta-IN",
+    "query_language_recorded": "ta-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.83 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "tam_Taml::987579_2::metadata_aware::0",
+        "passage_id": "tam_Taml::987579_2",
+        "score": 0.8280224204063416,
+        "language": "tam_Taml",
+        "text_preview": "பென்சில்வேனியாவின் மெக்கீஸ்போர்ட்டில் உள்ள ஆபிட்யூரிகள் மற்றும் மரண பதிவுகளை உலாவுங்கள். இந்தப் பக்கம் பென்சில்வேனியாவின"
+      },
+      {
+        "chunk_id": "tam_Taml::1061808_6::metadata_aware::0",
+        "passage_id": "tam_Taml::1061808_6",
+        "score": 0.8220345973968506,
+        "language": "tam_Taml",
+        "text_preview": "நான் எனது ஹாட்மெயில் மின்னஞ்சலை ஏற்றும்போது, இந்த செய்தி தொடர்ந்து வருகிறது: பக்கம் ஏற்றப்படும் போது இணைப்பு மாற்றப்பட்ட"
+      },
+      {
+        "chunk_id": "tam_Taml::1061808_7::metadata_aware::0",
+        "passage_id": "tam_Taml::1061808_7",
+        "score": 0.8155191540718079,
+        "language": "tam_Taml",
+        "text_preview": "உத்தரவுகள். உள்நுழைவதற்கு சரியான பயனர்பெயர் மற்றும் கடவுச்சொல்லைப் பயன்படுத்துகிறீர்களா என்பதைச் சரிபார்க்கவும். உங்கள் "
+      },
+      {
+        "chunk_id": "tam_Taml::852975_6::metadata_aware::0",
+        "passage_id": "tam_Taml::852975_6",
+        "score": 0.8143417835235596,
+        "language": "tam_Taml",
+        "text_preview": "வெட்டரன்ஸ் ஹெல்த் அட்மினிஸ்ட்ரேஷன் டெலிஹெல்த் என்பது வெட்டரன்ஸ் மருத்துவர்களின் ஆரோக்கியத்தை மேம்படுத்தும் வகையில் வருகி"
+      }
+    ],
+    "top1_score": 0.8280224204063416,
+    "retrieved_language": "tam_Taml",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.029,
+      "scope_guard": 0.0121,
+      "retrieve": 30.0167,
+      "ground_gate": 0.0266
+    },
+    "total_wall_ms": 30.153100000461563,
+    "id": 5,
+    "label": "tamil_text",
+    "query": "இன்சூரன்ஸ் இல்லாததால் ஏற்படும் பெனால்டி இன்னும் நடைமுறையில் உள்ள ஓபமார்கேருக்கு இருக்கிறதா?",
+    "language_supplied": "ta-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "kn-IN",
+    "query_language_recorded": "kn-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.86 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "kan_Knda::510261_4::metadata_aware::0",
+        "passage_id": "kan_Knda::510261_4",
+        "score": 0.8558546900749207,
+        "language": "kan_Knda",
+        "text_preview": "ಯಾವುದು ಮತ್ತು ಏಕೆ ಎಂಬುದು ಕಾರ್ಯತಂತ್ರವಾಗಿದೆ. ಹೇಗೆ ಎಂಬುದು ಕಾರ್ಯತಂತ್ರವಾಗಿದೆ. ಯಾವುದೇ ಸಣ್ಣ ವ್ಯಾಪಾರದ ನಿರ್ವಹಣೆ ಮತ್ತು ಆಡಳಿತಕ್ಕೆ ಸಂ"
+      },
+      {
+        "chunk_id": "kan_Knda::559678_3::metadata_aware::0",
+        "passage_id": "kan_Knda::559678_3",
+        "score": 0.8504236936569214,
+        "language": "kan_Knda",
+        "text_preview": "ಒಟ್ಟಾರೆ ಚಲನಶೀಲ ಕೌಶಲ್ಯಗಳು ಏಕೆ ಮುಖ್ಯವಾಗಿವೆ? ಮಕ್ಕಳು ನಡೆಯುವುದು, ಓಡುವುದು, ಕುಣಿಯುವುದು, ಆಟದ ಮೈದಾನದ ಕೌಶಲ್ಯಗಳು (ಉದಾ. ಹತ್ತುವುದು) ಮ"
+      },
+      {
+        "chunk_id": "kan_Knda::559678_6::metadata_aware::0",
+        "passage_id": "kan_Knda::559678_6",
+        "score": 0.8486137986183167,
+        "language": "kan_Knda",
+        "text_preview": "ಬೆಳವಣಿಗೆಯ ಕಾರ್ಯತಂತ್ರ. ಅಲ್ಪಾವಧಿಯ ಆದಾಯದ ವೆಚ್ಚದಲ್ಲಿಯೂ ದೊಡ್ಡ ಮಾರುಕಟ್ಟೆ ಪಾಲನ್ನು ಗೆಲ್ಲುವ ಗುರಿಯನ್ನು ಹೊಂದಿರುವ ಕಾರ್ಯತಂತ್ರ. ನಾಲ್ಕು"
+      },
+      {
+        "chunk_id": "kan_Knda::689411_3::metadata_aware::0",
+        "passage_id": "kan_Knda::689411_3",
+        "score": 0.8434053063392639,
+        "language": "kan_Knda",
+        "text_preview": "ವಿವಿಧ ಮಟ್ಟಗಳಲ್ಲಿ, ಲಾಜಿಸ್ಟಿಕ್ಸ್ ಕಾರ್ಯವು ಗ್ರಾಹಕ ಸೇವೆ, ಮೂಲಗಳ ಪಡೆಯುವಿಕೆ ಮತ್ತು ಪಡೆಯುವಿಕೆ, ಉತ್ಪಾದನಾ ಯೋಜನೆ ಮತ್ತು ವೇಳಾಪಟ್ಟಿ, ಪ್ಯ"
+      },
+      {
+        "chunk_id": "kan_Knda::559678_8::metadata_aware::0",
+        "passage_id": "kan_Knda::559678_8",
+        "score": 0.8419057726860046,
+        "language": "kan_Knda",
+        "text_preview": "ಜನಪ್ರಿಯ ಪದಗಳು. ಅಲ್ಪಾವಧಿಯ ಆದಾಯದ ವೆಚ್ಚದಲ್ಲೂ ದೊಡ್ಡ ಮಾರುಕಟ್ಟೆ ಪಾಲನ್ನು ಗೆಲ್ಲುವ ಗುರಿಯನ್ನು ಹೊಂದಿರುವ ಕಾರ್ಯತಂತ್ರ. ನಾಲ್ಕು ವಿಶಾಲವಾದ"
+      }
+    ],
+    "top1_score": 0.8558546900749207,
+    "retrieved_language": "kan_Knda",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0166,
+      "scope_guard": 0.0124,
+      "retrieve": 28.4796,
+      "ground_gate": 0.0255
+    },
+    "total_wall_ms": 28.598999997484498,
+    "id": 6,
+    "label": "kannada_text",
+    "query": "ಒಟ್ಟಾರೆ ಕಾರ್ಯತಂತ್ರಗಳೇನು?",
+    "language_supplied": "kn-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "ur-IN",
+    "query_language_recorded": "ur-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.85 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "urd_Arab::977954_2::metadata_aware::0",
+        "passage_id": "urd_Arab::977954_2",
+        "score": 0.8454318642616272,
+        "language": "urd_Arab",
+        "text_preview": "بیلیویو، ٹینیسی یوتھ فٹ بال الائنس کے بیلیویو اسٹیلرز کا گھر ہے، جو 1977 سے بیلیویو کمیونٹی کا حصہ رہے ہیں۔ بیلیویو، بی "
+      },
+      {
+        "chunk_id": "urd_Arab::499806_1::metadata_aware::0",
+        "passage_id": "urd_Arab::499806_1",
+        "score": 0.8406876921653748,
+        "language": "urd_Arab",
+        "text_preview": "اوک ووڈ مال کے پار 1 سماجی سلامتی دفتر کا مقام 2 115 ٹیری پی کے وائی۔ ٹیری ٹاؤن، لوئیزیانا 70056۔ 3 سماجی سلامتی دفتر کا"
+      },
+      {
+        "chunk_id": "urd_Arab::1178987_8::metadata_aware::0",
+        "passage_id": "urd_Arab::1178987_8",
+        "score": 0.8391517996788025,
+        "language": "urd_Arab",
+        "text_preview": "ہبل الٹرا ڈیپ فیلڈ ریویلس گلیکسیز گیلور۔ 1 کریڈٹ: ناسا، ای ایس اے بیک وِتھ (ایس ٹی ایس سی آئی) اور ایچ یو ڈی ایف ٹیم۔ 2 "
+      },
+      {
+        "chunk_id": "urd_Arab::665714_8::metadata_aware::0",
+        "passage_id": "urd_Arab::665714_8",
+        "score": 0.8363548517227173,
+        "language": "urd_Arab",
+        "text_preview": "اگر آپ کو بس ایک بار یاد آتا ہے تو آپ ایک بار چھوڑ دیں۔ اگر آپ کو یاد نہیں آتا تو اگلے دن آگے بڑھیں اور اس دن 2 گولیاں ل"
+      },
+      {
+        "chunk_id": "urd_Arab::665714_1::metadata_aware::0",
+        "passage_id": "urd_Arab::665714_1",
+        "score": 0.8359382152557373,
+        "language": "urd_Arab",
+        "text_preview": "حمل کتنا ممکن ہے اس کا انحصار چند چیزوں پر ہوتا ہے جیسے کہ آپ گولی کب چھوڑ گئے، آپ کتنی گولیاں چھوڑ گئے، آپ کس قسم کی گو"
+      }
+    ],
+    "top1_score": 0.8454318642616272,
+    "retrieved_language": "urd_Arab",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.017,
+      "scope_guard": 0.0127,
+      "retrieve": 27.6672,
+      "ground_gate": 0.0261
+    },
+    "total_wall_ms": 27.788800005509984,
+    "id": 7,
+    "label": "urdu_text",
+    "query": "جہاں بیلوو ٹی این ہے۔",
+    "language_supplied": "ur-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "gu-IN",
+    "query_language_recorded": "gu-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.84 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "guj_Gujr::201165_6::metadata_aware::0",
+        "passage_id": "guj_Gujr::201165_6",
+        "score": 0.8440086245536804,
+        "language": "guj_Gujr",
+        "text_preview": "હીપેટાઇટિસ બી એક અત્યંત ચેપી વાયરસને કારણે થાય છે જે યકૃત પર હુમલો કરે છે અને તે ગંભીર બીમારી, યકૃતને નુકસાન અને કેટલાક "
+      },
+      {
+        "chunk_id": "guj_Gujr::724069_1::metadata_aware::0",
+        "passage_id": "guj_Gujr::724069_1",
+        "score": 0.8439241647720337,
+        "language": "guj_Gujr",
+        "text_preview": "જૈવવિવિધતા તરીકે પણ ઓળખાતી જૈવિક વિવિધતાનો ઉપયોગ ઘણીવાર પૃથ્વી પરની વિવિધ પ્રજાતિઓની કુલ સંખ્યાનો સંદર્ભ આપવા માટે થાય છ"
+      },
+      {
+        "chunk_id": "guj_Gujr::977856_5::metadata_aware::0",
+        "passage_id": "guj_Gujr::977856_5",
+        "score": 0.8385959267616272,
+        "language": "guj_Gujr",
+        "text_preview": "વસ્તી ઘનતા: 25 લોકો પ્રતિ ચોરસ માઇલ (ઓછું). માર્ચ 2013માં બેકર કાઉન્ટીમાં જીવનનિર્વાહ સૂચકાંક: 89.5 (સરેરાશ કરતાં ઓછું, "
+      },
+      {
+        "chunk_id": "guj_Gujr::274556_3::metadata_aware::0",
+        "passage_id": "guj_Gujr::274556_3",
+        "score": 0.8330650329589844,
+        "language": "guj_Gujr",
+        "text_preview": "વિશ્વને વધુ સારું બનાવવું, એક સમયે એક જવાબ. બદામના કદ અને તેમાં મીઠું છે કે નહીં તેના આધારે એક ઔંસમાં આશરે 22 થી 28 બદામ"
+      },
+      {
+        "chunk_id": "guj_Gujr::201165_7::metadata_aware::0",
+        "passage_id": "guj_Gujr::201165_7",
+        "score": 0.8311522006988525,
+        "language": "guj_Gujr",
+        "text_preview": "હેપેટાઇટિસ બી. સાથે જીવતા. પુખ્ત વયના 90% થી વધુ લોકોમાં ચેપ લાગેલા લોકો માટે, રોગપ્રતિકારક શક્તિ તીવ્ર તબક્કામાં શરીરમા"
+      }
+    ],
+    "top1_score": 0.8440086245536804,
+    "retrieved_language": "guj_Gujr",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0219,
+      "scope_guard": 0.012,
+      "retrieve": 25.2945,
+      "ground_gate": 0.0258
+    },
+    "total_wall_ms": 25.4380000042147,
+    "id": "8a",
+    "label": "gujarati_text",
+    "query": "યકૃત બી વિશ્વની વસ્તીને કેટલી અસર કરે છે?",
+    "language_supplied": "gu-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "as-IN",
+    "query_language_recorded": "as-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.85 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "asm_Beng::661865_1::metadata_aware::0",
+        "passage_id": "asm_Beng::661865_1",
+        "score": 0.8514431715011597,
+        "language": "asm_Beng",
+        "text_preview": "আপুনি এই পছন্দসমূহ কেৱল পুৱাৰ সময়তে সীমাবদ্ধ কৰিব নালাগে, যেতিয়াই আপুনি অনুভৱ কৰেন যে আপোনাৰ শৰীৰ কিছু খাদ্যৰ বাবে প্ৰ"
+      },
+      {
+        "chunk_id": "asm_Beng::511829_6::metadata_aware::0",
+        "passage_id": "asm_Beng::511829_6",
+        "score": 0.8484763503074646,
+        "language": "asm_Beng",
+        "text_preview": "১ ৰেফ্ৰিজাৰেটৰৰ পৰা টেণ্ডাৰলইন আঁতৰাওক। ২  পছন্দ অনুসৰি মাংস সিজন কৰক। ৩  আপোনাৰ ওভেনৰ তলৰ ১/৩ অংশত এটা শেল্ফত এটা আবৃত "
+      },
+      {
+        "chunk_id": "asm_Beng::380923_2::metadata_aware::0",
+        "passage_id": "asm_Beng::380923_2",
+        "score": 0.8483504056930542,
+        "language": "asm_Beng",
+        "text_preview": "১০টা মন্তব্য। কেটোজেনিক ডায়েট আৰম্ভ কৰিবলৈ আপুনি অবিলম্বে আপোনাৰ কাৰ্বোহাইড্ৰেট যতটা সম্ভৱ কমাব লাগে। এই ডায়েটত প্ৰৱেশ"
+      },
+      {
+        "chunk_id": "asm_Beng::116338_7::metadata_aware::0",
+        "passage_id": "asm_Beng::116338_7",
+        "score": 0.8432937264442444,
+        "language": "asm_Beng",
+        "text_preview": "অ-নিদ্ৰাজনিত মানে এইটো আপোনাক জাগ্ৰত ৰাখিব? ২Xtreme21-এ আৰম্ভ কৰা 'অফ টপিক'ত আলোচনা, ১৩ এপ্ৰিল, ২০০৬-ত। মই গতকাল এটা ঠাণ"
+      },
+      {
+        "chunk_id": "asm_Beng::380923_6::metadata_aware::0",
+        "passage_id": "asm_Beng::380923_6",
+        "score": 0.8416200280189514,
+        "language": "asm_Beng",
+        "text_preview": "১ প্রচুর পানী পান কৰক – কেটোজেনিক ডায়েটে আপোনাক বাহিৰ কৰি দিব, তাই আপুনি সদায় পুনৰায় হাইড্ৰেটিং হোৱা উচিত। ২ ২-৩ সপ্ত"
+      }
+    ],
+    "top1_score": 0.8514431715011597,
+    "retrieved_language": "asm_Beng",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0186,
+      "scope_guard": 0.0099,
+      "retrieve": 26.0388,
+      "ground_gate": 0.0227
+    },
+    "total_wall_ms": 26.15700000023935,
+    "id": "8b",
+    "label": "assamese_text",
+    "query": "আপুনি মুক্তভাৱে খাব পৰা আহাৰত কলাৰ্ড শাক খাব পাৰেনে?",
+    "language_supplied": "as-IN"
+  },
+  {
+    "status": "refused",
+    "answer": null,
+    "answer_language": "te-IN",
+    "query_language_recorded": "te-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Unsupported language: te-IN.",
+    "refusal_layer": "G2",
+    "citations": [],
+    "retrieved_chunks_top5": [],
+    "top1_score": null,
+    "retrieved_language": null,
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0189,
+      "scope_guard": 0.0165
+    },
+    "total_wall_ms": 0.08239999442594126,
+    "id": 9,
+    "label": "unsupported_telugu_text",
+    "query": "ఇది ఏమిటి?",
+    "language_supplied": "te-IN",
+    "note": "hand-typed (Telugu has no MSMARCO-XI train data, so no real corpus query exists) -- tests G2's language-code refusal, which does not depend on text content (src/vrag/guardrails/g2_scope_language.py checks the language code first)."
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.81 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "eng_Latn::1032480_1::metadata_aware::0",
+        "passage_id": "eng_Latn::1032480_1",
+        "score": 0.8081074357032776,
+        "language": "eng_Latn",
+        "text_preview": "In the 1920s, Bernays was approached by the Beech-Nut Packing Company – producers of everything from pork products to th"
+      },
+      {
+        "chunk_id": "eng_Latn::795581_1::metadata_aware::0",
+        "passage_id": "eng_Latn::795581_1",
+        "score": 0.8017784357070923,
+        "language": "eng_Latn",
+        "text_preview": "Our cookie policy has changed. Review our cookies policy for more details and to change your cookie preference. By conti"
+      },
+      {
+        "chunk_id": "eng_Latn::560604_5::metadata_aware::0",
+        "passage_id": "eng_Latn::560604_5",
+        "score": 0.800901472568512,
+        "language": "eng_Latn",
+        "text_preview": "Using the iSi Gourmet Whip to make the egg white foam made it much easier to produce en-masse, but without Baker and Sta"
+      },
+      {
+        "chunk_id": "eng_Latn::1048840_9::metadata_aware::0",
+        "passage_id": "eng_Latn::1048840_9",
+        "score": 0.7936006188392639,
+        "language": "eng_Latn",
+        "text_preview": "It is directed by Paul McGuigan and written by Max Landis. Starring James McAvoy as Victor Frankenstein and Daniel Radcl"
+      },
+      {
+        "chunk_id": "eng_Latn::716381_1::metadata_aware::0",
+        "passage_id": "eng_Latn::716381_1",
+        "score": 0.78870689868927,
+        "language": "eng_Latn",
+        "text_preview": "Top Comments. Delete. NSFW. Aug 18, 2011 at 11:12AM EDT. …………………………………………………………………………………………………… ,,,---~‘’¯’\\, …………………_,,"
+      }
+    ],
+    "top1_score": 0.8081074357032776,
+    "retrieved_language": "eng_Latn",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.015,
+      "scope_guard": 0.0072,
+      "retrieve": 32.2846,
+      "ground_gate": 0.0206
+    },
+    "total_wall_ms": 32.37929999886546,
+    "id": 10,
+    "label": "unanswerable_out_of_domain",
+    "query": "What did the vRAG project's lead engineer eat for breakfast on August 20th, 2026?",
+    "language_supplied": "en-IN",
+    "note": "constructed to be genuinely absent from a 2019-era MS-MARCO-derived corpus"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "hi-IN",
+    "query_language_recorded": "hi-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.82 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "hin_Deva::1001095_3::metadata_aware::0",
+        "passage_id": "hin_Deva::1001095_3",
+        "score": 0.8207622170448303,
+        "language": "hin_Deva",
+        "text_preview": "इसकी राजधानी और सबसे अधिक आबादी वाला शहर बैंकॉक है। यह उत्तर में म्यांमार और लाओस, पूर्व में लाओस और कंबोडिया, दक्षिण मे"
+      },
+      {
+        "chunk_id": "hin_Deva::213394_6::metadata_aware::0",
+        "passage_id": "hin_Deva::213394_6",
+        "score": 0.8074061870574951,
+        "language": "hin_Deva",
+        "text_preview": "राजधानी शहर में कला और संस्कृति। इस क्षेत्र के प्राकृतिक रूप से धुंध से घिरे परिवेश को देखते हुए इसका अपना अनूठा नाम फॉग"
+      },
+      {
+        "chunk_id": "hin_Deva::1149223_6::metadata_aware::0",
+        "passage_id": "hin_Deva::1149223_6",
+        "score": 0.7993543744087219,
+        "language": "hin_Deva",
+        "text_preview": "लुसाका ज़ाम्बिया की राजधानी है। लुसाका - स्थानीय समय अब, 2018 में गर्मियों/सर्दियों के समय का रूपांतरण"
+      },
+      {
+        "chunk_id": "hin_Deva::773003_2::metadata_aware::0",
+        "passage_id": "hin_Deva::773003_2",
+        "score": 0.795210599899292,
+        "language": "hin_Deva",
+        "text_preview": "इसकी राजधानी निनेवा के खंडहर आधुनिक इराक के मोसुल से ठीक टाइग्रिस नदी के पार हैं। असीरिया का बाइबिल का हिब्रू नाम अस्सूर"
+      },
+      {
+        "chunk_id": "hin_Deva::1075353_7::metadata_aware::0",
+        "passage_id": "hin_Deva::1075353_7",
+        "score": 0.7950156331062317,
+        "language": "hin_Deva",
+        "text_preview": "एडगर थॉमसन स्टील वर्क्स, 2006. सिर्फ 100 साल से थोड़े अधिक समय के लिए पेनसिल्वेनिया वास्तव में दुनिया की इस्पात राजधानी "
+      }
+    ],
+    "top1_score": 0.8207622170448303,
+    "retrieved_language": "hin_Deva",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0132,
+      "scope_guard": 0.0096,
+      "retrieve": 24.2862,
+      "ground_gate": 0.029
+    },
+    "total_wall_ms": 24.409300000115763,
+    "id": 11,
+    "label": "capital_of_india_hindi",
+    "query": "भारत की राजधानी क्या है?",
+    "language_supplied": "hi-IN"
+  },
+  {
+    "status": "abstained",
+    "answer": null,
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "refusal_reason": "Top result confidence 0.82 is below threshold 0.8835.",
+    "refusal_layer": null,
+    "citations": [],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "eng_Latn::1012189_7::metadata_aware::0",
+        "passage_id": "eng_Latn::1012189_7",
+        "score": 0.81670743227005,
+        "language": "eng_Latn",
+        "text_preview": "While Asia is home to the world's most expensive city, the region also boasts the world's most affordable cities, includ"
+      },
+      {
+        "chunk_id": "eng_Latn::1075353_7::metadata_aware::0",
+        "passage_id": "eng_Latn::1075353_7",
+        "score": 0.7902919054031372,
+        "language": "eng_Latn",
+        "text_preview": "Edgar Thomson Steel Works, 2006. For just over 100 years, Pennsylvania was truly the steel capital of the world.. Making"
+      },
+      {
+        "chunk_id": "eng_Latn::498294_6::metadata_aware::0",
+        "passage_id": "eng_Latn::498294_6",
+        "score": 0.788811206817627,
+        "language": "eng_Latn",
+        "text_preview": "1 Peacekeeping Cooperation: The United States and India discussed joint principles for bilateral cooperation on training"
+      },
+      {
+        "chunk_id": "eng_Latn::498294_9::metadata_aware::0",
+        "passage_id": "eng_Latn::498294_9",
+        "score": 0.7854854464530945,
+        "language": "eng_Latn",
+        "text_preview": "The Constitution of India is longer than the U.S. Constitution, with 395 articles and 12 schedules, while the Constituti"
+      },
+      {
+        "chunk_id": "eng_Latn::285426_1::metadata_aware::0",
+        "passage_id": "eng_Latn::285426_1",
+        "score": 0.7841050028800964,
+        "language": "eng_Latn",
+        "text_preview": "As many as 34 births and 10 deaths are registered in India every minute. The number goes up to 2,062 births and 603 deat"
+      }
+    ],
+    "top1_score": 0.81670743227005,
+    "retrieved_language": "eng_Latn",
+    "generation_language": null,
+    "timings_ms": {
+      "input_guard": 0.0192,
+      "scope_guard": 0.0125,
+      "retrieve": 20.8595,
+      "ground_gate": 0.0255
+    },
+    "total_wall_ms": 20.981000001484063,
+    "id": 12,
+    "label": "capital_of_india_english",
+    "query": "What is the capital of India?",
+    "language_supplied": "en-IN",
+    "note": "filtered against the real English (eng_Latn) slice this time, not pinned to hin_Deva as earlier diagnostic scripts did -- this is what a real English speaker actually gets"
+  },
+  {
+    "status": "answered",
+    "answer": "सर्वोत्तम उत्तर: खाँसी मोनो का एक लक्षण है, जो आमतौर पर बलगम के कारण होता है। मतली भी एक लक्षण है। और ग्रसनी और लसीका पर्व की सूजन सबसे आम लक्षणों में से एक है, जो बता सकता है कि आपको गांठ क्यों महसूस होती है। लेकिन फिर भी, यह संभव है कि आप एक ही समय में सर्दी और मोनो से पीड़ित हों।",
+    "answer_language": "hin_Deva",
+    "query_language_recorded": "hi-IN",
+    "confidence": 0.8851152062416077,
+    "refusal_reason": null,
+    "refusal_layer": null,
+    "citations": [
+      {
+        "chunk_id": "hin_Deva::169261_2::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_2",
+        "score": 0.8851152062416077,
+        "text_span": "सर्वोत्तम उत्तर: खाँसी मोनो का एक लक्षण है, जो आमतौर पर बलगम के कारण होता है। मतली भी एक लक्षण है। और ग्रसनी और लसीका पर्व की सूजन सबसे आम लक्षणों में से एक है, जो बता सकता है कि आपको गांठ क्यों महसूस होती है। लेकिन फिर भी, यह संभव है कि आप एक ही समय में सर्दी और मोनो से पीड़ित हों।"
+      },
+      {
+        "chunk_id": "hin_Deva::169261_9::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_9",
+        "score": 0.8636479377746582,
+        "text_span": "आपको बुखार, थकान, गले में दर्द, सूजे हुए लसीका पर्विका या अन्य लक्षण जैसे मांसपेशियों में दर्द और भूख न लगना जैसे लक्षण विकसित हो सकते हैं। मोनो विभिन्न लोगों में लक्षणों के विभिन्न संयोजन पैदा कर सकता है। कुछ लोगों में ऐसे लक्षण होते हैं जो इतने हल्के होते हैं कि वे लगभग अनदेखे होते हैं। दूसरों में कोई लक्षण नहीं होते हैं।"
+      }
+    ],
+    "retrieved_chunks_top5": [
+      {
+        "chunk_id": "hin_Deva::169261_2::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_2",
+        "score": 0.8851152062416077,
+        "language": "hin_Deva",
+        "text_preview": "सर्वोत्तम उत्तर: खाँसी मोनो का एक लक्षण है, जो आमतौर पर बलगम के कारण होता है। मतली भी एक लक्षण है। और ग्रसनी और लसीका पर"
+      },
+      {
+        "chunk_id": "hin_Deva::169261_9::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_9",
+        "score": 0.8636479377746582,
+        "language": "hin_Deva",
+        "text_preview": "आपको बुखार, थकान, गले में दर्द, सूजे हुए लसीका पर्विका या अन्य लक्षण जैसे मांसपेशियों में दर्द और भूख न लगना जैसे लक्षण "
+      },
+      {
+        "chunk_id": "hin_Deva::169261_3::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_3",
+        "score": 0.8633288145065308,
+        "language": "hin_Deva",
+        "text_preview": "मोनोन्यूक्लियोसिस एक संक्रामक बीमारी है जिसे कभी-कभी मोनो या \"चुंबन रोग\" कहा जाता है। हालांकि चुंबन से आपको वह वायरस हो "
+      },
+      {
+        "chunk_id": "hin_Deva::169261_7::metadata_aware::0",
+        "passage_id": "hin_Deva::169261_7",
+        "score": 0.8545615673065186,
+        "language": "hin_Deva",
+        "text_preview": "मोनो अक्सर चुंबन से फैलता है। ऐसा इसलिए है क्योंकि मोनो पैदा करने वाला वायरस आपके मुंह में पाया जा सकता है। यह लार (थूक)"
+      },
+      {
+        "chunk_id": "hin_Deva::63581_3::metadata_aware::0",
+        "passage_id": "hin_Deva::63581_3",
+        "score": 0.8526614308357239,
+        "language": "hin_Deva",
+        "text_preview": "अन्य विषाणुओं के प्रकार जो निमोनिया का कारण बन सकते हैं उनमें खसरा और वैरिसेला (चेचक) विषाणु शामिल हैं। शायद ही कभी, कुछ"
+      }
+    ],
+    "top1_score": 0.8851152062416077,
+    "retrieved_language": "hin_Deva",
+    "generation_language": "hi-IN",
+    "timings_ms": {
+      "input_guard": 0.0191,
+      "scope_guard": 0.0113,
+      "retrieve": 21.7504,
+      "ground_gate": 0.0188,
+      "extract_answer": 0.0083,
+      "output_guard": 0.0607
+    },
+    "total_wall_ms": 21.951499998976942,
+    "id": 13,
+    "label": "strong_evidence_success_demo",
+    "query": "क्या मोनो खाँसी का कारण बनता है?",
+    "language_supplied": "hi-IN",
+    "note": "real MSMARCO-XI query with the gold passage genuinely at rank 1 (top1=0.885, recall@1=1.0) -- the deliberate 'this is what a real successful answer looks like' case"
+  }
+]
