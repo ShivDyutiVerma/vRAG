@@ -181,11 +181,31 @@ English) correctly abstains in both languages rather than confidently citing the
 capital. 286/286 tests pass. `data/index/metadata_aware/` (live Render production) untouched
 throughout — nothing in this repo has been deployed or redeployed.
 
-**Not started yet:** a real G3 recalibration for the multilingual score distribution (flagged as
-necessary before this candidate is demo-ready, not attempted — TAU changes need the same rigor as
-everything else); memory optimization pass beyond what ADR-010 already measured; full voice-path
-verification with a real Sarvam key; a versioned multilingual eval report; local-run README
-updates — per the user's explicit "stop after Phase 3" instruction.
+**Phase 4 (G3 recalibration attempt on the multilingual candidate) done — result: TAU/MARGIN kept
+unchanged.** Full record: `docs/DECISIONS.md` ADR-013. Collected real per-query top1/top-20 scores
++ gold-passage relevance for all 532 held-out queries via the actual production `retrieve()` path
+(`scripts/calibrate_g3_collect.py`), then swept TAU across the full observed range plus a
+per-language breakdown, a formula-based per-language offset rule, and a MARGIN grid
+(`scripts/calibrate_g3_sweep.py`). **Headline finding: the blocker is signal quality, not
+threshold placement** — correct-hit and wrong-hit top1 scores heavily overlap on this
+multilingual corpus (wrong-hit max 0.9463 exceeds correct-hit median 0.8846), so no global
+threshold meaningfully cuts abstention without proportionally increasing false-accepts; the
+current operating point already only has 34.8% precision on the answers it does give (62
+true-accepts vs. 116 false-accepts out of 178 answered). A free per-language threshold looked
+promising in aggregate but **failed an even/odd stability check (only 2/14 languages agreed within
+0.02)** — overfit to 38 queries/language, not shipped. A principled formula-based per-language
+offset rule performed *worse* than doing nothing. MARGIN re-swept, confirmed 0.0 is still correct.
+**Decision: `src/vrag/guardrails/g3_confidence.py` is untouched** — evidence didn't support a
+change, reported honestly rather than forced to match the old 25.8% number. Root cause (weak top1
+signal on this corpus) flagged as real future work needing a better signal (reranker/embedder), not
+a threshold fix. Raw artifacts: `eval/g3_calibration_multilingual_100k_raw.json`,
+`eval/g3_threshold_sweep_multilingual_100k.json`. No corpus/retrieval/generation code changed;
+286/286 tests still pass (no test changes needed).
+
+**Not started yet:** improving G3's underlying signal (flagged in ADR-013 as the real fix needed,
+out of scope for a threshold-only pass); memory optimization pass beyond what ADR-010 already
+measured; full voice-path verification with a real Sarvam key; a versioned multilingual eval
+report; local-run README updates — per the user's "stop after calibration" instruction.
 
 ---
 

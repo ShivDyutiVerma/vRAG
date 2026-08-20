@@ -546,3 +546,96 @@ confidently-wrong capital-of-India answer, in either language, on the new candid
 
 **No corpus, FAISS, embedder, tokenizer, or G3 change beyond what's described above** — TAU/MARGIN
 values themselves are byte-identical to `g3_confidence.py` before this ADR. 286/286 tests pass.
+
+## ADR-013 — Phase 4: G3 recalibration attempted on the multilingual candidate; evidence does not support changing TAU/MARGIN
+
+**Date:** 2026-08-20. **Status:** Accepted — as a decision NOT to change production config.
+`src/vrag/guardrails/g3_confidence.py` is byte-identical before and after this ADR. Deployment
+still explicitly out of scope.
+
+**Task:** ADR-011 found the multilingual/filter candidate abstains on 66.5% of the 532-query
+held-out set (vs. 25.8% Hindi-only baseline), TAU=0.8835 unchanged. This ADR is the requested
+follow-up: recalibrate G3 for the new score distribution using evidence, not intuition, and
+report the recommended rule — without touching production config.
+
+**Method** (`scripts/calibrate_g3_collect.py` + `scripts/calibrate_g3_sweep.py`): collected
+per-query top1/weakest-of-5/top-20 scores and gold-passage relevance for all 532 queries via the
+REAL production `retrieve()` path (`VRAG_INDEX_DIR` pointed at `data/index/multilingual_100k/`,
+same mechanism as ADR-011/ADR-012's smoke test — not a reimplementation of the filter logic), then
+swept TAU over the full observed score range (0.8027–0.9527, step 0.0025, 61 points) plus a
+per-language breakdown, a formula-based per-language offset rule, and a small MARGIN grid. Raw
+artifact: `eval/g3_calibration_multilingual_100k_raw.json`. Full sweep output:
+`eval/g3_threshold_sweep_multilingual_100k.json`.
+
+**Headline finding — the real blocker is signal quality, not threshold placement.** Judged against
+gold-passage relevance, the top-1 score for genuinely-correct hits (median 0.8846) and
+genuinely-wrong hits (median 0.8686) overlap heavily: wrong-hit scores go as high as 0.9463
+(above the correct-hit median) and correct-hit scores go as low as 0.8291 (below the wrong-hit
+median). Unlike R-015's original Hindi-only in-domain-vs-OOD calibration (clean separation), top-1
+score alone is a weak discriminator here — very plausibly the same cross-lingual E5 depression
+ADR-011 already identified, now compounded by MSMARCO-XI's passage reuse across query_ids (noted
+in `g3_confidence.py`'s own docstring) landing on a multilingual, mixed-script corpus.
+
+**Consequence, confirmed by the actual sweep, not assumed:** at the current operating point,
+answered-but-wrong is already a bigger problem than most people would guess —
+**precision_of_accepted = 0.348** (of the 178 queries G3 currently lets through, only 62 are
+actually grounded in a correct passage; 116 are false-accepts). Sweeping TAU down across the
+entire viable range barely moves this: the best global TAU meeting today's own precision floor
+(0.8827, vs. 0.8835 today) only gains 2 answered queries (178→180) — true accepts and false
+accepts rise together, roughly in lockstep, across the whole range. There is no global threshold
+that substantially cuts abstention without proportionally increasing confidently-wrong answers.
+
+**Per-language free optimization (candidate rule B) looked promising in isolation but failed its
+own stability check — reported honestly, not shipped.** Grid-searching an independent TAU per
+language against this same 532-query set (38/language) produced dramatic-looking per-language
+thresholds (e.g. `eng_Latn`/`guj_Gujr` dropping to 0.830, answering 38/38 and 38/38; `hin_Deva`
+*rising* to 0.940, answering only 2/38) and a modest aggregate gain (answered 178→204, abstain
+rate 66.5%→61.7%). Before trusting this, split each language's 38 queries by query_id parity
+(even/odd) and re-optimized independently on each half: **only 2 of 14 languages (`guj_Gujr`,
+`mal_Mlym`) picked thresholds that agree within 0.02 between halves.** The other 12 disagree,
+often wildly — this is classic overfitting to a 38-query sample, not a real per-language signal.
+**Rule B is not recommended.**
+
+**Normalized per-language offset rule (candidate rule C)** — `TAU_lang = 0.8835 − (global_median −
+lang_median)`, clipped to ±0.03, a single formula requiring only each language's own median top-1
+score (no free grid search) — is more principled than B but empirically **worse than doing
+nothing**: aggregate answered drops to 162 (vs. 178 baseline), abstain rate rises to 69.6%, and
+precision drops to 0.315. Reason: `hin_Deva` and `eng_Latn` (the two best-performing languages —
+baseline answered 29/38 and 32/38 respectively) have the *highest* median top-1 scores, so the
+formula makes them *stricter* (TAU→0.9135) to "equalize" cross-language score meaning — exactly
+backwards from what reduces abstention where it's currently working best. **Rule C is not
+recommended as specified.**
+
+**MARGIN re-swept at this candidate's distribution, per `g3_confidence.py`'s own stated
+requirement** ("if TAU is ever recalibrated, MARGIN must be re-swept too"): a small grid
+(0.0–0.03) at both the current and best-global TAU shows precision creeping from 0.348 to at most
+0.381 while answered collapses from 178 to 97 at MARGIN=0.03 — the same disproportionate cost
+R-015/P-015 found on the original Hindi-only corpus. **MARGIN=0.0 remains the correct pairing.**
+
+**Decision: TAU=0.8835, MARGIN=0.0 are unchanged.** Per the ablation-ledger discipline already
+established on this project ("a gap smaller than the noise floor is not a result — say the
+options were tied and ship the cheaper one," and R-038's net-negative reranking experiment,
+reported honestly and not enabled): the evidence does not support a threshold-only recalibration
+that substantially improves the 66.5% abstention rate without either (a) an unvalidated,
+overfit-prone per-language rule, or (b) accepting materially worse precision than today's already
+weak 0.348. This is a legitimate, different-from-hoped-for finding, reported per the explicit
+instruction not to force a match to the old 25.8% number.
+
+**Regression cases, not special-cased:** "भारत की राजधानी क्या है?" (Hindi) and "What is the
+capital of India?" (English) — both already abstain under the current TAU (top1 0.821/0.786, both
+below 0.8835) rather than confidently citing the wrong country (ADR-011). Every candidate rule
+explored above keeps TAU at or above roughly this range in the languages that matter for this
+case, so this regression stays safe; it was not used to select or tune any threshold.
+
+**Flagged as real future work, not attempted here (out of Phase 4's scope: threshold-only,
+deterministic, no ML model):** the root cause is that top-1 cosine similarity alone doesn't carry
+enough signal to separate correct from incorrect retrieval on this multilingual, mixed-script,
+passage-reused corpus. Fixing the *abstention* number for real likely requires improving the
+*signal* (e.g. a reranker trained/evaluated per-language rather than the single cross-encoder
+R-038 already found net-negative on the Hindi-only corpus; a larger or differently-tuned
+multilingual embedder; or combining top1 with additional cheap features beyond top1-vs-top5
+margin, which this ADR's grid already found unhelpful alone) — not a smarter threshold.
+
+**No corpus, FAISS, embedder, retrieval, or generation code changed by this ADR.**
+`src/vrag/guardrails/g3_confidence.py` is untouched. 286/286 tests still pass (no test changes were
+needed — no production code changed).
