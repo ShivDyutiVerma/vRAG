@@ -2160,3 +2160,20 @@ no change to what gets returned for any query. `metadata_aware`'s chunk-level `l
 (R-006's chunking strategy, written months before this) already exists for exactly this purpose;
 Phase 2 is what will actually read it. No index, embedding, FAISS, tokenizer, or corpus change.
 Index remains exactly `index-metadata_aware-v3`, unchanged.
+
+## R-040 — Phase 2: multilingual index measured at 100k/150k/200k, language filter wins, 100k also wins on size
+
+**Date:** 2026-08-20. Full record: `docs/DECISIONS.md` ADR-009 (all numbers, tables, methodology).
+**R-side summary:** built and measured three real multilingual FAISS indexes (13 languages, same
+`metadata_aware` chunking, same `E5Embedder`, same HNSW32/efConstruction=200/efSearch=64/SQ_fp16
+as production — nothing about the retrieval stack changed, only the corpus). Language-filtered
+dense retrieval beat unfiltered at every size (+8.7-9.1pp Recall@10, measured against a real
+494-query multilingual held-out set, not the Hindi-only 500). Counter-intuitively, retrieval
+quality *fell* as corpus size grew 100k→200k despite strictly nested pools (same queries, same
+gold passages present throughout) — more same-language distractor chunks outweighing the larger
+candidate pool. 100k is simultaneously the best-Recall, lowest-memory, and fastest-to-build
+configuration measured; not yet adopted as a decision, handed to the user with the evidence.
+Production `data/index/metadata_aware/` untouched throughout. Real cross-language `chunk_id`
+collision artifact found and quantified (0.67-1.27% of rows, grows with pool size) — see ADR-009
+for the root cause (MSMARCO-XI's `query_id` is shared across all 13 language files) and the fix
+for any future rebuild (language-qualify the id scheme).

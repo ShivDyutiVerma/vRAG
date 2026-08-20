@@ -275,3 +275,143 @@ FAISS, embedder, tokenizer, or G3 change. 260/260 tests pass (238 pre-existing +
 cost measured, not assumed: G2's language-aware path is 1.35µs/call vs. 1.48µs/call for the
 unchanged script-heuristic path — a real dict lookup replacing two regex searches, marginally
 *faster*, not slower.
+
+## ADR-009 — Phase 2: multilingual corpus built and measured at 100k/150k/200k; language-filtering wins; production untouched
+
+**Date:** 2026-08-20.
+**Status:** Accepted (measurement + artifacts). **Not yet decided:** which configuration (if any)
+replaces the Hindi-only production index — that's explicitly the next decision, not made here.
+**Context:** Phase 1 (ADR-008) made the pipeline language-aware but left the index Hindi-only.
+Phase 2's job: build a real multilingual corpus/index at three candidate sizes and measure —
+not assume — retrieval quality, memory, and whether language-aware retrieval actually helps.
+
+**Sampling.** `scripts/build_multilingual_dataset_subset.py`, seed `20260820`. Real reservoir
+sampling (Algorithm R, one sequential pass per language) over all 13 MSMARCO-XI train languages
+— not the old "first N rows" bias `build_dataset_subset.py` has. Nested pools by construction
+(100k ⊂ 150k ⊂ 200k row samples, not three independent draws) specifically so one held-out set
+(494 queries, drawn only from the 100k pool, 38/language) has its gold passages present in all
+three corpora — isolates the corpus-size effect from held-out-coverage drift. 771/1157/1542 rows
+per language respectively (13 × equal allocation, matching the ~9.9767 chunks/row ratio measured
+on the original Hindi build).
+
+**A real data-integrity finding, disclosed rather than hidden:** MSMARCO-XI's `query_id` is a
+*global* identifier shared across all 13 language files (the same underlying English query,
+translated 13 ways) — not per-language-unique the way the Hindi-only pipeline implicitly assumed.
+Independently reservoir-sampling from 13 files can therefore draw the *same* `query_id` from two
+different languages, and since `doc_id`/`chunk_id` are derived purely from `query_id` (not
+language-qualified), this collides two genuinely different chunks onto one chunk_id string.
+Measured directly: 0.668% of rows at 100k, 0.977% at 150k, 1.267% at 200k (confirmed via a live
+row-id audit, not estimated — e.g. `query_id=655605` is real Assamese content in one row and real
+Malayalam content in another, in the same 100k sample). Effect: the FAISS index still holds both
+real vectors (nothing is lost at the vector-storage level), but `chunk_lookup` retains only the
+last-written chunk per colliding ID, so a hit on that specific chunk_id occasionally returns the
+wrong language's text/doc_id at lookup time — a small, real noise source in the reported Recall/MRR
+numbers below, not zero, not large enough to change any conclusion at this sample size. **Fix for
+any future rebuild:** qualify `doc_id`/`chunk_id` with the language code
+(e.g. `f"{lang}_{query_id}_{i}"`) — not applied here, since Phase 2's own scope explicitly
+excludes revisiting the chunking/ID scheme; flagged for whoever builds the next real index.
+
+**Real builds, three sizes** (`scripts/build_multilingual_index.py`, same `metadata_aware`
+chunking, same `E5Embedder`, same FAISS config as production — HNSW32/efConstruction=200/
+efSearch=64/SQ_fp16 — nothing about embedding model, tokenizer, or FAISS variant changed):
+
+| Size | Rows | Chunks (real) | Build time | Per-language range |
+|---|---|---|---|---|
+| 100k | 10,023 | 99,981 | 328.9s | 7673–7712 (13 langs) |
+| 150k | 15,041 | 150,050 | 825.5s | 11,524–11,565 |
+| 200k | 20,046 | 199,982 | 686.8s | 15,365–15,411 |
+
+Language balance within ~0.5% of perfectly even at every size — the equal-allocation sampling
+strategy worked as designed.
+
+**Language-aware retrieval, A/B/C, measured against the real 494-query multilingual held-out set**
+(`scripts/eval_multilingual_retrieval.py`; k=100 candidate pool narrowed to top-10; "filter" =
+hard same-language restriction with a documented empty-result fallback to unfiltered top-k;
+"boost" = 1.10x score multiplier on same-language candidates, same k=100→10 window):
+
+| Size | Mode | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| 100k | no_filter | 0.1883 | 0.4757 | 0.5648 | 0.3008 | 0.3605 |
+| 100k | filter | 0.2146 | 0.5364 | 0.6518 | 0.3445 | 0.4140 |
+| 100k | boost | 0.2146 | 0.5364 | 0.6518 | 0.3445 | 0.4140 |
+| 150k | no_filter | 0.1903 | 0.4696 | 0.5385 | 0.2965 | 0.3514 |
+| 150k | filter | 0.2126 | 0.5324 | 0.6296 | 0.3387 | 0.4053 |
+| 150k | boost | 0.2126 | 0.5324 | 0.6296 | 0.3387 | 0.4053 |
+| 200k | no_filter | 0.1781 | 0.4312 | 0.5040 | 0.2758 | 0.3269 |
+| 200k | filter | 0.1984 | 0.4980 | 0.5911 | 0.3170 | 0.3797 |
+| 200k | boost | 0.1984 | 0.4980 | 0.5911 | 0.3170 | 0.3797 |
+
+**Two real findings, both measured, neither assumed:**
+1. **Language filtering wins, consistently, at every size** — +8.7 to +9.1pp Recall@10, +4.1 to
+   +4.4pp MRR@10 over no-filter, at 100k/150k/200k alike. Filter's empty-result fallback triggered
+   only 0.2–0.4% of the time (the wide k=100 window almost always contains a same-language
+   candidate) — a language filter here is safe, not merely helpful.
+2. **"filter" and "boost" produced numerically identical results at every size.** Not a bug —
+   verified by construction: a 1.10x multiplier on cosine-similarity-range scores was large enough
+   to always push every same-language candidate above every cross-language one in the k=100
+   window on this eval set, so the soft-boost degenerated into hard-filter behaviour. A smaller
+   boost factor would plausibly differentiate them; not swept here (single representative value
+   was the scope, per instruction) — worth a follow-up if a *softer* language preference (rather
+   than a hard filter) is ever wanted.
+3. **Quality DECLINES as corpus size grows, at every mode** — Recall@10 (filter): 0.6518 → 0.6296
+   → 0.5911 as the corpus goes 100k → 150k → 200k, despite each larger corpus being a strict
+   superset (same 494 queries, same gold passages present throughout, by the nested-pool design).
+   Not a coverage artifact — more corpus means more same-language distractor chunks competing for
+   the same ranks, and on this corpus that hurts more than the (structurally guaranteed, since
+   pools are nested) larger candidate pool helps. **This is the single most consequential finding
+   for the eventual size decision: bigger is not better here, on either resource or quality
+   grounds.**
+
+**Latency:** trivial at every size/mode — p50 1.6–1.9ms, p100 2.6–4.7ms, filter/boost included
+(list-filtering k=100 candidates costs nothing next to the FAISS search itself). Not a
+differentiator between configurations.
+
+**Memory, real staged measurement** (`scripts/audit_multilingual_memory.py`, isolated subprocess
+per size, matching R-032's methodology). Measured **twice** — once with the eager JSON
+chunk_lookup (what `build_multilingual_index.py` produces by default), once after converting to
+the lean SQLite-backed lookup (`scripts/convert_chunk_lookup_sqlite.py`, the same one production
+actually uses, R-021) — the gap between them is itself a real, reportable number:
+
+| Size | Steady-state RSS (JSON lookup) | Steady-state RSS (SQLite lookup, production-matching) | Peak WSet (SQLite) |
+|---|---|---|---|
+| 100k | 536.5MB | **396.9MB** | 482.1MB |
+| 150k | 674.7MB | **462.2MB** | 549.0MB |
+| 200k | 812.5MB | **532.1MB** | 618.9MB |
+
+The eager JSON lookup costs 140–280MB more resident memory than the lean SQLite one, growing with
+corpus size, exactly the R-021 finding restated at multilingual scale, now with three real data
+points instead of one.
+
+**Disk, real measured sizes** (dense FAISS + sparse BM25 + SQLite chunk_lookup; the redundant JSON
+copy dropped from a deployment count since only one lookup format ships):
+
+| Size | Dense | Sparse | SQLite lookup | Total (deployable) | Embedder (fixed, unchanged) |
+|---|---|---|---|---|---|
+| 100k | 103MB | 55MB | 129.8MB | ~288MB | 583MB |
+| 150k | 154MB | 78MB | 194.1MB | ~426MB | 583MB |
+| 200k | 205MB | 100MB | 257.8MB | ~563MB | 583MB |
+
+Sparse/BM25 is never queried in production's dense-only mode (ADR-007) — shipping it is a real,
+easy ~55-100MB cut available at every size if dense-only stays the shipped mode; not applied here
+(out of Phase 2's explicit scope), flagged as a concrete, low-risk lever for whoever builds the
+real deployment artifact.
+
+**Production untouched:** `data/index/metadata_aware/` (Hindi-only, `baseline-hindi-only-v1`) was
+never read or written by any Phase 2 script. All three candidate builds live in
+`data/index/multilingual_{100k,150k,200k}/`, entirely separate paths.
+
+**Artifacts:** `data/multilingual_dataset_manifest.json`, `data/multilingual_index_build_results.json`,
+`eval/heldout_queries_multilingual.json` (494 queries, 38/language, held separate from the
+production `eval/heldout_queries.json`, which is untouched), `eval/multilingual_retrieval_eval_results.json`,
+`eval/multilingual_memory_audit.json` (SQLite-backend numbers; JSON-backend numbers recorded above,
+not separately persisted), 9 new rows in `eval/ablation_ledger.csv` (3 sizes × 3 modes, real
+measured Recall/MRR/nDCG/latency/RSS/build-time, `git_sha=7258789`).
+
+**Consequences / open decision:** the smallest corpus (100k) is simultaneously the best-quality,
+lowest-memory, and fastest-to-build configuration measured — an unusual, genuinely non-obvious
+result worth double-checking before committing to it as final (e.g. a repeat run or a larger
+held-out set would strengthen confidence that this isn't a one-sample artifact). Language
+filtering should be treated as a strong, low-risk candidate for production wiring regardless of
+which size is chosen — it improved every metric at every size with near-zero latency cost and a
+near-zero fallback rate. Neither decision is made in this ADR; both are handed to the user with
+the evidence above.

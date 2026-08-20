@@ -144,9 +144,23 @@ embedder, tokenizer, or G3 change — `index-metadata_aware-v3` is untouched. 26
 (238 pre-existing + 22 new), G2 hot-path cost measured unchanged (~1.3-1.5µs/call either way).
 Full record: `docs/DECISIONS.md` ADR-008, `docs/DECISIONS_R.md` R-039, `docs/DECISIONS_P.md` P-024.
 
-**Not started yet:** Phase 2 (multilingual corpus build, ~200k chunks total across languages) and
-everything after it (language-aware retrieval, memory optimization, G3 recalibration, full voice
-path verification, multilingual eval report, expanded tests, local-run README) — per the user's
+**Phase 2 (multilingual corpus + index, 3 sizes, language-aware retrieval eval) done.** Full
+record: `docs/DECISIONS.md` ADR-009, `docs/DECISIONS_R.md` R-040. Real reservoir-sampled (seed
+20260820), nested 100k/150k/200k multilingual corpora built (all 13 languages, near-perfectly
+balanced), same chunking/embedder/FAISS config as production. Headline findings, both measured:
+language-filtered retrieval beats unfiltered by +8.7-9.1pp Recall@10 at every size; retrieval
+quality *falls* as corpus size grows 100k→200k (100k is simultaneously best-quality,
+lowest-memory, fastest-build of the three measured). Real memory audit: 397/462/532MB steady-state
+RSS at 100k/150k/200k with the production-matching lean SQLite chunk lookup (536/675/812MB with
+the eager JSON lookup — a real, disclosed ~140-280MB gap). A real cross-language `chunk_id`
+collision artifact was found and quantified (0.67-1.27% of rows, root cause: MSMARCO-XI's
+`query_id` is shared across all 13 language files) — disclosed in ADR-009, not silently fixed
+(out of Phase 2's scope). `data/index/metadata_aware/` (Hindi-only production index) untouched
+throughout. Size/config decision not yet made — handed to the user with the evidence.
+
+**Not started yet:** Phase 3 onward (production wiring decision for language filtering + corpus
+size, memory optimization pass, G3 recalibration on the multilingual corpus, full voice path
+verification, multilingual eval report, expanded tests, local-run README) — per the user's
 explicit "one phase at a time, stop after each phase" instruction.
 
 ---

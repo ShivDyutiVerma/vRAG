@@ -1,0 +1,95 @@
+{
+  "100k": {
+    "index_dir": "D:\\projects\\vRAG\\data\\index\\multilingual_100k",
+    "n_chunks": 99981,
+    "chunk_lookup_backend": "sqlite (lean, matches production)",
+    "stages": {
+      "baseline": {
+        "rss_bytes": 19922944,
+        "peak_wset_bytes": 19922944
+      },
+      "after_index_load": {
+        "rss_bytes": 169598976,
+        "peak_wset_bytes": 169598976
+      },
+      "after_chunk_lookup_load": {
+        "rss_bytes": 196784128,
+        "peak_wset_bytes": 200216576
+      },
+      "after_embedder_construct": {
+        "rss_bytes": 196943872,
+        "peak_wset_bytes": 200216576
+      },
+      "after_first_real_query": {
+        "rss_bytes": 396877824,
+        "peak_wset_bytes": 482050048
+      },
+      "steady_state_after_5_queries": {
+        "rss_bytes": 396914688,
+        "peak_wset_bytes": 482050048
+      }
+    }
+  },
+  "150k": {
+    "index_dir": "D:\\projects\\vRAG\\data\\index\\multilingual_150k",
+    "n_chunks": 150050,
+    "chunk_lookup_backend": "sqlite (lean, matches production)",
+    "stages": {
+      "baseline": {
+        "rss_bytes": 19861504,
+        "peak_wset_bytes": 19861504
+      },
+      "after_index_load": {
+        "rss_bytes": 226045952,
+        "peak_wset_bytes": 226045952
+      },
+      "after_chunk_lookup_load": {
+        "rss_bytes": 263639040,
+        "peak_wset_bytes": 266768384
+      },
+      "after_embedder_construct": {
+        "rss_bytes": 263667712,
+        "peak_wset_bytes": 266768384
+      },
+      "after_first_real_query": {
+        "rss_bytes": 462172160,
+        "peak_wset_bytes": 548958208
+      },
+      "steady_state_after_5_queries": {
+        "rss_bytes": 462209024,
+        "peak_wset_bytes": 548958208
+      }
+    }
+  },
+  "200k": {
+    "index_dir": "D:\\projects\\vRAG\\data\\index\\multilingual_200k",
+    "n_chunks": 199982,
+    "chunk_lookup_backend": "sqlite (lean, matches production)",
+    "stages": {
+      "baseline": {
+        "rss_bytes": 19894272,
+        "peak_wset_bytes": 19894272
+      },
+      "after_index_load": {
+        "rss_bytes": 281997312,
+        "peak_wset_bytes": 281997312
+      },
+      "after_chunk_lookup_load": {
+        "rss_bytes": 333594624,
+        "peak_wset_bytes": 339021824
+      },
+      "after_embedder_construct": {
+        "rss_bytes": 333619200,
+        "peak_wset_bytes": 339021824
+      },
+      "after_first_real_query": {
+        "rss_bytes": 532074496,
+        "peak_wset_bytes": 618881024
+      },
+      "steady_state_after_5_queries": {
+        "rss_bytes": 532111360,
+        "peak_wset_bytes": 618881024
+      }
+    }
+  }
+}
