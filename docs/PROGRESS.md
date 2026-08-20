@@ -119,6 +119,36 @@ automation environment used this session provides a muted mic track, not real sp
 marked pending, not faked); demo and process videos (not recorded); the promotion grid and
 submission form (`docs/SUBMISSION_CHECKLIST.md`, correctly untouched this early).
 
+## ⚠️ Local-first pivot, 2026-08-20 — multilingual + 200k-chunk rebuild, deployment work frozen
+
+Live hosting (Render/AWS/OCI) is explicitly out of scope for now — the AWS path hit a new-account
+verification hold that can't be worked around (see the session record), and the user redirected to
+building the best fully-functional multilingual version locally first, deployment decided later.
+`baseline-hindi-only-v1` tag (commit `11413e5`) marks the known-good, currently-deployed-on-Render
+Hindi-only configuration as a recoverable fallback before this work started.
+
+**Phase 0 (audit) done:** verified live against the real `ai4bharat/MSMARCO-XI` repo (not assumed)
+— 13 real train languages, 10,080,140 rows total, every row already carries both
+`English_passages` and `Translated_passages`. Full inventory in the session record / `README.md`
+update pending a later phase.
+
+**Phase 1 (language-routing plumbing) done — index NOT rebuilt, still Hindi-only.** New
+`src/vrag/languages.py` is the single source of truth for `SUPPORTED_LANGUAGES` (the 13 MSMARCO-XI
+train languages, English and Telugu deliberately excluded — see ADR-008). Sarvam's STT now uses
+real `language_code="auto"` detection instead of a hardcoded `"hi-IN"`; the detected language flows
+into G2 (refuses unsupported languages explicitly, e.g. English is refused rather than silently
+searched against the Hindi index) and is tracked through the pipeline as `query_language`, kept
+separate from `retrieved_language` (the evidence chunk's own language) and `generation_language`
+(plumbed through, not yet consumed — Track B is still Hindi-only output). No corpus, FAISS,
+embedder, tokenizer, or G3 change — `index-metadata_aware-v3` is untouched. 260/260 tests pass
+(238 pre-existing + 22 new), G2 hot-path cost measured unchanged (~1.3-1.5µs/call either way).
+Full record: `docs/DECISIONS.md` ADR-008, `docs/DECISIONS_R.md` R-039, `docs/DECISIONS_P.md` P-024.
+
+**Not started yet:** Phase 2 (multilingual corpus build, ~200k chunks total across languages) and
+everything after it (language-aware retrieval, memory optimization, G3 recalibration, full voice
+path verification, multilingual eval report, expanded tests, local-run README) — per the user's
+explicit "one phase at a time, stop after each phase" instruction.
+
 ---
 
 ## Historical: Day 1 sync snapshot (superseded above, kept for the record)

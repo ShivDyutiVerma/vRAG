@@ -75,9 +75,16 @@ class HybridRetriever:
         assert self._sparse is not None
         return self._sparse.search(query, k)
 
-    async def retrieve(self, query: str, k: int = 5) -> list[RetrievedChunk]:
+    async def retrieve(
+        self, query: str, k: int = 5, language: str | None = None
+    ) -> list[RetrievedChunk]:
         """Never raises — matches the retrieve() contract in interface.py. Internal failures
-        collapse to an empty result so the harness's grounding gate can abstain."""
+        collapse to an empty result so the harness's grounding gate can abstain.
+
+        `language` (docs/DECISIONS.md ADR-009): accepted, not yet used — see interface.py's
+        retrieve() docstring. No filter/boost logic reads it until Phase 2 builds a multilingual
+        index; `metadata_aware`'s chunk-level `language` tag is the field it would filter/boost
+        against, already written at chunk-build time, never read at query time."""
         if not query.strip():
             return []
 

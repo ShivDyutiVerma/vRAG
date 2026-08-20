@@ -2149,3 +2149,14 @@ multilingual-specific or larger reranker (untested, real latency/memory cost to 
 a corpus-level fix (e.g. deduplicating/downweighting the "X is the capital of Y" template's
 extreme overrepresentation across many countries), neither of which this experiment was scoped to
 try.
+
+## R-039 — Phase 1: `retrieve()`/`HybridRetriever.retrieve()` gain an inert `language` param
+
+**Date:** 2026-08-20. Full decision + rationale: `docs/DECISIONS.md` ADR-008 (shared, since this
+signature change crosses the R/P seam and that file's own docstring demands an ADR for it).
+**R-side summary:** `language: str | None = None` added to both `retrieve()` (interface.py) and
+`HybridRetriever.retrieve()` (hybrid.py), threaded but read by nothing yet — no filter, no boost,
+no change to what gets returned for any query. `metadata_aware`'s chunk-level `language` tag
+(R-006's chunking strategy, written months before this) already exists for exactly this purpose;
+Phase 2 is what will actually read it. No index, embedding, FAISS, tokenizer, or corpus change.
+Index remains exactly `index-metadata_aware-v3`, unchanged.

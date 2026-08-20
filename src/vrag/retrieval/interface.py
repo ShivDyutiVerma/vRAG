@@ -172,17 +172,25 @@ def is_retrieval_real() -> bool:
     return _warmup_ok
 
 
-async def retrieve(query: str, k: int = 5) -> list[RetrievedChunk]:
+async def retrieve(
+    query: str, k: int = 5, language: str | None = None
+) -> list[RetrievedChunk]:
     """The one function Workstream P's harness calls to get retrieved context.
 
     Never raises. Returns [] on internal failure — the guardrail layer treats an empty list as
     "nothing relevant found" and routes to abstention (G3).
+
+    `language` (docs/DECISIONS.md ADR-009, Phase 1): the query's real Sarvam-detected BCP-47
+    code, threaded through so Phase 2 can filter/boost by it once a multilingual index exists.
+    Deliberately unused right now — the index is still Hindi-only, and Phase 1's own scope
+    explicitly excludes retrieval filtering/boosting (see docs/DECISIONS_R.md). Accepting it here
+    now, even inert, means Phase 2 doesn't need to touch this signature again.
     """
     if not query or not query.strip():
         return []
 
     retriever = _get_real_retriever()
     if retriever is not None:
-        return await retriever.retrieve(query, k)
+        return await retriever.retrieve(query, k, language=language)
 
     return _STUB_CHUNKS[:k]

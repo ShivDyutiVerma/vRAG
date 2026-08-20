@@ -1,0 +1,55 @@
+{
+  "config": {
+    "TAU": 0.8835,
+    "MARGIN": 0.0,
+    "index_dir": "D:\\projects\\vRAG\\data\\index\\metadata_aware",
+    "corpus_chunks": 99767,
+    "corpus_distinct_passages": 99767,
+    "k_searched": 20,
+    "k_passed_to_g3_in_production": 5
+  },
+  "1_overall_retrieval_quality": {
+    "recall@1": 0.33,
+    "recall@5": 0.644,
+    "recall@10": 0.75,
+    "mrr@10": 0.4562706349206349,
+    "n_queries": 500
+  },
+  "2_g3_answered_vs_abstained": {
+    "answered": 371,
+    "abstained": 129,
+    "abstain_rate": 0.258
+  },
+  "3_abstained_evidence_location": {
+    "n_abstained": 129,
+    "found_in_top10": 70,
+    "found_in_top11_to_20": 10,
+    "found_in_corpus_but_outside_top20": 49,
+    "not_in_corpus_at_all": 0
+  },
+  "4_score_distribution_false_refusals": {
+    "n_queries_evidence_exists_but_abstained": 129,
+    "top1_score_min": 0.8149075508117676,
+    "top1_score_max": 0.8834364414215088,
+    "top1_score_mean": 0.8674423121666723,
+    "top1_score_median": 0.8708928227424622,
+    "TAU": 0.8835,
+    "note": "these are queries where the correct passage is somewhere in the corpus (in_corpus=True) yet G3 abstained (top1 < TAU) -- the score gap between top1_score_* above and TAU is the size of the threshold's conservatism, in score units, on real queries with real evidence."
+  },
+  "5_false_refusal_rate_heldout_methodology": {
+    "false_refusal_rate": 0.258,
+    "definition": "fraction of the 500 held-out (in-domain-by-construction) queries where G3 abstained despite the relevant passage existing somewhere in the indexed corpus"
+  },
+  "6_comparison_to_prior_g3_calibration": {
+    "n_in_domain": 150,
+    "n_out_domain": 150,
+    "reported_false_refusal_at_TAU": 0.193,
+    "reported_correct_refusal_at_TAU": 0.753,
+    "note": "calibration.json's in-domain false-refusal (19.3%) was measured on 150 queries drawn from the same distribution but scored differently (single top1/top5 pull, not full Recall@k) -- this diagnostic's false_refusal_rate_heldout is the comparable number on the actual 500-query retrieval eval set."
+  },
+  "7_corpus_size_200k_investigation": {
+    "not_in_corpus_count": 0,
+    "not_in_corpus_share_of_abstentions": 0.0,
+    "note": "eval/corpus_size_tmp/ contains prior subsampled-index artifacts (20k, 50k chunks) from an earlier corpus-size investigation (scripts/eval_corpus_size.py, referenced by docs/DECISIONS_R.md R-024's follow-up). That prior work measured recall/coverage as corpus SHRINKS from the current ~99,767-chunk production size -- it does not directly answer what happens if corpus GROWS to 200k, since MSMARCO-XI's additional rows are a different, not-yet-indexed slice of the dataset. The only evidence this diagnostic can honestly offer for the growth question is indirect: see 'in_corpus' vs 'not_in_corpus' breakdown below -- if abstentions are overwhelmingly cases where the answer already IS in the current corpus (ranking/threshold problem), more corpus rows would not fix them; only the 'not_in_corpus' bucket is a candidate for corpus-size being the cause, and even for those, growing to 200k only helps if the missing passage happens to be in the next 100k rows specifically, which existing measurements cannot confirm (would require actually indexing those rows -- not done here per instruction)."
+  }
+}

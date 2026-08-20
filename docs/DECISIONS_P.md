@@ -788,3 +788,19 @@ Full suite: 238/238 (232 + 6 new), ruff clean, mypy clean, zero warnings (checke
 the pre-fix Task-exception leak).
 
 **Not yet done:** redeploy to Render (explicitly deferred by the user pending review).
+
+## P-024 — Phase 1: remove hardcoded `hi-IN`, wire Sarvam's real language signal through G2
+
+**Date:** 2026-08-20. Full decision + rationale: `docs/DECISIONS.md` ADR-008 (shared).
+**P-side summary:** `WS /voice`'s `stream_transcribe()` call switched from a hardcoded
+`language_code="hi-IN"` to `"auto"` (verified live against Sarvam's real docs: `auto` is a real
+adaptive-detection mode, and the *only* mode in which a transcript event's `language` field is
+ever populated — a fixed code never got one). `event.language` now flows into `build_answer(...,
+language=event.language)` instead of being silently dropped. `AskRequest` gains an optional
+`language` field (a caller-supplied hint, since the text debug endpoint has no real STT signal of
+its own) purely so G2's language routing is testable without a live Sarvam call. `AnswerResponse`
+gains `query_language: str | None = None`, additive — frontend and existing tests unaffected
+(verified: all pre-existing tests pass unchanged, including `tests/stt/test_sarvam_stt.py`'s fake-
+WebSocket tests, which pass `language_code="hi-IN"` explicitly and are unaffected by the default
+change). No Track B/generation change — still Hindi-only output, per Phase 1's explicit scope
+("do not enable multilingual generation yet"). 260/260 tests pass (238 pre-existing + 22 new).

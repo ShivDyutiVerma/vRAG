@@ -65,12 +65,20 @@ def _build_url(language_code: str, sample_rate: int) -> str:
 async def stream_transcribe(
     audio_chunks: AsyncIterator[bytes],
     *,
-    language_code: str = "hi-IN",
+    language_code: str = "auto",
     sample_rate: int = 16000,
 ) -> AsyncIterator[TranscriptEvent]:
     """Pipe raw PCM16 audio chunks to Sarvam's realtime STT and yield transcript events as they
     arrive. Real network call — this is intentionally the one thing on the request path that is
-    never stubbed, per CLAUDE.md hard rules."""
+    never stubbed, per CLAUDE.md hard rules.
+
+    `language_code="auto"` (docs/DECISIONS.md ADR-009, Phase 1) is Sarvam's real "Adaptive
+    automatic language detection" mode — verified live against
+    docs.sarvam.ai/api-reference/speech-to-text/transcribe/realtime/ws on 2026-08-20, not assumed.
+    It's also the *only* mode in which Sarvam populates a transcript event's `language` field at
+    all — a fixed code (e.g. the old hardcoded `"hi-IN"`) never gets one back. Callers that need a
+    specific pinned language (none currently do) can still pass an explicit code.
+    """
     if not settings.sarvam_api_key:
         raise RuntimeError(
             "SARVAM_API_KEY is not set. Add it to .env (see .env.example) — the STT path "

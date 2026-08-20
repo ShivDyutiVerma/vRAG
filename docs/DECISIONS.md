@@ -230,3 +230,48 @@ made here — exactly as instructed.
 > `docs/DECISIONS_P.md` — read both before assuming this file is current, since it's only touched at
 > sync points by design (or, from 2026-08-19, directly by the single-operator session for genuinely
 > joint-ownership work — see `docs/PROGRESS.md`).
+
+## ADR-008 — Phase 1: language-aware routing (query_language / retrieved_language split), `retrieve()` gains an inert `language` param
+
+**Date:** 2026-08-20
+**Status:** Accepted.
+**Context:** This session's language-routing diagnostic (docs/PROGRESS.md) found the STT call
+hardcoded to `language_code="hi-IN"`, Sarvam's real `event.language` signal captured then
+discarded, and `ctx.data["language"]` conflating two different meanings (the query's language vs.
+the retrieved chunk's language) into one key. ADR-002 (Hindi-only corpus scope) stands unchanged —
+this ADR is about routing plumbing, not corpus content. Full language inventory (13 real MSMARCO-XI
+train languages, verified against live parquet metadata) recorded as this session's Phase 0 audit.
+**Decision:**
+- New module `src/vrag/languages.py`: `SUPPORTED_LANGUAGES` = the 13 MSMARCO-XI train languages,
+  expressed as Sarvam's real BCP-47 codes (verified live against docs.sarvam.ai, not assumed).
+  English (`en-IN`, not a MSMARCO-XI *target* language) and Telugu (`te-IN`, MSMARCO-XI has only a
+  validation file, no train data) are Sarvam-recognisable but deliberately excluded.
+- `src/vrag/stt/sarvam.py`: `language_code` default changed from `"hi-IN"` to `"auto"` — Sarvam's
+  real adaptive-detection mode, and the *only* mode in which it populates a transcript event's
+  `language` field at all (verified live). `WS /voice` now uses it unconditionally.
+- Three distinct concepts in `PipelineContext.data`, never aliased onto one key:
+  `query_language` (Sarvam's real detected code, set once at pipeline entry), `retrieved_language`
+  (the top retrieved chunk's own `language` metadata — a *different* code space, e.g. `"hin_Deva"`
+  vs. `"hi-IN"`), `generation_language` (defaults to `query_language`, plumbed through but not yet
+  consumed by Track B — Phase 1 explicitly does not enable multilingual generation).
+- `g2_scope_language.check()` gains an optional `language` param: when a real code is given, G2
+  decides purely from `SUPPORTED_LANGUAGES` membership (unsupported → refused, with the language
+  named in the reason). When `language=None` (the `/ask` text endpoint has no STT signal), the old
+  script-presence heuristic runs unchanged — zero behavior change for existing callers.
+- `AnswerResponse` gains `query_language: str | None = None` (additive — old clients/tests
+  unaffected). The existing `language` field's meaning is unchanged (the answer/evidence's own
+  language); its refused/abstained fallback changed from a bare hardcoded `"hi"` to the real
+  `query_language` when known, `"hi"` only as the last-resort default for signal-less callers.
+- `retrieve()` (the R/P seam, `src/vrag/retrieval/interface.py`) gains an optional `language`
+  param, per that file's own docstring requiring an ADR for any signature change. Threaded through
+  `HybridRetriever.retrieve()` too. **Deliberately inert in Phase 1** — no filter/boost logic reads
+  it yet; Phase 2 is what wires it into the `metadata_aware` chunk tag that already exists for
+  exactly this purpose (chunking strategy's own docstring, written before Phase 1, already
+  anticipated it).
+**Consequences:** Every one of the 13 supported languages now reaches retrieval — but only Hindi
+is actually indexed until Phase 2, so G3's existing confidence threshold is the honest backstop for
+the other 12 (and for English's exclusion, structurally never reaches retrieval at all). No corpus,
+FAISS, embedder, tokenizer, or G3 change. 260/260 tests pass (238 pre-existing + 22 new). Hot-path
+cost measured, not assumed: G2's language-aware path is 1.35µs/call vs. 1.48µs/call for the
+unchanged script-heuristic path — a real dict lookup replacing two regex searches, marginally
+*faster*, not slower.

@@ -82,7 +82,7 @@ class ScopeGuardStage(Stage):
     async def run(self, ctx: PipelineContext) -> StageResult:
         if _upstream_refused(ctx):
             return StageResult(stage_name=self.name, skipped=True, skip_reason="upstream refusal")
-        verdict = g2_scope_language.check(ctx.query)
+        verdict = g2_scope_language.check(ctx.query, language=ctx.data.get("query_language"))
         if not verdict.passed:
             ctx.data["refused"] = True
             ctx.data["refusal_reason"] = verdict.reason
@@ -105,7 +105,7 @@ class RetrieveStage(Stage):
             return StageResult(stage_name=self.name, skipped=True, skip_reason="upstream refusal")
         k = ctx.data.get("k", 5)
         try:
-            chunks = await retrieve(ctx.query, k=k)
+            chunks = await retrieve(ctx.query, k=k, language=ctx.data.get("query_language"))
         except Exception:
             logger.exception("retrieve() raised despite its never-raises contract")
             chunks = []
@@ -158,7 +158,15 @@ class ExtractAnswerStage(Stage):
             ctx.data["answer_text"] = top.text
             ctx.data["citations"] = list(chunks[:2])
             ctx.data["confidence"] = top.score
-            ctx.data["language"] = top.language
+            # Two distinct concepts (docs/DECISIONS.md ADR-009) — never collapse these back into
+            # one "language" key: retrieved_language is the evidence chunk's language;
+            # generation_language is what Track B should eventually answer in, defaulting to the
+            # query's own language when known (falls back to the evidence's language only for
+            # signal-less callers like a direct /ask call).
+            ctx.data["retrieved_language"] = top.language
+            ctx.data.setdefault(
+                "generation_language", ctx.data.get("query_language") or top.language
+            )
         return StageResult(stage_name=self.name)
 
 
@@ -315,6 +323,12 @@ class AssembleStage(Stage):
     optional = False
 
     async def run(self, ctx: PipelineContext) -> StageResult:
+        # Phase 1 (docs/DECISIONS.md ADR-009): the refused/abstained fallback used to be a bare
+        # hardcoded "hi" regardless of what the query actually was. Now it's the query's own real
+        # detected language when known, "hi" only as the last-resort default for signal-less
+        # callers (a direct /ask call with no STT behind it) -- same default as before for them,
+        # more honest for everyone else.
+        query_language = ctx.data.get("query_language")
         if ctx.data.get("refused"):
             response = AnswerResponse(
                 status="refused",
@@ -323,7 +337,8 @@ class AssembleStage(Stage):
                 citations=[],
                 confidence=0.0,
                 refusal_reason=ctx.data.get("refusal_reason"),
-                language="hi",
+                language=query_language or "hi",
+                query_language=query_language,
                 stages_skipped=ctx.stages_skipped,
                 trace_id=ctx.trace_id,
                 timings_ms=ctx.timings_ms,
@@ -336,7 +351,8 @@ class AssembleStage(Stage):
                 citations=[],
                 confidence=0.0,
                 refusal_reason=ctx.data.get("refusal_reason"),
-                language="hi",
+                language=query_language or "hi",
+                query_language=query_language,
                 stages_skipped=ctx.stages_skipped,
                 trace_id=ctx.trace_id,
                 timings_ms=ctx.timings_ms,
@@ -357,7 +373,8 @@ class AssembleStage(Stage):
                 ],
                 confidence=ctx.data.get("confidence", 0.0),
                 refusal_reason=None,
-                language=ctx.data.get("language", "hi"),
+                language=ctx.data.get("retrieved_language", "hi"),
+                query_language=query_language,
                 stages_skipped=ctx.stages_skipped,
                 trace_id=ctx.trace_id,
                 timings_ms=ctx.timings_ms,

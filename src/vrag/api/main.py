@@ -83,16 +83,30 @@ _DEFAULT_BUDGET_MS = 200.0
 class AskRequest(BaseModel):
     query: str
     k: int = 5
+    # Phase 1 (docs/DECISIONS.md ADR-009): optional Sarvam-format language hint (e.g. "hi-IN") —
+    # this text endpoint has no real STT behind it, so there's no real signal unless a caller
+    # supplies one directly (useful for testing G2's language routing without a live Sarvam call).
+    # None (the default) preserves the exact pre-Phase-1 behavior: G2 falls back to its script
+    # heuristic, unchanged.
+    language: str | None = None
 
 
 async def build_answer(
-    query: str, k: int = 5, budget_ms: float = _DEFAULT_BUDGET_MS
+    query: str,
+    k: int = 5,
+    budget_ms: float = _DEFAULT_BUDGET_MS,
+    language: str | None = None,
 ) -> AnswerResponse:
     """Runs the real harness pipeline (G1 -> G2 -> Retrieve -> Track A -> G5 -> Assemble) and
     fires a trace emission in the background — never awaited before the response is built, so
-    disk I/O never sits on the hot path (docs/CONVENTIONS.md)."""
+    disk I/O never sits on the hot path (docs/CONVENTIONS.md).
+
+    `language`: the real Sarvam-detected query language (docs/DECISIONS.md ADR-009), None when no
+    real signal exists. Stored as `query_language` — never overloaded onto the "language" key the
+    rest of the pipeline uses for the answer's own language (see src/vrag/languages.py)."""
     ctx = PipelineContext(query=query, budget=Budget(total_ms=budget_ms))
     ctx.data["k"] = k
+    ctx.data["query_language"] = language
     await run_pipeline(ctx, default_stages())
     response: AnswerResponse = ctx.data["answer_response"]
 
@@ -113,7 +127,7 @@ async def healthz() -> dict[str, str]:
 
 @app.post("/ask", response_model=AnswerResponse)
 async def ask(req: AskRequest) -> AnswerResponse:
-    return await build_answer(req.query, k=req.k)
+    return await build_answer(req.query, k=req.k, language=req.language)
 
 
 @app.websocket("/voice")
@@ -151,14 +165,18 @@ async def voice(websocket: WebSocket) -> None:
                     return
 
     try:
-        async for event in stream_transcribe(browser_audio_chunks(), language_code="hi-IN"):
+        # Phase 1 (docs/DECISIONS.md ADR-009): "auto" replaces the old hardcoded "hi-IN" — Sarvam
+        # only populates a transcript event's `language` field when the connection used "auto"
+        # (verified live against docs.sarvam.ai, not assumed), so this is also what makes real
+        # language detection possible at all, not just a cosmetic default change.
+        async for event in stream_transcribe(browser_audio_chunks(), language_code="auto"):
             logger.info("WS /voice: transcript event: %s", event)
             if event.type == "partial":
                 await websocket.send_json({"type": "transcript_partial", "text": event.text})
             elif event.type == "final":
                 await websocket.send_json({"type": "transcript_final", "text": event.text})
                 if event.text.strip():
-                    answer = await build_answer(event.text)
+                    answer = await build_answer(event.text, language=event.language)
                     await websocket.send_json(
                         {"type": "answer_final", "answer_response": answer.model_dump()}
                     )

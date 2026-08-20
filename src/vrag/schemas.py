@@ -25,7 +25,12 @@ class AnswerResponse(BaseModel):
     citations: list[Citation]
     confidence: float  # calibrated, 0-1
     refusal_reason: str | None
-    language: str
+    language: str  # the answer/content's language — retrieved chunk's language when answered
+    # Additive, Phase 1 (docs/DECISIONS.md ADR-009) — the real Sarvam-detected query language
+    # (BCP-47, e.g. "hi-IN"), None when no real STT signal exists (e.g. a direct /ask call).
+    # Distinct from `language` above on purpose: a query's language and the language of the
+    # evidence that answered it are not the same field, see src/vrag/languages.py.
+    query_language: str | None = None
     stages_skipped: list[str]  # deadline-shed stages
     trace_id: str
     timings_ms: dict[str, float]  # per-stage, always populated
