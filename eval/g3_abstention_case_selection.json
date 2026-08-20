@@ -1,0 +1,282 @@
+[
+  {
+    "query_id": 1172631,
+    "language": "asm_Beng",
+    "category": "A",
+    "top1_score": 0.8780266046524048,
+    "query": "চলচ্চিত্ৰসমূহত জেমছ বণ্ডৰ চৰিত্ৰত অভিনয় কৰা অভিনেতাসকল"
+  },
+  {
+    "query_id": 885571,
+    "language": "asm_Beng",
+    "category": "B",
+    "top1_score": 0.882122814655304,
+    "query": "কোনবোৰ ৰোগ সৃষ্টিকাৰী একক কোষীয় জীৱ আছে"
+  },
+  {
+    "query_id": 1143644,
+    "language": "asm_Beng",
+    "category": "E",
+    "top1_score": 0.8719767332077026,
+    "query": "অৰ্কিডক সংজ্ঞায়িত কৰক"
+  },
+  {
+    "query_id": 585098,
+    "language": "ben_Beng",
+    "category": "A",
+    "top1_score": 0.8753653168678284,
+    "query": "গাড়িতে কেন একটা কানকানি শব্দ হচ্ছে?"
+  },
+  {
+    "query_id": 580632,
+    "language": "ben_Beng",
+    "category": "B",
+    "top1_score": 0.8779199719429016,
+    "query": "মস্তিষ্কের আঘাতের জন্য একজন স্নায়ুবিজ্ঞানী কী করতে পারেন"
+  },
+  {
+    "query_id": 764581,
+    "language": "ben_Beng",
+    "category": "E",
+    "top1_score": 0.8777162432670593,
+    "query": "বিড়ালের জন্য ল্যাটিন কি"
+  },
+  {
+    "query_id": 405951,
+    "language": "eng_Latn",
+    "category": "A",
+    "top1_score": 0.8725388646125793,
+    "query": "is charles krauthammer pro trump or against trump"
+  },
+  {
+    "query_id": 662183,
+    "language": "eng_Latn",
+    "category": "B",
+    "top1_score": 0.8777670860290527,
+    "query": "what foreign cars are compact cars?"
+  },
+  {
+    "query_id": 315133,
+    "language": "guj_Gujr",
+    "category": "A",
+    "top1_score": 0.880712628364563,
+    "query": "માઉન્ટ કિલિમાંજારો ચઢવાનો ખર્ચ કેટલો છે?"
+  },
+  {
+    "query_id": 334569,
+    "language": "guj_Gujr",
+    "category": "B",
+    "top1_score": 0.8815152049064636,
+    "query": "કાર્લ વેધર્સ કેટલા જૂના છે"
+  },
+  {
+    "query_id": 225208,
+    "language": "guj_Gujr",
+    "category": "E",
+    "top1_score": 0.875932514667511,
+    "query": "સાર્વત્રિક જીવન નીતિ કેવી રીતે કામ કરે છે?"
+  },
+  {
+    "query_id": 553440,
+    "language": "hin_Deva",
+    "category": "B",
+    "top1_score": 0.8789730072021484,
+    "query": "मैं कितना कर चुकाना होगा?"
+  },
+  {
+    "query_id": 450332,
+    "language": "hin_Deva",
+    "category": "E",
+    "top1_score": 0.8723495602607727,
+    "query": "अर्थपूर्ण शब्दों का अर्थ निषिद्ध विषय"
+  },
+  {
+    "query_id": 350216,
+    "language": "kan_Knda",
+    "category": "A",
+    "top1_score": 0.8727191090583801,
+    "query": "ಉಲ್ಲೇಖಗಳನ್ನು ಹೇಗೆ ಉಲ್ಲೇಖಿಸುವುದು"
+  },
+  {
+    "query_id": 706712,
+    "language": "kan_Knda",
+    "category": "B",
+    "top1_score": 0.8726342916488647,
+    "query": "ಜೆಪ್ ಸ್ಯಾಂಡ್‌ವಿಚ್ ಎಂದರೇನು?"
+  },
+  {
+    "query_id": 19425,
+    "language": "kan_Knda",
+    "category": "E",
+    "top1_score": 0.8810421228408813,
+    "query": "ಪ್ರತಿಜೀವಕ ಆಹಾರ ಪದಾರ್ಥಗಳು"
+  },
+  {
+    "query_id": 1164849,
+    "language": "mal_Mlym",
+    "category": "A",
+    "top1_score": 0.8692560195922852,
+    "query": "സ്ത്രീകളിൽ മുഖക്കുരു ഉണ്ടാകാൻ കാരണമെന്ത്"
+  },
+  {
+    "query_id": 520855,
+    "language": "mal_Mlym",
+    "category": "B",
+    "top1_score": 0.8814488053321838,
+    "query": "ഐക്യനാടുകളും ഹവായിയും തമ്മിലുള്ള സമയ വ്യത്യാസം"
+  },
+  {
+    "query_id": 34135,
+    "language": "mal_Mlym",
+    "category": "E",
+    "top1_score": 0.8809534907341003,
+    "query": "പത്രത്തിന്‍റെ ശരാശരി ചെലവ്"
+  },
+  {
+    "query_id": 971543,
+    "language": "mar_Deva",
+    "category": "A",
+    "top1_score": 0.865845263004303,
+    "query": "स्लाव्हिक लोक कुठून आले आहेत"
+  },
+  {
+    "query_id": 187135,
+    "language": "mar_Deva",
+    "category": "B",
+    "top1_score": 0.8828384280204773,
+    "query": "संख्यांच्या सम संचाची मध्यबिंदू शोधणे"
+  },
+  {
+    "query_id": 1146054,
+    "language": "mar_Deva",
+    "category": "E",
+    "top1_score": 0.8644521832466125,
+    "query": "चॅपरोनची व्याख्या करा"
+  },
+  {
+    "query_id": 333255,
+    "language": "npi_Deva",
+    "category": "A",
+    "top1_score": 0.8756725788116455,
+    "query": "खरायो कति बुढो हुन्छ।"
+  },
+  {
+    "query_id": 97073,
+    "language": "npi_Deva",
+    "category": "B",
+    "top1_score": 0.880435049533844,
+    "query": "कोन्लाङ परिभाषा"
+  },
+  {
+    "query_id": 907176,
+    "language": "npi_Deva",
+    "category": "E",
+    "top1_score": 0.882053554058075,
+    "query": "चिसोका लागि के खाने गर्ने"
+  },
+  {
+    "query_id": 1137210,
+    "language": "ory_Orya",
+    "category": "A",
+    "top1_score": 0.8775755763053894,
+    "query": "କେଉଁମାନଙ୍କ ପାଇଁ କେଓଗ ଯୋଜନା ପ୍ରସ୍ତୁତ କରାଯାଇଛି ଯାହା ପେନସନ ସୁବିଧା ପ୍ରଦାନ କରିବ?"
+  },
+  {
+    "query_id": 230263,
+    "language": "ory_Orya",
+    "category": "B",
+    "top1_score": 0.879219114780426,
+    "query": "ଓକ୍ଲାହୋମା ସହରରୁ ଭେଗାସ ପର୍ଯ୍ୟନ୍ତ କେତେ ଦୂର ।"
+  },
+  {
+    "query_id": 713308,
+    "language": "ory_Orya",
+    "category": "E",
+    "top1_score": 0.874038815498352,
+    "query": "ଇଲେକ୍ଟ୍ରୋନିକ ଉଇଥଡ୍ରାଓ୍ୱେଲ କ'ଣ?"
+  },
+  {
+    "query_id": 106195,
+    "language": "pan_Guru",
+    "category": "A",
+    "top1_score": 0.8830022811889648,
+    "query": "ਪੌਲੀਗ੍ਰਾਫ ਸਿਖਲਾਈ ਦੀ ਲਾਗਤ"
+  },
+  {
+    "query_id": 466938,
+    "language": "pan_Guru",
+    "category": "B",
+    "top1_score": 0.882429838180542,
+    "query": "ਜੇਮਸ ਮੈਡੀਸਨ ਯੂਨੀਵਰਸਿਟੀ ਵਿੱਚ ਅੰਡਰਗ੍ਰੈਜੁਏਟਾਂ ਦੀ ਗਿਣਤੀ"
+  },
+  {
+    "query_id": 745057,
+    "language": "pan_Guru",
+    "category": "E",
+    "top1_score": 0.8732278943061829,
+    "query": "ਕੀ ਹੈ ਈਟੈਬਸ ਸਾਫਟਵੇਅਰ"
+  },
+  {
+    "query_id": 632868,
+    "language": "san_Deva",
+    "category": "A",
+    "top1_score": 0.8797621726989746,
+    "query": "अग्निद्वारा बाप्टिस्म् इत्यस्य कः अर्थः।"
+  },
+  {
+    "query_id": 588937,
+    "language": "san_Deva",
+    "category": "B",
+    "top1_score": 0.8731876015663147,
+    "query": "डैवर्टिकुलैटिस् इत्यस्य शोथस्य किं कारणं भवति"
+  },
+  {
+    "query_id": 390136,
+    "language": "san_Deva",
+    "category": "E",
+    "top1_score": 0.8690851330757141,
+    "query": "ऐ.प्याड् इत्यत्र कस्मात् संपर्कः करणीयः इति कथं गन्तव्यमिति चिन्तयति।"
+  },
+  {
+    "query_id": 153396,
+    "language": "tam_Taml",
+    "category": "A",
+    "top1_score": 0.8638114929199219,
+    "query": "தூர கால்கரியிலிருந்து ஏரி லூயிஸ் வரை"
+  },
+  {
+    "query_id": 1163547,
+    "language": "tam_Taml",
+    "category": "B",
+    "top1_score": 0.8818995356559753,
+    "query": "ட்ரென்டன் என்ற இடம் எந்த கவுண்டியில் உள்ளது?"
+  },
+  {
+    "query_id": 1014671,
+    "language": "tam_Taml",
+    "category": "E",
+    "top1_score": 0.8691297769546509,
+    "query": "கதிரியக்க தொலைநோக்கி பயன்பாட்டில் பின்வரும் கூறுகளில் எது பயன்படுத்தப்படலாம்"
+  },
+  {
+    "query_id": 671510,
+    "language": "urd_Arab",
+    "category": "A",
+    "top1_score": 0.8818998336791992,
+    "query": "کیا انشورنس بنیادی کام یا میڈیکئیر ہے"
+  },
+  {
+    "query_id": 8423,
+    "language": "urd_Arab",
+    "category": "B",
+    "top1_score": 0.8801223039627075,
+    "query": "پاپولسٹ کون تھے؟ وہ کیا چاہتے تھے؟"
+  },
+  {
+    "query_id": 383696,
+    "language": "urd_Arab",
+    "category": "E",
+    "top1_score": 0.8796817064285278,
+    "query": "جِم کی ورزش میں ہاتھ کے وزن کو کیسے منتقل کیا جائے"
+  }
+]

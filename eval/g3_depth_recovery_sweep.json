@@ -1,0 +1,4798 @@
+{
+  "n_abstained": 354,
+  "global_summary": {
+    "n": 354,
+    "in_top10": 199,
+    "in_top20": 212,
+    "in_top50": 223,
+    "in_top100": 223
+  },
+  "per_language_summary": {
+    "asm_Beng": {
+      "n": 29,
+      "in_top10": 17,
+      "in_top20": 19,
+      "in_top50": 20,
+      "in_top100": 20
+    },
+    "ben_Beng": {
+      "n": 20,
+      "in_top10": 17,
+      "in_top20": 17,
+      "in_top50": 17,
+      "in_top100": 17
+    },
+    "eng_Latn": {
+      "n": 6,
+      "in_top10": 6,
+      "in_top20": 6,
+      "in_top50": 6,
+      "in_top100": 6
+    },
+    "guj_Gujr": {
+      "n": 28,
+      "in_top10": 14,
+      "in_top20": 16,
+      "in_top50": 17,
+      "in_top100": 17
+    },
+    "hin_Deva": {
+      "n": 9,
+      "in_top10": 4,
+      "in_top20": 5,
+      "in_top50": 6,
+      "in_top100": 6
+    },
+    "kan_Knda": {
+      "n": 28,
+      "in_top10": 14,
+      "in_top20": 15,
+      "in_top50": 16,
+      "in_top100": 16
+    },
+    "mal_Mlym": {
+      "n": 30,
+      "in_top10": 17,
+      "in_top20": 17,
+      "in_top50": 17,
+      "in_top100": 17
+    },
+    "mar_Deva": {
+      "n": 24,
+      "in_top10": 13,
+      "in_top20": 14,
+      "in_top50": 14,
+      "in_top100": 14
+    },
+    "npi_Deva": {
+      "n": 26,
+      "in_top10": 16,
+      "in_top20": 18,
+      "in_top50": 18,
+      "in_top100": 18
+    },
+    "ory_Orya": {
+      "n": 26,
+      "in_top10": 14,
+      "in_top20": 14,
+      "in_top50": 15,
+      "in_top100": 15
+    },
+    "pan_Guru": {
+      "n": 30,
+      "in_top10": 15,
+      "in_top20": 15,
+      "in_top50": 16,
+      "in_top100": 16
+    },
+    "san_Deva": {
+      "n": 37,
+      "in_top10": 15,
+      "in_top20": 17,
+      "in_top50": 22,
+      "in_top100": 22
+    },
+    "tam_Taml": {
+      "n": 32,
+      "in_top10": 19,
+      "in_top20": 19,
+      "in_top50": 19,
+      "in_top100": 19
+    },
+    "urd_Arab": {
+      "n": 29,
+      "in_top10": 18,
+      "in_top20": 20,
+      "in_top50": 20,
+      "in_top100": 20
+    }
+  },
+  "per_query_k100": [
+    {
+      "query_id": 77149,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 958359,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 836773,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": 31,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 138705,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 898437,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 161624,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 42,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 970126,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 885571,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 828861,
+      "language": "asm_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 6,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 784942,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 52,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 910016,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 63,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 528292,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 160425,
+      "language": "asm_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 283413,
+      "language": "asm_Beng",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 19,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 691836,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 51,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 456494,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 894865,
+      "language": "asm_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 51,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 23460,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 116985,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 575242,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 392162,
+      "language": "asm_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1172631,
+      "language": "asm_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 791473,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 511831,
+      "language": "asm_Beng",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 36,
+      "first_gold_rank": 13,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 928531,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 453490,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 41,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 886457,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1004404,
+      "language": "asm_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 43,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1143644,
+      "language": "asm_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 852049,
+      "language": "ben_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 445809,
+      "language": "ben_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 313269,
+      "language": "ben_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 457004,
+      "language": "ben_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 826627,
+      "language": "ben_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 764581,
+      "language": "ben_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 451541,
+      "language": "ben_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 585098,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 975698,
+      "language": "ben_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 277118,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1025797,
+      "language": "ben_Beng",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 2,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 878148,
+      "language": "ben_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1004345,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 726104,
+      "language": "ben_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 941200,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 44,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 249195,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 5,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1158230,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 111617,
+      "language": "ben_Beng",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 424450,
+      "language": "ben_Beng",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 580632,
+      "language": "ben_Beng",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 41,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 201165,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 94487,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 35,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 453945,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 315133,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 520546,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 909280,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 225208,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1146795,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 250680,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1153285,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 18625,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 887360,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 40,
+      "first_gold_rank": 30,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 274840,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 555468,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 227527,
+      "language": "guj_Gujr",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": 8,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 446140,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 844684,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 40,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 530922,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 908338,
+      "language": "guj_Gujr",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 45,
+      "first_gold_rank": 16,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 882372,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 40,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 95593,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 36,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 305063,
+      "language": "guj_Gujr",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 11,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1169722,
+      "language": "guj_Gujr",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1164114,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 41,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 874646,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 59,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 478420,
+      "language": "guj_Gujr",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 627899,
+      "language": "guj_Gujr",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 334569,
+      "language": "guj_Gujr",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1019148,
+      "language": "hin_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 553440,
+      "language": "hin_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 450332,
+      "language": "hin_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 43,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 142663,
+      "language": "hin_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 15,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 963429,
+      "language": "hin_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": 25,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 500435,
+      "language": "hin_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1003575,
+      "language": "hin_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 461770,
+      "language": "hin_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1051897,
+      "language": "hin_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 45,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 559678,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 74870,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 519635,
+      "language": "kan_Knda",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 707116,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 420572,
+      "language": "kan_Knda",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 350216,
+      "language": "kan_Knda",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 801290,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 196098,
+      "language": "kan_Knda",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 14745,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 797310,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1157678,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 859006,
+      "language": "kan_Knda",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 706712,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 418495,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 32822,
+      "language": "kan_Knda",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": 12,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 879793,
+      "language": "kan_Knda",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 840093,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 234671,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 406989,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 5,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 59167,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 6331,
+      "language": "kan_Knda",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 990521,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 237361,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 908425,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 868869,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 19425,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 29,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 333035,
+      "language": "kan_Knda",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 6,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 825108,
+      "language": "kan_Knda",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 977363,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 744653,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 355544,
+      "language": "mal_Mlym",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 749693,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 34135,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 58229,
+      "language": "mal_Mlym",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 22,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1049410,
+      "language": "mal_Mlym",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1154479,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 961199,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 889839,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 875158,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 911947,
+      "language": "mal_Mlym",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 386679,
+      "language": "mal_Mlym",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 526952,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 967984,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 569259,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 73759,
+      "language": "mal_Mlym",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 975038,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 419678,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 809641,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 432258,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 261541,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 994968,
+      "language": "mal_Mlym",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 336707,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 513507,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 171992,
+      "language": "mal_Mlym",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 52,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 826091,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1164849,
+      "language": "mal_Mlym",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 520855,
+      "language": "mal_Mlym",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 972570,
+      "language": "mal_Mlym",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 516307,
+      "language": "mar_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1059305,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 77892,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1146054,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 421348,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 638234,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 716844,
+      "language": "mar_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 22,
+      "first_gold_rank": 19,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 187135,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 563737,
+      "language": "mar_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1166662,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 745529,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 5,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 600297,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1028860,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 943517,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 5,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 377613,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 1,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 971543,
+      "language": "mar_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 820302,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 726617,
+      "language": "mar_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 992583,
+      "language": "mar_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 533470,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1167592,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 531700,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 940154,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 166174,
+      "language": "mar_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 724808,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 48,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 892627,
+      "language": "npi_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 547881,
+      "language": "npi_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": 17,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 74515,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 44,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 303846,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 781261,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 779827,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 295309,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 555617,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 333255,
+      "language": "npi_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1018710,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 22,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 282120,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 402528,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1034602,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 934174,
+      "language": "npi_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 11,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 373996,
+      "language": "npi_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 979516,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 745974,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 907176,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 78,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 180575,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 820822,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 97073,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 597292,
+      "language": "npi_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 80,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1077834,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 671912,
+      "language": "npi_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 956680,
+      "language": "npi_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 230263,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1035489,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 58,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 732072,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1036332,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 341449,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1045173,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": 25,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 239634,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1159054,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 6,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 419058,
+      "language": "ory_Orya",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 414217,
+      "language": "ory_Orya",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 887545,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 295165,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 602885,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 904870,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 64,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 85500,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 54,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 713308,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 603619,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 42,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1181602,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 991050,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 638585,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1137210,
+      "language": "ory_Orya",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 36430,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 55,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 840446,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1857,
+      "language": "ory_Orya",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 885491,
+      "language": "ory_Orya",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 339448,
+      "language": "ory_Orya",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 745057,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 22,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 466938,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 200150,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1046642,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 966347,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 8198,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1051273,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 806944,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 436509,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 119037,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 606453,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 282864,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 945471,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 26,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 664387,
+      "language": "pan_Guru",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 631106,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 548186,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 35,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1045623,
+      "language": "pan_Guru",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 65689,
+      "language": "pan_Guru",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": 8,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 991993,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 5,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 191983,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 14893,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 11,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 88909,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 26,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1010199,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 776860,
+      "language": "pan_Guru",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 631030,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 106195,
+      "language": "pan_Guru",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 34,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 77256,
+      "language": "pan_Guru",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 13851,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 35,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1148998,
+      "language": "pan_Guru",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 450323,
+      "language": "pan_Guru",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 431766,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": 26,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 588937,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 390136,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": 37,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 859843,
+      "language": "san_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 37,
+      "first_gold_rank": 7,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 709386,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 449012,
+      "language": "san_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 98,
+      "first_gold_rank": 13,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 651751,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 36,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 198533,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 66,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 556445,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 844904,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 35,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 902489,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 41,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 447085,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 55,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 939659,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 445180,
+      "language": "san_Deva",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 36,
+      "first_gold_rank": 14,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 705443,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 681920,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 36,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 58369,
+      "language": "san_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 72,
+      "first_gold_rank": 8,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 851021,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 29,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 27945,
+      "language": "san_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 32,
+      "first_gold_rank": 8,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 513152,
+      "language": "san_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 591149,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 942738,
+      "language": "san_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 68,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 927381,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 63,
+      "first_gold_rank": 26,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 610827,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 59,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 632868,
+      "language": "san_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 38,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1179085,
+      "language": "san_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 687126,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 308242,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 171831,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 72,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 749381,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 56,
+      "first_gold_rank": 24,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 201961,
+      "language": "san_Deva",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 212636,
+      "language": "san_Deva",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 64,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 277077,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 651842,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 37,
+      "first_gold_rank": 26,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 143352,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1063447,
+      "language": "san_Deva",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 819647,
+      "language": "san_Deva",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 44,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 427054,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 501445,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 402120,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1055281,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 399393,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 220594,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 931818,
+      "language": "tam_Taml",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1033587,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1014671,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 156615,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 153396,
+      "language": "tam_Taml",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 940017,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 14,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1178894,
+      "language": "tam_Taml",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 461000,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 623690,
+      "language": "tam_Taml",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 15,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 43392,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 213403,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 735644,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 3,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1055626,
+      "language": "tam_Taml",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": 8,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 118761,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 333078,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 925590,
+      "language": "tam_Taml",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 10,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 613646,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 553469,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 1,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 132506,
+      "language": "tam_Taml",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1163547,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 56,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 986296,
+      "language": "tam_Taml",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 17,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 757079,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 4,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 282184,
+      "language": "tam_Taml",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 860048,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 108900,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 7,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 18102,
+      "language": "tam_Taml",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 9,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 977954,
+      "language": "urd_Arab",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 13,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1000882,
+      "language": "urd_Arab",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 813343,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 744057,
+      "language": "urd_Arab",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 846124,
+      "language": "urd_Arab",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 9,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 334179,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 383696,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 25,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 8423,
+      "language": "urd_Arab",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 3,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 871529,
+      "language": "urd_Arab",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 16,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 173259,
+      "language": "urd_Arab",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 12,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 156934,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 21,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 608325,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 19,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 671510,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 938422,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 8,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1182346,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 33,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 789747,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 879830,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 1,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 577899,
+      "language": "urd_Arab",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 24,
+      "first_gold_rank": 5,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 937585,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 13,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 339087,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 589241,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 38,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 394311,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 20,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 977669,
+      "language": "urd_Arab",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 10,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 46003,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 31,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 720186,
+      "language": "urd_Arab",
+      "old_category_top20": "E",
+      "n_hits_at_k100_request": 30,
+      "first_gold_rank": null,
+      "in_top10": false,
+      "in_top20": false,
+      "in_top50": false,
+      "in_top100": false
+    },
+    {
+      "query_id": 1154215,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 18,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 84777,
+      "language": "urd_Arab",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 27,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 900342,
+      "language": "urd_Arab",
+      "old_category_top20": "D",
+      "n_hits_at_k100_request": 23,
+      "first_gold_rank": 11,
+      "in_top10": false,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 152346,
+      "language": "urd_Arab",
+      "old_category_top20": "C",
+      "n_hits_at_k100_request": 28,
+      "first_gold_rank": 6,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 662183,
+      "language": "eng_Latn",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 67,
+      "first_gold_rank": 4,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 300097,
+      "language": "eng_Latn",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 46,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 618691,
+      "language": "eng_Latn",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 57,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 192252,
+      "language": "eng_Latn",
+      "old_category_top20": "B",
+      "n_hits_at_k100_request": 49,
+      "first_gold_rank": 2,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 1035229,
+      "language": "eng_Latn",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 63,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    },
+    {
+      "query_id": 405951,
+      "language": "eng_Latn",
+      "old_category_top20": "A",
+      "n_hits_at_k100_request": 83,
+      "first_gold_rank": 1,
+      "in_top10": true,
+      "in_top20": true,
+      "in_top50": true,
+      "in_top100": true
+    }
+  ],
+  "beyond_k100_raw300_check": {
+    "n_still_missing_after_k100": 131,
+    "n_recovered_in_raw_k300": 25,
+    "details": [
+      {
+        "query_id": 77149,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 25
+      },
+      {
+        "query_id": 138705,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 59
+      },
+      {
+        "query_id": 161624,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 83
+      },
+      {
+        "query_id": 456494,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 33
+      },
+      {
+        "query_id": 116985,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 76
+      },
+      {
+        "query_id": 575242,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 71
+      },
+      {
+        "query_id": 928531,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 36
+      },
+      {
+        "query_id": 886457,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 49
+      },
+      {
+        "query_id": 1143644,
+        "language": "asm_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 64
+      },
+      {
+        "query_id": 852049,
+        "language": "ben_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 49
+      },
+      {
+        "query_id": 764581,
+        "language": "ben_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 79
+      },
+      {
+        "query_id": 1025797,
+        "language": "ben_Beng",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 9
+      },
+      {
+        "query_id": 201165,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 78
+      },
+      {
+        "query_id": 453945,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 72
+      },
+      {
+        "query_id": 909280,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 100
+      },
+      {
+        "query_id": 225208,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 61
+      },
+      {
+        "query_id": 250680,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": 22,
+        "n_same_lang_in_raw_k300": 61
+      },
+      {
+        "query_id": 18625,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 49
+      },
+      {
+        "query_id": 555468,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 85
+      },
+      {
+        "query_id": 882372,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": 57,
+        "n_same_lang_in_raw_k300": 92
+      },
+      {
+        "query_id": 95593,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": 85,
+        "n_same_lang_in_raw_k300": 92
+      },
+      {
+        "query_id": 1164114,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 114
+      },
+      {
+        "query_id": 627899,
+        "language": "guj_Gujr",
+        "found_in_raw_k300_same_lang_rank": 50,
+        "n_same_lang_in_raw_k300": 89
+      },
+      {
+        "query_id": 450332,
+        "language": "hin_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 125
+      },
+      {
+        "query_id": 500435,
+        "language": "hin_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 1003575,
+        "language": "hin_Deva",
+        "found_in_raw_k300_same_lang_rank": 35,
+        "n_same_lang_in_raw_k300": 73
+      },
+      {
+        "query_id": 74870,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 40
+      },
+      {
+        "query_id": 707116,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 9
+      },
+      {
+        "query_id": 801290,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 25
+      },
+      {
+        "query_id": 797310,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 418495,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 22
+      },
+      {
+        "query_id": 234671,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 28
+      },
+      {
+        "query_id": 406989,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 11
+      },
+      {
+        "query_id": 59167,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 22
+      },
+      {
+        "query_id": 990521,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 42
+      },
+      {
+        "query_id": 237361,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 16
+      },
+      {
+        "query_id": 868869,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 13
+      },
+      {
+        "query_id": 333035,
+        "language": "kan_Knda",
+        "found_in_raw_k300_same_lang_rank": 7,
+        "n_same_lang_in_raw_k300": 17
+      },
+      {
+        "query_id": 744653,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 64
+      },
+      {
+        "query_id": 34135,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 54
+      },
+      {
+        "query_id": 1154479,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 38
+      },
+      {
+        "query_id": 526952,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 19
+      },
+      {
+        "query_id": 569259,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 32
+      },
+      {
+        "query_id": 975038,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": 34,
+        "n_same_lang_in_raw_k300": 62
+      },
+      {
+        "query_id": 419678,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 32
+      },
+      {
+        "query_id": 809641,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 23
+      },
+      {
+        "query_id": 432258,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 87
+      },
+      {
+        "query_id": 261541,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 11
+      },
+      {
+        "query_id": 336707,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 513507,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": 11,
+        "n_same_lang_in_raw_k300": 27
+      },
+      {
+        "query_id": 171992,
+        "language": "mal_Mlym",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 133
+      },
+      {
+        "query_id": 77892,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 67
+      },
+      {
+        "query_id": 1146054,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 421348,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": 20,
+        "n_same_lang_in_raw_k300": 39
+      },
+      {
+        "query_id": 638234,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 9
+      },
+      {
+        "query_id": 1166662,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 745529,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 13
+      },
+      {
+        "query_id": 600297,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 25
+      },
+      {
+        "query_id": 1028860,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 11
+      },
+      {
+        "query_id": 377613,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 13
+      },
+      {
+        "query_id": 992583,
+        "language": "mar_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 26
+      },
+      {
+        "query_id": 303846,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 66
+      },
+      {
+        "query_id": 295309,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 24
+      },
+      {
+        "query_id": 555617,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 71
+      },
+      {
+        "query_id": 1018710,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": 29,
+        "n_same_lang_in_raw_k300": 52
+      },
+      {
+        "query_id": 1034602,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 27
+      },
+      {
+        "query_id": 745974,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": 28,
+        "n_same_lang_in_raw_k300": 57
+      },
+      {
+        "query_id": 907176,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": 149,
+        "n_same_lang_in_raw_k300": 178
+      },
+      {
+        "query_id": 956680,
+        "language": "npi_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 22
+      },
+      {
+        "query_id": 1036332,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 37
+      },
+      {
+        "query_id": 341449,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 86,
+        "n_same_lang_in_raw_k300": 89
+      },
+      {
+        "query_id": 239634,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 37
+      },
+      {
+        "query_id": 1159054,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 17,
+        "n_same_lang_in_raw_k300": 27
+      },
+      {
+        "query_id": 887545,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 37,
+        "n_same_lang_in_raw_k300": 50
+      },
+      {
+        "query_id": 295165,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 83,
+        "n_same_lang_in_raw_k300": 113
+      },
+      {
+        "query_id": 85500,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 123
+      },
+      {
+        "query_id": 713308,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 70,
+        "n_same_lang_in_raw_k300": 127
+      },
+      {
+        "query_id": 1181602,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 39,
+        "n_same_lang_in_raw_k300": 84
+      },
+      {
+        "query_id": 840446,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": 70,
+        "n_same_lang_in_raw_k300": 76
+      },
+      {
+        "query_id": 885491,
+        "language": "ory_Orya",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 77
+      },
+      {
+        "query_id": 745057,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": 33,
+        "n_same_lang_in_raw_k300": 60
+      },
+      {
+        "query_id": 200150,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": 26,
+        "n_same_lang_in_raw_k300": 49
+      },
+      {
+        "query_id": 1046642,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 15
+      },
+      {
+        "query_id": 436509,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 46
+      },
+      {
+        "query_id": 119037,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 34
+      },
+      {
+        "query_id": 282864,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 44
+      },
+      {
+        "query_id": 945471,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 80
+      },
+      {
+        "query_id": 631106,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 27
+      },
+      {
+        "query_id": 548186,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 90
+      },
+      {
+        "query_id": 991993,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 14893,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 41
+      },
+      {
+        "query_id": 631030,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 35
+      },
+      {
+        "query_id": 13851,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 85
+      },
+      {
+        "query_id": 450323,
+        "language": "pan_Guru",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 53
+      },
+      {
+        "query_id": 709386,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 74
+      },
+      {
+        "query_id": 198533,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 200
+      },
+      {
+        "query_id": 556445,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": 60,
+        "n_same_lang_in_raw_k300": 119
+      },
+      {
+        "query_id": 844904,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 105
+      },
+      {
+        "query_id": 902489,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 132
+      },
+      {
+        "query_id": 447085,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 185
+      },
+      {
+        "query_id": 939659,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 144
+      },
+      {
+        "query_id": 705443,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 155
+      },
+      {
+        "query_id": 851021,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 116
+      },
+      {
+        "query_id": 591149,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 36
+      },
+      {
+        "query_id": 687126,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 49
+      },
+      {
+        "query_id": 308242,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": 25,
+        "n_same_lang_in_raw_k300": 55
+      },
+      {
+        "query_id": 171831,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 210
+      },
+      {
+        "query_id": 277077,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 819647,
+        "language": "san_Deva",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 120
+      },
+      {
+        "query_id": 427054,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 18
+      },
+      {
+        "query_id": 1055281,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 37
+      },
+      {
+        "query_id": 399393,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 32
+      },
+      {
+        "query_id": 220594,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 17
+      },
+      {
+        "query_id": 1033587,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 22
+      },
+      {
+        "query_id": 1014671,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 51
+      },
+      {
+        "query_id": 43392,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 22
+      },
+      {
+        "query_id": 735644,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 10
+      },
+      {
+        "query_id": 118761,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 28
+      },
+      {
+        "query_id": 333078,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 28
+      },
+      {
+        "query_id": 553469,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 7
+      },
+      {
+        "query_id": 757079,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 17
+      },
+      {
+        "query_id": 282184,
+        "language": "tam_Taml",
+        "found_in_raw_k300_same_lang_rank": 12,
+        "n_same_lang_in_raw_k300": 16
+      },
+      {
+        "query_id": 813343,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 72
+      },
+      {
+        "query_id": 383696,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": 33,
+        "n_same_lang_in_raw_k300": 50
+      },
+      {
+        "query_id": 938422,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 19
+      },
+      {
+        "query_id": 1182346,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 85
+      },
+      {
+        "query_id": 879830,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 5
+      },
+      {
+        "query_id": 339087,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 43
+      },
+      {
+        "query_id": 394311,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 48
+      },
+      {
+        "query_id": 46003,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 74
+      },
+      {
+        "query_id": 720186,
+        "language": "urd_Arab",
+        "found_in_raw_k300_same_lang_rank": null,
+        "n_same_lang_in_raw_k300": 62
+      }
+    ]
+  }
+}

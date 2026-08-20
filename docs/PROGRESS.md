@@ -261,6 +261,31 @@ per-language-aware reranker or a stronger embedder); genuine human-spoken-voice 
 live browser (only a real audio-file-through-STT test was performed); packaging the multilingual
 candidate as a distributable artifact (GitHub release / Docker image).
 
+**Phase 7 (diagnose + attempt to fix the 66.5% abstention rate via retrieval, not G3) done —
+result: fully diagnosed, every cheap fix tested and rejected, nothing changed.** Full record:
+`docs/DECISIONS.md` ADR-016. Classified all 354 abstained queries into a 6-category taxonomy
+(cross-validated against ADR-013's independent numbers): 40.1% are genuine retrieval misses (gold
+passage never even retrieved), 15.8% are already correctly rank-1 but scored below TAU, the
+remaining 44% have evidence retrieved but outranked. 40 real cases inspected in depth
+(`eval/g3_abstention_case_inspection.json`) surfaced two recurring failure patterns:
+same-template distractors (many passages share surface vocabulary regardless of relevance) and
+translation-induced lexical variance (correct passages sometimes share almost zero literal words
+with the query). Both patterns directly predicted, then confirmed, why every reranking candidate
+tested — lexical Jaccard, a numeric+content-word "entity" proxy, a **real freshly-built BM25
+index** (chosen specifically to test whether IDF-weighting escapes the trap; it doesn't), and RRF
+fusion — is net-negative on Recall@1, with regressions (43–87) exceeding recoveries (28–37) in
+every case. This extends R-010's BM25 finding and R-038's cross-encoder finding to the whole
+family of relevance-overlap reranking methods on this corpus. A real depth sweep (10/20/50/100,
+plus a genuine beyond-100 raw search) found recall saturates completely between rank 50 and 100
+(zero additional recovery) and that search cost/memory are flat across every depth tested (already
+free) — 37% of abstentions have no recoverable evidence within a 300-deep search at all, a real
+embedding-alignment gap depth/reranking cannot fix. The explicit capital-of-India safety check
+passed for every candidate regardless (zero unsafe accepts) — reported as a secondary confirmation,
+not as grounds to ship a net-negative candidate. **G3 recalibration (Part 5) did not run — no
+candidate produced better evidence to recalibrate against.** No production code changed; the
+BM25 index built for Candidate D is in-memory only, not persisted anywhere. 286/286 tests pass,
+ruff clean.
+
 ---
 
 ## Historical: Day 1 sync snapshot (superseded above, kept for the record)

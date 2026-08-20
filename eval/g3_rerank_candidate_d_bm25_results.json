@@ -1,0 +1,99 @@
+{
+  "n_queries": 532,
+  "bm25_build_time_s": -1.7550323999967077,
+  "avg_bm25_search_ms": 2.9136849622903225,
+  "recall_at_1": {
+    "dense": 0.22180451127819548,
+    "bm25_alone": 0.14849624060150377,
+    "dense_bm25_rrf": 0.18984962406015038
+  },
+  "abstained_flip_to_correct": 37,
+  "abstained_flip_and_clears_tau": 12,
+  "regressions_currently_correct_demoted": 54,
+  "per_language": {
+    "asm_Beng": {
+      "dense": 9,
+      "bm25": 6,
+      "rrf": 8,
+      "n": 38
+    },
+    "ben_Beng": {
+      "dense": 12,
+      "bm25": 8,
+      "rrf": 8,
+      "n": 38
+    },
+    "guj_Gujr": {
+      "dense": 14,
+      "bm25": 8,
+      "rrf": 9,
+      "n": 38
+    },
+    "hin_Deva": {
+      "dense": 8,
+      "bm25": 6,
+      "rrf": 11,
+      "n": 38
+    },
+    "kan_Knda": {
+      "dense": 6,
+      "bm25": 6,
+      "rrf": 7,
+      "n": 38
+    },
+    "mal_Mlym": {
+      "dense": 9,
+      "bm25": 0,
+      "rrf": 4,
+      "n": 38
+    },
+    "mar_Deva": {
+      "dense": 6,
+      "bm25": 8,
+      "rrf": 8,
+      "n": 38
+    },
+    "npi_Deva": {
+      "dense": 8,
+      "bm25": 8,
+      "rrf": 8,
+      "n": 38
+    },
+    "ory_Orya": {
+      "dense": 5,
+      "bm25": 2,
+      "rrf": 2,
+      "n": 38
+    },
+    "pan_Guru": {
+      "dense": 3,
+      "bm25": 5,
+      "rrf": 5,
+      "n": 38
+    },
+    "san_Deva": {
+      "dense": 4,
+      "bm25": 5,
+      "rrf": 4,
+      "n": 38
+    },
+    "tam_Taml": {
+      "dense": 5,
+      "bm25": 4,
+      "rrf": 8,
+      "n": 38
+    },
+    "urd_Arab": {
+      "dense": 12,
+      "bm25": 3,
+      "rrf": 6,
+      "n": 38
+    },
+    "eng_Latn": {
+      "dense": 17,
+      "bm25": 10,
+      "rrf": 13,
+      "n": 38
+    }
+  }
+}

@@ -1,0 +1,2589 @@
+{
+  "n_queries_total": 532,
+  "n_abstained": 354,
+  "category_labels": {
+    "A": "rank1 but G3 rejects",
+    "B": "in top5, not rank1",
+    "C": "in top10, not top5",
+    "D": "in top20, not top10",
+    "E": "in corpus, outside top20",
+    "F": "not in corpus at all"
+  },
+  "global_counts": {
+    "E": 142,
+    "B": 105,
+    "A": 56,
+    "D": 13,
+    "C": 38
+  },
+  "per_language_counts": {
+    "asm_Beng": {
+      "E": 10,
+      "B": 12,
+      "A": 4,
+      "D": 2,
+      "C": 1
+    },
+    "ben_Beng": {
+      "E": 3,
+      "C": 5,
+      "B": 5,
+      "A": 7
+    },
+    "guj_Gujr": {
+      "E": 12,
+      "B": 6,
+      "A": 6,
+      "C": 2,
+      "D": 2
+    },
+    "hin_Deva": {
+      "C": 1,
+      "B": 3,
+      "E": 4,
+      "D": 1
+    },
+    "kan_Knda": {
+      "B": 7,
+      "E": 13,
+      "A": 2,
+      "C": 5,
+      "D": 1
+    },
+    "mal_Mlym": {
+      "B": 8,
+      "E": 13,
+      "A": 5,
+      "C": 4
+    },
+    "mar_Deva": {
+      "A": 3,
+      "B": 9,
+      "E": 10,
+      "D": 1,
+      "C": 1
+    },
+    "npi_Deva": {
+      "B": 12,
+      "A": 4,
+      "D": 2,
+      "E": 8
+    },
+    "ory_Orya": {
+      "B": 10,
+      "E": 12,
+      "C": 2,
+      "A": 2
+    },
+    "pan_Guru": {
+      "E": 15,
+      "B": 9,
+      "A": 2,
+      "C": 4
+    },
+    "san_Deva": {
+      "E": 20,
+      "B": 6,
+      "C": 5,
+      "D": 2,
+      "A": 4
+    },
+    "tam_Taml": {
+      "E": 13,
+      "B": 11,
+      "C": 4,
+      "A": 4
+    },
+    "urd_Arab": {
+      "D": 2,
+      "B": 5,
+      "E": 9,
+      "C": 4,
+      "A": 9
+    },
+    "eng_Latn": {
+      "B": 2,
+      "A": 4
+    }
+  },
+  "per_query": [
+    {
+      "query_id": 77149,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8514431715011597,
+      "query": "আপুনি মুক্তভাৱে খাব পৰা আহাৰত কলাৰ্ড শাক খাব পাৰেনে?"
+    },
+    {
+      "query_id": 958359,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8785977363586426,
+      "query": "জন লেননক কেতিয়া হত্যা কৰা হৈছিল"
+    },
+    {
+      "query_id": 836773,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8618475198745728,
+      "query": "আল্টৰ বাবে সাধাৰণ পৰিসৰ কি"
+    },
+    {
+      "query_id": 138705,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.85322105884552,
+      "query": "মহাবিদ্যালয়ৰ মাচুলত শব্দৰ সংজ্ঞা"
+    },
+    {
+      "query_id": 898437,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8611720204353333,
+      "query": "কোনবোৰ ৰাজ্যত প্ৰাইমাৰী আৰু ক'কাছ আছে"
+    },
+    {
+      "query_id": 161624,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8645741939544678,
+      "query": "আইপাৰমছত থাকিব লগা নথি-পত্ৰসমূহ"
+    },
+    {
+      "query_id": 970126,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8779395818710327,
+      "query": "উৰছুলা লে গুইন ক'ত বাস কৰিছিল"
+    },
+    {
+      "query_id": 885571,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.882122814655304,
+      "query": "কোনবোৰ ৰোগ সৃষ্টিকাৰী একক কোষীয় জীৱ আছে"
+    },
+    {
+      "query_id": 828861,
+      "language": "asm_Beng",
+      "category": "A",
+      "top1_score": 0.8432332873344421,
+      "query": "পৃথিৱীৰ আটাইতকৈ দীঘল বিছাপ সাপটো কোনটো"
+    },
+    {
+      "query_id": 784942,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.864554226398468,
+      "query": "প্ৰকোমন ইটা ব্ৰঞ্জ কি"
+    },
+    {
+      "query_id": 910016,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8743382096290588,
+      "query": "কাৰ্বিংক কি প্ৰকাৰৰ"
+    },
+    {
+      "query_id": 528292,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8623118996620178,
+      "query": "ইউড মিৰেনাৰ প্ৰকাৰসমূহ"
+    },
+    {
+      "query_id": 160425,
+      "language": "asm_Beng",
+      "category": "A",
+      "top1_score": 0.8716312646865845,
+      "query": "জীৱন সম্পত্তিৰ কাম কৰিবলৈ আপুনি আপোনাৰ ঘৰৰ মালিক হ'ব লাগিব নেকি"
+    },
+    {
+      "query_id": 283413,
+      "language": "asm_Beng",
+      "category": "D",
+      "top1_score": 0.8538118600845337,
+      "query": "এটা ফট'মত কিমান ফুট আছে?"
+    },
+    {
+      "query_id": 691836,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.853467583656311,
+      "query": "পৌৰসভাৰ মাচুল কি?"
+    },
+    {
+      "query_id": 456494,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.836223840713501,
+      "query": "লম্বাৰ্ডিৰ আটাইতকৈ সুন্দৰ গাঁওসমূহ"
+    },
+    {
+      "query_id": 894865,
+      "language": "asm_Beng",
+      "category": "A",
+      "top1_score": 0.8639798760414124,
+      "query": "মেৰু ভালুক গীতৰ আকাৰ কি?"
+    },
+    {
+      "query_id": 23460,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8556056618690491,
+      "query": "দীৰ্ঘম্যাদী যত্নৰ খৰচ কৰ কৰ্তনযোগ্য।"
+    },
+    {
+      "query_id": 116985,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8706587553024292,
+      "query": "ষাঁড় বজাৰ এখনক সংজ্ঞায়িত কৰক"
+    },
+    {
+      "query_id": 575242,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.853003978729248,
+      "query": "দুই প্ৰকাৰৰ অসুৰক্ষিত সংলগ্নকৰণ কি?"
+    },
+    {
+      "query_id": 392162,
+      "language": "asm_Beng",
+      "category": "C",
+      "top1_score": 0.8484620451927185,
+      "query": "যদি আপোনাৰ এমাজন ফায়াৰ টিভি আছে তেন্তে আপুনি নেটফ্লিক্সৰ বাবে ধন দিব লাগিব নেকি?"
+    },
+    {
+      "query_id": 1172631,
+      "language": "asm_Beng",
+      "category": "A",
+      "top1_score": 0.8780266046524048,
+      "query": "চলচ্চিত্ৰসমূহত জেমছ বণ্ডৰ চৰিত্ৰত অভিনয় কৰা অভিনেতাসকল"
+    },
+    {
+      "query_id": 791473,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8725579380989075,
+      "query": "কি হৈছে ৰেভপাৰ"
+    },
+    {
+      "query_id": 511831,
+      "language": "asm_Beng",
+      "category": "D",
+      "top1_score": 0.8680316209793091,
+      "query": "মুৰ্গীৰ উৰু ৰন্ধাৰ বাবে তাপমাত্ৰা"
+    },
+    {
+      "query_id": 928531,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.833810567855835,
+      "query": "অ'জ ছিম্পছনৰ গোচৰটো কোনটো বছৰত হৈছিল"
+    },
+    {
+      "query_id": 453490,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8737699389457703,
+      "query": "মাইক্ৰ'ছফ্টে এইটো কি কৰে"
+    },
+    {
+      "query_id": 886457,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8595501184463501,
+      "query": "কিমান শতাংশ পেকেট লোকচান গ্ৰহণযোগ্য"
+    },
+    {
+      "query_id": 1004404,
+      "language": "asm_Beng",
+      "category": "B",
+      "top1_score": 0.8535504341125488,
+      "query": "ক'ত শান্তি আলোচনা অনুষ্ঠিত হৈছিল"
+    },
+    {
+      "query_id": 1143644,
+      "language": "asm_Beng",
+      "category": "E",
+      "top1_score": 0.8719767332077026,
+      "query": "অৰ্কিডক সংজ্ঞায়িত কৰক"
+    },
+    {
+      "query_id": 852049,
+      "language": "ben_Beng",
+      "category": "E",
+      "top1_score": 0.8493399024009705,
+      "query": "কোন ধরনের খনিজ শৈবাল দিয়ে তৈরি হয়"
+    },
+    {
+      "query_id": 445809,
+      "language": "ben_Beng",
+      "category": "C",
+      "top1_score": 0.87093186378479,
+      "query": "মেসনরি ভেনির সংজ্ঞা"
+    },
+    {
+      "query_id": 313269,
+      "language": "ben_Beng",
+      "category": "B",
+      "top1_score": 0.8698777556419373,
+      "query": "ব্রেক সার্ভিসের খরচ কত টাকা?"
+    },
+    {
+      "query_id": 457004,
+      "language": "ben_Beng",
+      "category": "B",
+      "top1_score": 0.8388397097587585,
+      "query": "সবচেয়ে সাধারণ বিষগুলি হল আমরা যেগুলির সংস্পর্শে আসি।"
+    },
+    {
+      "query_id": 826627,
+      "language": "ben_Beng",
+      "category": "B",
+      "top1_score": 0.8420957922935486,
+      "query": "কোন বিচার বিভাগ এই দায়িত্বে রয়েছে।"
+    },
+    {
+      "query_id": 764581,
+      "language": "ben_Beng",
+      "category": "E",
+      "top1_score": 0.8777162432670593,
+      "query": "বিড়ালের জন্য ল্যাটিন কি"
+    },
+    {
+      "query_id": 451541,
+      "language": "ben_Beng",
+      "category": "C",
+      "top1_score": 0.877871572971344,
+      "query": "মেডিকেয়ার নম্বরের উদাহরণ"
+    },
+    {
+      "query_id": 585098,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8753653168678284,
+      "query": "গাড়িতে কেন একটা কানকানি শব্দ হচ্ছে?"
+    },
+    {
+      "query_id": 975698,
+      "language": "ben_Beng",
+      "category": "C",
+      "top1_score": 0.8532218337059021,
+      "query": "দক্ষিণ আফ্রিকায় মৎস্য চাষ কোথায় শুরু হয়েছিল।"
+    },
+    {
+      "query_id": 277118,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8703826665878296,
+      "query": "এক স্লার্পিতে কত ক্যালোরি থাকে।"
+    },
+    {
+      "query_id": 1025797,
+      "language": "ben_Beng",
+      "category": "E",
+      "top1_score": 0.8216099739074707,
+      "query": "যিনি পোশাকের জন্য প্রথম লোহা তৈরি করেছিলেন।"
+    },
+    {
+      "query_id": 878148,
+      "language": "ben_Beng",
+      "category": "C",
+      "top1_score": 0.8692490458488464,
+      "query": "রোনাল্ড রিগ্যান কী সামরিক পদক্ষেপ নিয়েছিলেন?"
+    },
+    {
+      "query_id": 1004345,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.850969135761261,
+      "query": "কোথায় কনভার্স স্নিকার তৈরি হয়েছিল"
+    },
+    {
+      "query_id": 726104,
+      "language": "ben_Beng",
+      "category": "B",
+      "top1_score": 0.8704397082328796,
+      "query": "যা হলো ব্রাউজারকনফিগ.এক্সএমএল"
+    },
+    {
+      "query_id": 941200,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8626960515975952,
+      "query": "বোমার প্রজন্মের শিশুরা কবে থেকে জন্ম নিতে শুরু করেছিল?"
+    },
+    {
+      "query_id": 249195,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8333680033683777,
+      "query": "একজন অপরাধীর ইতিহাস পরীক্ষা করতে কতক্ষণ সময় লাগে।"
+    },
+    {
+      "query_id": 1158230,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8741605877876282,
+      "query": "হোমিনিড কী?"
+    },
+    {
+      "query_id": 111617,
+      "language": "ben_Beng",
+      "category": "C",
+      "top1_score": 0.852193295955658,
+      "query": "কোটিয়ার সংজ্ঞা"
+    },
+    {
+      "query_id": 424450,
+      "language": "ben_Beng",
+      "category": "A",
+      "top1_score": 0.8407629728317261,
+      "query": "স্পটিফাই অ্যাপলের মালিকানাধীন।"
+    },
+    {
+      "query_id": 580632,
+      "language": "ben_Beng",
+      "category": "B",
+      "top1_score": 0.8779199719429016,
+      "query": "মস্তিষ্কের আঘাতের জন্য একজন স্নায়ুবিজ্ঞানী কী করতে পারেন"
+    },
+    {
+      "query_id": 201165,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8440086245536804,
+      "query": "યકૃત બી વિશ્વની વસ્તીને કેટલી અસર કરે છે?"
+    },
+    {
+      "query_id": 94487,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.8661420941352844,
+      "query": "સારા પાણીમાં કોલીફોર્મ બેક્ટેરિયાના લક્ષણો"
+    },
+    {
+      "query_id": 453945,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8444777131080627,
+      "query": "નકલ વ્યાખ્યા કરે છે"
+    },
+    {
+      "query_id": 315133,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.880712628364563,
+      "query": "માઉન્ટ કિલિમાંજારો ચઢવાનો ખર્ચ કેટલો છે?"
+    },
+    {
+      "query_id": 520546,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.8656749725341797,
+      "query": "તેમના ગાંઠોનો અર્થ થાય છે"
+    },
+    {
+      "query_id": 909280,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8632599115371704,
+      "query": "શું ટ્રેન્ડ થાય છે"
+    },
+    {
+      "query_id": 225208,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.875932514667511,
+      "query": "સાર્વત્રિક જીવન નીતિ કેવી રીતે કામ કરે છે?"
+    },
+    {
+      "query_id": 1146795,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.867915153503418,
+      "query": "યુ.એસ.માં તમામ વ્યવસાયોમાંથી કેટલી ટકાવારી ભાગીદારી છે?"
+    },
+    {
+      "query_id": 250680,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8745753169059753,
+      "query": "રોજગાર પૃષ્ઠભૂમિ તપાસમાં કેટલો સમય લાગે છે"
+    },
+    {
+      "query_id": 1153285,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.8649190068244934,
+      "query": "શું સંભવિત છે તેનો અર્થ થાય છે"
+    },
+    {
+      "query_id": 18625,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8567543029785156,
+      "query": "એનોડાઇઝિંગ રાસાયણિક પુરવઠાકારો"
+    },
+    {
+      "query_id": 887360,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8678379654884338,
+      "query": "કયા છોડ પ્રતિરોધક છે"
+    },
+    {
+      "query_id": 274840,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.8628332614898682,
+      "query": "એકર દીઠ કેટલા સફરજનના ઝાડ છે"
+    },
+    {
+      "query_id": 555468,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8581076860427856,
+      "query": "પથારીના ઘાવ શું છે?"
+    },
+    {
+      "query_id": 227527,
+      "language": "guj_Gujr",
+      "category": "C",
+      "top1_score": 0.8758968114852905,
+      "query": "ટૂંકા ગાળાની અક્ષમતા કામ કેવી રીતે કરે છે"
+    },
+    {
+      "query_id": 446140,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.8491449356079102,
+      "query": "પરિપક્વતા માર્કેટિંગ વ્યાખ્યા"
+    },
+    {
+      "query_id": 844684,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.8540124893188477,
+      "query": "સ્કિઝોફ્રેનિયામાં ન્યુક્લિયસ એક્યુમ્બેન્સની ભૂમિકા શું છે"
+    },
+    {
+      "query_id": 530922,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.876146674156189,
+      "query": "બાળકની સુન્નત પછી હોસ્પિટલમાં રહેવું"
+    },
+    {
+      "query_id": 908338,
+      "language": "guj_Gujr",
+      "category": "D",
+      "top1_score": 0.8740128874778748,
+      "query": "મોડી બપોરે લગ્નમાં શું પહેરવું"
+    },
+    {
+      "query_id": 882372,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8737185597419739,
+      "query": "બ્રાઉન બ્રેડમાં કયા પોષક તત્વો જોવા મળે છે"
+    },
+    {
+      "query_id": 95593,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8305709362030029,
+      "query": "પ્રો સોકરમાં સામાન્ય ઇજાઓ"
+    },
+    {
+      "query_id": 305063,
+      "language": "guj_Gujr",
+      "category": "D",
+      "top1_score": 0.8705503344535828,
+      "query": "સેન્ટર ડિરેક્ટર્સ ઓક્ટાફાર્મા પ્લાઝ્મા પર કેટલું કમાય છે"
+    },
+    {
+      "query_id": 1169722,
+      "language": "guj_Gujr",
+      "category": "C",
+      "top1_score": 0.8627538084983826,
+      "query": "ધ એરિંગ્ટન હોમ કોલિન્સ એમ.એસ."
+    },
+    {
+      "query_id": 1164114,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8374313116073608,
+      "query": "બેડફોર્ડ માં કયું કાઉન્ટી છે"
+    },
+    {
+      "query_id": 874646,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.8759685158729553,
+      "query": "વેક્યુઓલનું મુખ્ય કાર્ય શું છે"
+    },
+    {
+      "query_id": 478420,
+      "language": "guj_Gujr",
+      "category": "A",
+      "top1_score": 0.867516279220581,
+      "query": "વસ્તી પિનલ કાઉન્ટી એરિઝોના"
+    },
+    {
+      "query_id": 627899,
+      "language": "guj_Gujr",
+      "category": "E",
+      "top1_score": 0.8581342101097107,
+      "query": "એલ.એન.જી. શું છે?"
+    },
+    {
+      "query_id": 334569,
+      "language": "guj_Gujr",
+      "category": "B",
+      "top1_score": 0.8815152049064636,
+      "query": "કાર્લ વેધર્સ કેટલા જૂના છે"
+    },
+    {
+      "query_id": 1019148,
+      "language": "hin_Deva",
+      "category": "C",
+      "top1_score": 0.8796151280403137,
+      "query": "तुम्हें शादी का बैंड किस तरफ पहनना है।"
+    },
+    {
+      "query_id": 553440,
+      "language": "hin_Deva",
+      "category": "B",
+      "top1_score": 0.8789730072021484,
+      "query": "मैं कितना कर चुकाना होगा?"
+    },
+    {
+      "query_id": 450332,
+      "language": "hin_Deva",
+      "category": "E",
+      "top1_score": 0.8723495602607727,
+      "query": "अर्थपूर्ण शब्दों का अर्थ निषिद्ध विषय"
+    },
+    {
+      "query_id": 142663,
+      "language": "hin_Deva",
+      "category": "D",
+      "top1_score": 0.8416715264320374,
+      "query": "डिफ़स्क्स ने एक शेयर का नाम बदल दिया।"
+    },
+    {
+      "query_id": 963429,
+      "language": "hin_Deva",
+      "category": "E",
+      "top1_score": 0.8197277188301086,
+      "query": "स्वर्ण राज्य के योद्धाओं की स्थापना कब हुई थी?"
+    },
+    {
+      "query_id": 500435,
+      "language": "hin_Deva",
+      "category": "E",
+      "top1_score": 0.843436598777771,
+      "query": "गीत: हम कैसे हैं"
+    },
+    {
+      "query_id": 1003575,
+      "language": "hin_Deva",
+      "category": "E",
+      "top1_score": 0.8663650155067444,
+      "query": "काली मृत्यु कहाँ थी"
+    },
+    {
+      "query_id": 461770,
+      "language": "hin_Deva",
+      "category": "B",
+      "top1_score": 0.874085009098053,
+      "query": "उस खेत का नाम जहाँ स्कालिया की मृत्यु हुई थी"
+    },
+    {
+      "query_id": 1051897,
+      "language": "hin_Deva",
+      "category": "B",
+      "top1_score": 0.8220402598381042,
+      "query": "नीली आँखों के पीछे कौन गाता है"
+    },
+    {
+      "query_id": 559678,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8558546900749207,
+      "query": "ಒಟ್ಟಾರೆ ಕಾರ್ಯತಂತ್ರಗಳೇನು?"
+    },
+    {
+      "query_id": 74870,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8583018779754639,
+      "query": "ಟ್ರಾಮಡಾಲ್ ಅಧಿಕ ರಕ್ತದೊತ್ತಡಕ್ಕೆ ಕಾರಣವಾಗಬಹುದು."
+    },
+    {
+      "query_id": 519635,
+      "language": "kan_Knda",
+      "category": "A",
+      "top1_score": 0.8644205331802368,
+      "query": "ಬರವಣಿಗೆಯ ವ್ಯಾಖ್ಯಾನ ಸಿದ್ಧಾಂತ"
+    },
+    {
+      "query_id": 707116,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.85943603515625,
+      "query": "ಉಕ್ಕಿನ ಅಮೂಲ್ಯವಾದ ಅಂಶವೇನು"
+    },
+    {
+      "query_id": 420572,
+      "language": "kan_Knda",
+      "category": "C",
+      "top1_score": 0.8653486371040344,
+      "query": "ನವಿಲಿನ ಬಣ್ಣ"
+    },
+    {
+      "query_id": 350216,
+      "language": "kan_Knda",
+      "category": "A",
+      "top1_score": 0.8727191090583801,
+      "query": "ಉಲ್ಲೇಖಗಳನ್ನು ಹೇಗೆ ಉಲ್ಲೇಖಿಸುವುದು"
+    },
+    {
+      "query_id": 801290,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8290467858314514,
+      "query": "ಸುರ್ಸ್ ಎಂದರೆ ಏನು?"
+    },
+    {
+      "query_id": 196098,
+      "language": "kan_Knda",
+      "category": "C",
+      "top1_score": 0.8826794028282166,
+      "query": "ಗೋರ್ಡನ್ ರಾಮ್ಸೇ"
+    },
+    {
+      "query_id": 14745,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8722484707832336,
+      "query": "ಐಜಿ ಕ್ಲೈಮ್ ಸರ್ವೀಸಸ್ ಫೋನ್ ನಂಬರ್"
+    },
+    {
+      "query_id": 797310,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8424158692359924,
+      "query": "ಏನು ಸ್ನ್ಯಾಚ್‌ಗಾರ್‌ ಕಂಡುಹಿಡಿದಿದೆ"
+    },
+    {
+      "query_id": 1157678,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8556356430053711,
+      "query": "ಪ್ರತಿಫಲಿತ ಕೆಮ್ಮು ಎಂದರೇನು?"
+    },
+    {
+      "query_id": 859006,
+      "language": "kan_Knda",
+      "category": "C",
+      "top1_score": 0.8759564757347107,
+      "query": "ವಿಮೆಯಲ್ಲಿ ಏನು ಅಂತರ್ಗತವಾಗಿದೆ"
+    },
+    {
+      "query_id": 706712,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8726342916488647,
+      "query": "ಜೆಪ್ ಸ್ಯಾಂಡ್‌ವಿಚ್ ಎಂದರೇನು?"
+    },
+    {
+      "query_id": 418495,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8260848522186279,
+      "query": "ಮೊರಾಕ್ಸೆಲ್ಲಾ ಉತ್ಪ್ರೇರಕ ಧನಾತ್ಮಕ ಆಗಿದೆ"
+    },
+    {
+      "query_id": 32822,
+      "language": "kan_Knda",
+      "category": "D",
+      "top1_score": 0.881892204284668,
+      "query": "ಹೊಸ ಎ/ಸಿ ಘಟಕದ ಸರಾಸರಿ ವೆಚ್ಚ"
+    },
+    {
+      "query_id": 879793,
+      "language": "kan_Knda",
+      "category": "C",
+      "top1_score": 0.8611167669296265,
+      "query": "ಮುಂದೋಳಿನಲ್ಲಿ ಯಾವ ಸ್ನಾಯುಗಳಿವೆ"
+    },
+    {
+      "query_id": 840093,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8478410243988037,
+      "query": "ಸ್ಯಾನ್ ಡಿಯೆಗೊ ಕೌಂಟಿಯ ಜನಸಂಖ್ಯೆ ಎಷ್ಟು ಎಂದು ತಿಳಿಯಬೇಕು."
+    },
+    {
+      "query_id": 234671,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8617568016052246,
+      "query": "ಕೆಳಮಟ್ಟದ ಉಬ್ಬರವು ಎಷ್ಟು ಆಗಾಗ್ಗೆ ಸಂಭವಿಸುತ್ತದೆ"
+    },
+    {
+      "query_id": 406989,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8344494700431824,
+      "query": "ಕಾನ್ಸರ್ಟಾ ಎಂಬುದು ಮೀಥೈಲ್‌ಫೀನಿಡೇಟ್ ಆಗಿದೆ."
+    },
+    {
+      "query_id": 59167,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8460888266563416,
+      "query": "ಕೊಬ್ಬನ್ನು ಸುಟ್ಟುಹಾಕಲು ಕ್ಯಾಲೋರಿ ಸೈಕ್ಲಿಂಗ್"
+    },
+    {
+      "query_id": 6331,
+      "language": "kan_Knda",
+      "category": "C",
+      "top1_score": 0.838306188583374,
+      "query": "ಸಾಮಾನ್ಯವಾಗಿ ಫಲೀಕರಣವು ಸಂಭವಿಸುವ ಸ್ಥಳವು ಇಲ್ಲಿದೆ."
+    },
+    {
+      "query_id": 990521,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8633227944374084,
+      "query": "ದೇಹದಲ್ಲಿ ರಂಜಕವು ಎಲ್ಲಿ ಸಂಗ್ರಹವಾಗಿದೆ"
+    },
+    {
+      "query_id": 237361,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8601823449134827,
+      "query": "ಸ್ನಫಲ್ಸ್ ಹೇಗೆ ಪ್ರಸಾರವಾಗುತ್ತದೆ"
+    },
+    {
+      "query_id": 908425,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8394905924797058,
+      "query": "ಆಗ್ರಾ ನಗರದಲ್ಲಿ ಯಾವ ಸಮಾಧಿಯು ಬಿಳಿ ಅಮೃತಶಿಲೆಯಿಂದ ಮಾಡಲ್ಪಟ್ಟಿದೆ."
+    },
+    {
+      "query_id": 868869,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8537556529045105,
+      "query": "ಆಧಾರದಿಂದ ಯಾವ ರೀತಿಯ ಅಯಾನುಗಳು ಉತ್ಪತ್ತಿಯಾಗುತ್ತವೆ"
+    },
+    {
+      "query_id": 19425,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8810421228408813,
+      "query": "ಪ್ರತಿಜೀವಕ ಆಹಾರ ಪದಾರ್ಥಗಳು"
+    },
+    {
+      "query_id": 333035,
+      "language": "kan_Knda",
+      "category": "E",
+      "top1_score": 0.8230953812599182,
+      "query": "ಬೂಸ್ಟರ್ ಸೀಟ್ ಇಲ್ದೆ ಮಗು ಎಷ್ಟ್ ವಯಸ್ಸಾದ್ರೂ ಕಾರಲ್ಲಿ ಕೂತ್ಕೊಳಕ್ಕಾಗತ್ತೋ ಅಂತ ನಂಗ್ ಅನ್ಸಲ್ಲ."
+    },
+    {
+      "query_id": 825108,
+      "language": "kan_Knda",
+      "category": "B",
+      "top1_score": 0.8447487950325012,
+      "query": "ಹೊಂಡೈ ಅಕಾರ್ಡ್ ಕ್ರೀಡೆ ಯಾವುದು?"
+    },
+    {
+      "query_id": 977363,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8612759113311768,
+      "query": "അട്രിയൽ നാട്രിയൂററ്റിക് ഹോർമോൺ എവിടെയാണ് ഉൽപ്പാദിപ്പിക്കപ്പെടുന്നത്."
+    },
+    {
+      "query_id": 744653,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8634874820709229,
+      "query": "ഫാലാൻക്സിന്‍റെ മണ്ണൊലിപ്പ് എന്താണ്"
+    },
+    {
+      "query_id": 355544,
+      "language": "mal_Mlym",
+      "category": "A",
+      "top1_score": 0.8679187893867493,
+      "query": "എങ്ങനെ ഒരു ഡിപ്പ്ഡ് അക്രിലിക് ഉണ്ടാക്കാം"
+    },
+    {
+      "query_id": 749693,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8758479356765747,
+      "query": "ജി ആൻഡ് എ എ എത്ര ചെലവ് ആണ്"
+    },
+    {
+      "query_id": 34135,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8809534907341003,
+      "query": "പത്രത്തിന്‍റെ ശരാശരി ചെലവ്"
+    },
+    {
+      "query_id": 58229,
+      "language": "mal_Mlym",
+      "category": "A",
+      "top1_score": 0.8486795425415039,
+      "query": "കാലാഫോർണിയയിലെ ജീവിതച്ചെലവ്"
+    },
+    {
+      "query_id": 1049410,
+      "language": "mal_Mlym",
+      "category": "C",
+      "top1_score": 0.8721433281898499,
+      "query": "മുതലാളിത്തമാണ് ഏറ്റവും മോശം സംവിധാനം എന്ന് ആരാണ് പറഞ്ഞത്?"
+    },
+    {
+      "query_id": 1154479,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8512845635414124,
+      "query": "ഐപി അസൈൻമെന്റ് എന്താണ്"
+    },
+    {
+      "query_id": 961199,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8189947605133057,
+      "query": "ആദ്യത്തെ നക്ഷത്രയുദ്ധങ്ങൾ എപ്പോഴാണ് നടന്നത്?"
+    },
+    {
+      "query_id": 889839,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8693116307258606,
+      "query": "വൈകല്യം കണ്ടുപിടിക്കാൻ ഒരു കുട്ടിക്ക് എന്തെല്ലാം യോഗ്യതകളുണ്ട്"
+    },
+    {
+      "query_id": 875158,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.875177264213562,
+      "query": "മലം (പൂപ്പ്) പച്ചനിറമാക്കുന്നത് എന്താണ്."
+    },
+    {
+      "query_id": 911947,
+      "language": "mal_Mlym",
+      "category": "A",
+      "top1_score": 0.8458576202392578,
+      "query": "ശ്വസനത്തിനിടെ ഏത് തരത്തിലുള്ള ഊർജ്ജ രാസവസ്തുക്കൾ ഉത്പാദിപ്പിക്കപ്പെടുന്നു."
+    },
+    {
+      "query_id": 386679,
+      "language": "mal_Mlym",
+      "category": "C",
+      "top1_score": 0.8739907145500183,
+      "query": "നിങ്ങളെക്കുറിച്ചുള്ള ഒരു പ്രൊഫൈൽ എഴുതാൻ എങ്ങനെയെന്ന് ഉദാഹരണങ്ങൾ."
+    },
+    {
+      "query_id": 526952,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8398540616035461,
+      "query": "തരം തിരിച്ചിരിക്കൽ പദ്ധതികൾ"
+    },
+    {
+      "query_id": 967984,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8753329515457153,
+      "query": "അസ്ഥികൂട പേശികളെ എവിടെ കണ്ടെത്താം?"
+    },
+    {
+      "query_id": 569259,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8531590104103088,
+      "query": "എന്‍.എ.ടി.യും ആര്‍.എന്‍.എ. ബേസുകളും എന്തെല്ലാം"
+    },
+    {
+      "query_id": 73759,
+      "language": "mal_Mlym",
+      "category": "A",
+      "top1_score": 0.8599073886871338,
+      "query": "ചിലപ്പോൾ ചിലന്തികളുടെ കടി തലവേദനയ്ക്ക് കാരണമാകും."
+    },
+    {
+      "query_id": 975038,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8265790343284607,
+      "query": "എവിടെ നിന്നാണ് താല്പര്യം എന്ന പദം വന്നത്?"
+    },
+    {
+      "query_id": 419678,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8209053874015808,
+      "query": "ഇത് ഒബ്സിഡിയന്‍ പെര്‍മിയബിള്‍ ആണ്."
+    },
+    {
+      "query_id": 809641,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.858956515789032,
+      "query": "വധുവിന്‍റെ പ്രവേശന കവാടത്തിന് എന്ത് പേരാണ്"
+    },
+    {
+      "query_id": 432258,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8526613712310791,
+      "query": "ഇസ്സ് നിർവചനം"
+    },
+    {
+      "query_id": 261541,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8407366275787354,
+      "query": "എത്ര നാള്‍ മുമ്പ് പിടിച്ചുവയ്ക്കുന്നു എന്ന് എന്നതിനെക്കുറിച്ച് വിവരം നൽകുക."
+    },
+    {
+      "query_id": 994968,
+      "language": "mal_Mlym",
+      "category": "C",
+      "top1_score": 0.8728278279304504,
+      "query": "എവിടെയാണ് ചെറോക്കീ രാഷ്ട്രം?"
+    },
+    {
+      "query_id": 336707,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8314337730407715,
+      "query": "എത്ര പഴക്കമുള്ള ആ ഫ്ലാവ്‌ഫുള്‍ള ആണ്."
+    },
+    {
+      "query_id": 513507,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8590893149375916,
+      "query": "രക്തക്കുഴലുകളിൽ തടസ്സം സൃഷ്ടിക്കുന്ന പരിശോധന."
+    },
+    {
+      "query_id": 171992,
+      "language": "mal_Mlym",
+      "category": "E",
+      "top1_score": 0.8763105273246765,
+      "query": "സിന്തറ്റിക് മൂത്രം പ്രവർത്തിക്കുന്നുണ്ടോ?"
+    },
+    {
+      "query_id": 826091,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8755684494972229,
+      "query": "ടിബിയാലിസ് ആൻറീരിയറിലേക്കുള്ള ഇൻസെർഷൻ എന്താണ്"
+    },
+    {
+      "query_id": 1164849,
+      "language": "mal_Mlym",
+      "category": "A",
+      "top1_score": 0.8692560195922852,
+      "query": "സ്ത്രീകളിൽ മുഖക്കുരു ഉണ്ടാകാൻ കാരണമെന്ത്"
+    },
+    {
+      "query_id": 520855,
+      "language": "mal_Mlym",
+      "category": "B",
+      "top1_score": 0.8814488053321838,
+      "query": "ഐക്യനാടുകളും ഹവായിയും തമ്മിലുള്ള സമയ വ്യത്യാസം"
+    },
+    {
+      "query_id": 972570,
+      "language": "mal_Mlym",
+      "category": "C",
+      "top1_score": 0.8770015835762024,
+      "query": "ബിലിറൂബിൻ എവിടെ നിന്ന് വരുന്നു"
+    },
+    {
+      "query_id": 516307,
+      "language": "mar_Deva",
+      "category": "A",
+      "top1_score": 0.851418673992157,
+      "query": "स्टीव्ही ग्रिफिनचा आवाज करणारा माणूस"
+    },
+    {
+      "query_id": 1059305,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.868192732334137,
+      "query": "कोबर्न रोझ हे गाणे कोणी लिहिले"
+    },
+    {
+      "query_id": 77892,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8608640432357788,
+      "query": "तुम्हाला तुमच्या नडग्यांवर खडीमुळे होऊ शकतात का?"
+    },
+    {
+      "query_id": 1146054,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8644521832466125,
+      "query": "चॅपरोनची व्याख्या करा"
+    },
+    {
+      "query_id": 421348,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8417759537696838,
+      "query": "ओर्लीन्स बंदरावरील रिसॉर्ट चांगले आहे."
+    },
+    {
+      "query_id": 638234,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8348484635353088,
+      "query": "जी जो प्रतीकात्मकपणे काय दर्शवते"
+    },
+    {
+      "query_id": 716844,
+      "language": "mar_Deva",
+      "category": "D",
+      "top1_score": 0.8763889670372009,
+      "query": "अपूर्ण पचन प्रणाली असलेला जीव कोणता आहे"
+    },
+    {
+      "query_id": 187135,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8828384280204773,
+      "query": "संख्यांच्या सम संचाची मध्यबिंदू शोधणे"
+    },
+    {
+      "query_id": 563737,
+      "language": "mar_Deva",
+      "category": "C",
+      "top1_score": 0.8643479943275452,
+      "query": "प्रगतीशील लेन्स काय आहेत"
+    },
+    {
+      "query_id": 1166662,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8536761999130249,
+      "query": "एचएस क्रप पातळ्या काय आहेत"
+    },
+    {
+      "query_id": 745529,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8383066058158875,
+      "query": "एक्स व्हॅक्युओ डायलेशन म्हणजे"
+    },
+    {
+      "query_id": 600297,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8545972108840942,
+      "query": "चाउडर म्हणजे काय"
+    },
+    {
+      "query_id": 1028860,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8344799280166626,
+      "query": "ज्यांनी पिक्चर्सचा शोध लावला"
+    },
+    {
+      "query_id": 943517,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8585776090621948,
+      "query": "बाळे स्वतःहून केव्हा वळतात"
+    },
+    {
+      "query_id": 377613,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8317603468894958,
+      "query": "चित्रपट कसा पुन्हा सुरू करायचा याची आगीच्या काठीवरून मार्गदर्शिका"
+    },
+    {
+      "query_id": 971543,
+      "language": "mar_Deva",
+      "category": "A",
+      "top1_score": 0.865845263004303,
+      "query": "स्लाव्हिक लोक कुठून आले आहेत"
+    },
+    {
+      "query_id": 820302,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.862072765827179,
+      "query": "एन.ए.आर.टी.पी. मधील ऊर्जेचा स्रोत काय आहे?"
+    },
+    {
+      "query_id": 726617,
+      "language": "mar_Deva",
+      "category": "A",
+      "top1_score": 0.8597261309623718,
+      "query": "ब्यूटेन म्हणजे काय?"
+    },
+    {
+      "query_id": 992583,
+      "language": "mar_Deva",
+      "category": "E",
+      "top1_score": 0.8485567569732666,
+      "query": "कुठे जंगली ऑर्किडचे रहस्य आहे"
+    },
+    {
+      "query_id": 533470,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8526421785354614,
+      "query": "आमचे बँक बंद होण्याचे तास"
+    },
+    {
+      "query_id": 1167592,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8691153526306152,
+      "query": "क्रूर नदीतील हवामान"
+    },
+    {
+      "query_id": 531700,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8514362573623657,
+      "query": "किंवा थोडक्यात, अर्थात"
+    },
+    {
+      "query_id": 940154,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.8443671464920044,
+      "query": "जुन्या राज्याने व्यापार कधी सुरू केला?"
+    },
+    {
+      "query_id": 166174,
+      "language": "mar_Deva",
+      "category": "B",
+      "top1_score": 0.852867603302002,
+      "query": "की सुलभ प्रसार प्रवणतेच्या विरोधात जातो"
+    },
+    {
+      "query_id": 724808,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8643050193786621,
+      "query": "ब्लुमबर्ग भुक्तानी योजना बी के हो"
+    },
+    {
+      "query_id": 892627,
+      "language": "npi_Deva",
+      "category": "A",
+      "top1_score": 0.8676056861877441,
+      "query": "वैज्ञानिकहरूले आँधीबेहरीको अध्ययन गर्छन्।"
+    },
+    {
+      "query_id": 547881,
+      "language": "npi_Deva",
+      "category": "D",
+      "top1_score": 0.860863208770752,
+      "query": "वजनको औसत फारमुला"
+    },
+    {
+      "query_id": 74515,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.874376654624939,
+      "query": "के तल्लो भूमि गोरिल्लाहरूको जनसङ्ख्या बढ्न सक्छ?"
+    },
+    {
+      "query_id": 303846,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.8779385685920715,
+      "query": "एक पैसामा कति तामा हुन्छ"
+    },
+    {
+      "query_id": 781261,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8505365252494812,
+      "query": "के प्यान्टोप्राजोल ई हो"
+    },
+    {
+      "query_id": 779827,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8765922784805298,
+      "query": "सञ्चालन अनुबन्ध समर्थन के हो"
+    },
+    {
+      "query_id": 295309,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.8384987711906433,
+      "query": "त्यहाँ कति सिजनहरू बिग्रने गर्दछन्।"
+    },
+    {
+      "query_id": 555617,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.8447274565696716,
+      "query": "चराको आँखा कालो मरिच के हो"
+    },
+    {
+      "query_id": 333255,
+      "language": "npi_Deva",
+      "category": "A",
+      "top1_score": 0.8756725788116455,
+      "query": "खरायो कति बुढो हुन्छ।"
+    },
+    {
+      "query_id": 1018710,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.849071204662323,
+      "query": "३०० माइल लामो नदी कुन हो"
+    },
+    {
+      "query_id": 282120,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.859971284866333,
+      "query": "त्यहाँ कति सबै मानिसहरूलाई नष्ट गर्छन्?"
+    },
+    {
+      "query_id": 402528,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8515245914459229,
+      "query": "खुट्टामा चोट लागेको इमजी परीक्षण हो।"
+    },
+    {
+      "query_id": 1034602,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.835822582244873,
+      "query": "जो सोझ किटन हुन्।"
+    },
+    {
+      "query_id": 934174,
+      "language": "npi_Deva",
+      "category": "D",
+      "top1_score": 0.8560049533843994,
+      "query": "कति ग्यापको एउटा ग्यापक वेजको यार्डेज हो"
+    },
+    {
+      "query_id": 373996,
+      "language": "npi_Deva",
+      "category": "A",
+      "top1_score": 0.8623632788658142,
+      "query": "तिस वर्षमा पैसाको खरिद शक्ति कसरी सुरक्षित गर्ने"
+    },
+    {
+      "query_id": 979516,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8686025142669678,
+      "query": "टस्कनीमा क्यास्टिगिलियन्सेलो कहाँ छ।"
+    },
+    {
+      "query_id": 745974,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.824213981628418,
+      "query": "आँखाको परेली केले रङ्गिन्छ।"
+    },
+    {
+      "query_id": 907176,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.882053554058075,
+      "query": "चिसोका लागि के खाने गर्ने"
+    },
+    {
+      "query_id": 180575,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8783658146858215,
+      "query": "इन्जिनियरिङ भौतिकी"
+    },
+    {
+      "query_id": 820822,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8350006937980652,
+      "query": "के आधारमा फरेनहाइट मापन हो"
+    },
+    {
+      "query_id": 97073,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.880435049533844,
+      "query": "कोन्लाङ परिभाषा"
+    },
+    {
+      "query_id": 597292,
+      "language": "npi_Deva",
+      "category": "A",
+      "top1_score": 0.8728477358818054,
+      "query": "मोड रिङका रङहरू के हुन्?"
+    },
+    {
+      "query_id": 1077834,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8329548239707947,
+      "query": "दाजुभाइको एउटै जातीयता हुनेछ।"
+    },
+    {
+      "query_id": 671912,
+      "language": "npi_Deva",
+      "category": "B",
+      "top1_score": 0.8676621913909912,
+      "query": "मोटर इम्फ के हो"
+    },
+    {
+      "query_id": 956680,
+      "language": "npi_Deva",
+      "category": "E",
+      "top1_score": 0.8306372165679932,
+      "query": "जब एन्कासा पास भयो"
+    },
+    {
+      "query_id": 230263,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.879219114780426,
+      "query": "ଓକ୍ଲାହୋମା ସହରରୁ ଭେଗାସ ପର୍ଯ୍ୟନ୍ତ କେତେ ଦୂର ।"
+    },
+    {
+      "query_id": 1035489,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8771276473999023,
+      "query": "ଲୁଡୋଭିକୋ କିଏ?"
+    },
+    {
+      "query_id": 732072,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8738279938697815,
+      "query": "ଥଣ୍ଡା ଥେରାପି କ'ଣ?"
+    },
+    {
+      "query_id": 1036332,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8282637596130371,
+      "query": "କେହି ମାର୍କିନ ମାର୍କିନ ପ୍ରଡକ୍ଟ ଅଟେ"
+    },
+    {
+      "query_id": 341449,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8496806025505066,
+      "query": "ଅଭିଯାନ ସମୟରେ କେତେ ଉଚ୍ଚତାର ଡ୍ରପ୍ ହୁଏ?"
+    },
+    {
+      "query_id": 1045173,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8313333988189697,
+      "query": "କେହି ଏୟାର କଣ୍ଡିସନିଂ କମ୍ପାନୀର ମାଲିକ ଅଟନ୍ତି ।"
+    },
+    {
+      "query_id": 239634,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8646485805511475,
+      "query": "କେତେ ଦିନ ଧରି ବୈଠକ ହେବ?"
+    },
+    {
+      "query_id": 1159054,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8419914245605469,
+      "query": "ମୋ ଯୋନି ପେସାରୀ ଯଦି ମାଛ ପରି ଗନ୍ଧ କରେ?"
+    },
+    {
+      "query_id": 419058,
+      "language": "ory_Orya",
+      "category": "C",
+      "top1_score": 0.8597165942192078,
+      "query": "ନିମ୍ବ ତେଲ ଚର୍ମ ପାଇଁ ଭଲ।"
+    },
+    {
+      "query_id": 414217,
+      "language": "ory_Orya",
+      "category": "A",
+      "top1_score": 0.8617808222770691,
+      "query": "ଦିନକୁ ଚାରିଟି ଅଣ୍ଡାର ଧଳା ଅଂଶ ଖାଇବା ଠିକ କି?"
+    },
+    {
+      "query_id": 887545,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8447715044021606,
+      "query": "ଗୋଟିଏ ପୁଅ କେଉଁ କାହାଣୀରେ ହାତ ହରାଏ?"
+    },
+    {
+      "query_id": 295165,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8539287447929382,
+      "query": "କେତେ ସିଜନ୍‌ ହେବ ଗଟ୍‌ଡ଼େଲେ?"
+    },
+    {
+      "query_id": 602885,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8598571419715881,
+      "query": "ବାଉଡେଟ୍ କେଉଁ କାଉଣ୍ଟିରେ ଅଛି, ମିନେସୋଟା କିମ୍ବା ଆରିଜୋନା କି?"
+    },
+    {
+      "query_id": 904870,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8577960729598999,
+      "query": "ଟିଜିଏସଆଇଟିରେ କେଉଁ ସମୟରେ ହ୍ୟାପି ଆୱାର ହୁଏ?"
+    },
+    {
+      "query_id": 85500,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8702743053436279,
+      "query": "ଘୋଡ଼ାମାନଙ୍କରେ ଜନ୍ମଗତ ତ୍ରୁଟିର କାରଣ"
+    },
+    {
+      "query_id": 713308,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.874038815498352,
+      "query": "ଇଲେକ୍ଟ୍ରୋନିକ ଉଇଥଡ୍ରାଓ୍ୱେଲ କ'ଣ?"
+    },
+    {
+      "query_id": 603619,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8763957023620605,
+      "query": "ବ୍ରାୟାନ କଲେଜ ଷ୍ଟେସନ କେଉଁ କାଉଣ୍ଟିରେ ଅଛି?"
+    },
+    {
+      "query_id": 1181602,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.845430850982666,
+      "query": "ଯେଉଁ ଧ୍ୱନିର ଗୋଟିଏ ନିର୍ଦ୍ଦିଷ୍ଟ ଆବୃତ୍ତି ଅଛି"
+    },
+    {
+      "query_id": 991050,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8577942252159119,
+      "query": "ଫ୍ରାନ୍ସରେ ପ୍ରୋଭେନ୍ସ କେଉଁଠି ଅଛି"
+    },
+    {
+      "query_id": 638585,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8586710691452026,
+      "query": "ରସାୟନ ବିଜ୍ଞାନରେ ଏଚ୍ + ର ଅର୍ଥ କ'ଣ?"
+    },
+    {
+      "query_id": 1137210,
+      "language": "ory_Orya",
+      "category": "A",
+      "top1_score": 0.8775755763053894,
+      "query": "କେଉଁମାନଙ୍କ ପାଇଁ କେଓଗ ଯୋଜନା ପ୍ରସ୍ତୁତ କରାଯାଇଛି ଯାହା ପେନସନ ସୁବିଧା ପ୍ରଦାନ କରିବ?"
+    },
+    {
+      "query_id": 36430,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8663666248321533,
+      "query": "ଟିକସ ପ୍ରସ୍ତୁତି ପାଇଁ ହାରାହାରି ଫି"
+    },
+    {
+      "query_id": 840446,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8727976679801941,
+      "query": "ପିଲାମାନଙ୍କର ଅସ୍ତ୍ରୋପଚାର ପୂର୍ବ ପର୍ଯ୍ୟାୟ କ'ଣ?"
+    },
+    {
+      "query_id": 1857,
+      "language": "ory_Orya",
+      "category": "C",
+      "top1_score": 0.8823117017745972,
+      "query": "ଏ.ଆଇ.ସି. କେଉଁ ସ୍ତରର ଔଷଧ ନେବେ ଆପଣ?"
+    },
+    {
+      "query_id": 885491,
+      "language": "ory_Orya",
+      "category": "E",
+      "top1_score": 0.8430235385894775,
+      "query": "କେଉଁ ଦଳର ରବ୍ ପୋର୍ଟମ୍ୟାନ୍ ଅଛନ୍ତି"
+    },
+    {
+      "query_id": 339448,
+      "language": "ory_Orya",
+      "category": "B",
+      "top1_score": 0.8753246665000916,
+      "query": "ମୁଁ ମୋ ନବଜାତ ଶିଶୁ ଉପରେ କେତେ ଶୀଘ୍ର ସାବୁନ ବ୍ୟବହାର କରିପାରିବି?"
+    },
+    {
+      "query_id": 745057,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8732278943061829,
+      "query": "ਕੀ ਹੈ ਈਟੈਬਸ ਸਾਫਟਵੇਅਰ"
+    },
+    {
+      "query_id": 466938,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.882429838180542,
+      "query": "ਜੇਮਸ ਮੈਡੀਸਨ ਯੂਨੀਵਰਸਿਟੀ ਵਿੱਚ ਅੰਡਰਗ੍ਰੈਜੁਏਟਾਂ ਦੀ ਗਿਣਤੀ"
+    },
+    {
+      "query_id": 200150,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8652142286300659,
+      "query": "ਸਿਹਤਮੰਦ ਗਰਿੱਲ ਪਕਵਾਨ"
+    },
+    {
+      "query_id": 1046642,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8151063919067383,
+      "query": "ਜਿਸ ਨੇ ਬੰਦੂਕ ਦੇ ਧੁੰਏਂ 'ਤੇ ਤਿਉਹਾਰ ਖੇਡਿਆ।"
+    },
+    {
+      "query_id": 966347,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8658310174942017,
+      "query": "ਇਟਲੀ ਵਿੱਚ ਐਪੇਨਾਈਨ ਪਹਾੜ ਕਿੱਥੇ ਹਨ।"
+    },
+    {
+      "query_id": 8198,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8723819851875305,
+      "query": "ਕਿਸ ਦੇਸ਼ ਵਿੱਚ ਖੁਦਕੁਸ਼ੀ ਦੀ ਦਰ ਸਭ ਤੋਂ ਵੱਧ ਹੈ।"
+    },
+    {
+      "query_id": 1051273,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8511576056480408,
+      "query": "ਜੋ ਇਹ ਗਾਉਂਦਾ ਹੈ ਉਹ ਦੁਨੀਆ ਦਾ ਅੰਤ ਹੈ।"
+    },
+    {
+      "query_id": 806944,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8700361251831055,
+      "query": "ਇੱਕ ਐਨ.ਸੀ.ਐੱਫ.ਐੱਲ. ਚੀਅਰਲੀਡਰ ਲਈ ਔਸਤਨ ਤਨਖਾਹ ਕੀ ਹੈ।"
+    },
+    {
+      "query_id": 436509,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8250983357429504,
+      "query": "ਸਭ ਤੋਂ ਵੱਡੇ ਫ੍ਰੀਸਟੈਂਡਿੰਗ ਡੋਮ ਹਨ।"
+    },
+    {
+      "query_id": 119037,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8589366674423218,
+      "query": "ਹਵਾਲੇ ਪ੍ਰਦਾਨ ਕਰੋ"
+    },
+    {
+      "query_id": 606453,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8746976852416992,
+      "query": "ਗਿਲਬਰਟ ਏਜ਼ ਕਿਹੜੀ ਕਾਉਂਟੀ ਵਿੱਚ ਹੈ"
+    },
+    {
+      "query_id": 282864,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8461148142814636,
+      "query": "ਪ੍ਰਤੀ ਵਿਅਕਤੀ ਨੂੰ ਕਿੰਨੇ ਅੰਡੇ ਖਾਣੇ ਚਾਹੀਦੇ ਹਨ।"
+    },
+    {
+      "query_id": 945471,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8443442583084106,
+      "query": "ਜਦੋਂ ਤੁਸੀਂ ਪੀਰੀਅਡ ਬੰਦ ਹੋਣ ਤੋਂ ਬਾਅਦ ਅੰਡਾਸ਼ਯ ਨੂੰ ਚੈੱਕ ਕਰਨਾ ਸ਼ੁਰੂ ਕਰਦੇ ਹੋ ਤਾਂ ਕਦੋਂ ਕਰਦੇ ਹੋ।"
+    },
+    {
+      "query_id": 664387,
+      "language": "pan_Guru",
+      "category": "A",
+      "top1_score": 0.8728735446929932,
+      "query": "ਅਸੀਂ ਕਿਹੜੇ ਅਨਾਜ ਖਾ ਸਕਦੇ ਹਾਂ"
+    },
+    {
+      "query_id": 631106,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8635076880455017,
+      "query": "ਮੈਨੂੰ ਕੀ ਕਰਨਾ ਹੈ"
+    },
+    {
+      "query_id": 548186,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8406569361686707,
+      "query": "ਬਸਤੀਵਾਦੀ ਉਚਾਈਆਂ ਵਿੱਚ ਖੂਹ ਫਾਰਗੋ ਸਥਾਨਾਂ"
+    },
+    {
+      "query_id": 1045623,
+      "language": "pan_Guru",
+      "category": "C",
+      "top1_score": 0.8566070199012756,
+      "query": "ਪੈਰਾ ਯੂ.ਐੱਸ.ਏ. ਦਾ ਮਾਲਕ ਕੌਣ ਹੈ"
+    },
+    {
+      "query_id": 65689,
+      "language": "pan_Guru",
+      "category": "C",
+      "top1_score": 0.8714072108268738,
+      "query": "ਸਿਗਰੇਟ ਫਿਲਟਰ ਕੈਂਸਰ ਦਾ ਕਾਰਨ ਬਣ ਸਕਦੇ ਹਨ"
+    },
+    {
+      "query_id": 991993,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8375924229621887,
+      "query": "ਕਿੱਥੇ ਰੂਥਵੇਨ ਆਈਏ ਹੈ।"
+    },
+    {
+      "query_id": 191983,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8530400395393372,
+      "query": "ਫਰੋਸਟ ਰੂਟਿੰਗ ਨੰਬਰ ਏਚਜ਼"
+    },
+    {
+      "query_id": 14893,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8660630583763123,
+      "query": "ਏਅਰਬੀਐਨਬੀ ਕਿੰਨੇ ਸਮੇਂ ਲਈ ਭੁਗਤਾਨ ਕਰਨਾ ਹੈ"
+    },
+    {
+      "query_id": 88909,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8640219569206238,
+      "query": "ਮੂਤਰ ਨਾਲੀ ਦੀ ਲਾਗ ਦੇ ਕਾਰਨ"
+    },
+    {
+      "query_id": 1010199,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8400599956512451,
+      "query": "ਕਿਹੜੀ ਦੇਵੀ ਰੱਬ ਹੈ ਪਵਿੱਤਰ ਬਤੱਖਾਂ ਦੀ।"
+    },
+    {
+      "query_id": 776860,
+      "language": "pan_Guru",
+      "category": "C",
+      "top1_score": 0.8619661331176758,
+      "query": "ਨਿਸ.ਐਕਸ.ਈ. ਕੀ ਹੈ"
+    },
+    {
+      "query_id": 631030,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8715594410896301,
+      "query": "ਇਸ ਦਾ ਕੀ ਅਰਥ ਹੈ?"
+    },
+    {
+      "query_id": 106195,
+      "language": "pan_Guru",
+      "category": "A",
+      "top1_score": 0.8830022811889648,
+      "query": "ਪੌਲੀਗ੍ਰਾਫ ਸਿਖਲਾਈ ਦੀ ਲਾਗਤ"
+    },
+    {
+      "query_id": 77256,
+      "language": "pan_Guru",
+      "category": "C",
+      "top1_score": 0.8652781844139099,
+      "query": "ਕੀ ਤੁਸੀਂ ਗੇਮ ਡਿਸਕ ਨੂੰ ਬਾਹਰ ਕੱਢ ਸਕਦੇ ਹੋ?"
+    },
+    {
+      "query_id": 13851,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.8615369200706482,
+      "query": "ਜਵਾਨੀ ਦੀ ਉਮਰ ਦੀਆਂ ਔਰਤਾਂ"
+    },
+    {
+      "query_id": 1148998,
+      "language": "pan_Guru",
+      "category": "B",
+      "top1_score": 0.8787013292312622,
+      "query": "ਫਾਲਬਰੁੱਕ ਕੇ.ਏ. ਲਈ ਟੈਕਸ ਦੀ ਦਰ ਕੀ ਹੈ"
+    },
+    {
+      "query_id": 450323,
+      "language": "pan_Guru",
+      "category": "E",
+      "top1_score": 0.857120931148529,
+      "query": "ਖੋਪੜੀ ਸ਼ਬਦ ਦਾ ਅਰਥ ਹੈ"
+    },
+    {
+      "query_id": 431766,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8585447072982788,
+      "query": "यीस्ट् विषाक्तं भवति।"
+    },
+    {
+      "query_id": 588937,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8731876015663147,
+      "query": "डैवर्टिकुलैटिस् इत्यस्य शोथस्य किं कारणं भवति"
+    },
+    {
+      "query_id": 390136,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8690851330757141,
+      "query": "ऐ.प्याड् इत्यत्र कस्मात् संपर्कः करणीयः इति कथं गन्तव्यमिति चिन्तयति।"
+    },
+    {
+      "query_id": 859843,
+      "language": "san_Deva",
+      "category": "C",
+      "top1_score": 0.8736575245857239,
+      "query": "मुद्रास्फीतिमापनाय किं प्रयुज्यते"
+    },
+    {
+      "query_id": 709386,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8681259751319885,
+      "query": "किं कार्यम्।"
+    },
+    {
+      "query_id": 449012,
+      "language": "san_Deva",
+      "category": "D",
+      "top1_score": 0.8714855313301086,
+      "query": "प्रोट्रूड् इत्यस्य आङ्ग्लार्थः"
+    },
+    {
+      "query_id": 651751,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8674566745758057,
+      "query": "म्याक्सिमस् इत्यस्य नाम किमर्थम् इति।"
+    },
+    {
+      "query_id": 198533,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8492721915245056,
+      "query": "हार्डवेयर्, प्रबन्धकः"
+    },
+    {
+      "query_id": 556445,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8511119484901428,
+      "query": "कानि गाल-प्रत्यारोपणानि सन्ति"
+    },
+    {
+      "query_id": 844904,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.855960488319397,
+      "query": "छदेः ऊर्ध्वता कियती?"
+    },
+    {
+      "query_id": 902489,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8444498777389526,
+      "query": "भवान् कीदृशं तापमानं मध्ये बीजं वर्धयेत्।"
+    },
+    {
+      "query_id": 447085,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8347796201705933,
+      "query": "संजय उवाच"
+    },
+    {
+      "query_id": 939659,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8535566926002502,
+      "query": "मार्कस् पर्सन् इत्यनेन मोजाङ्ग् इतीदं कदा आविष्कृतम्"
+    },
+    {
+      "query_id": 445180,
+      "language": "san_Deva",
+      "category": "D",
+      "top1_score": 0.8651577234268188,
+      "query": "सूचना-निर्माणस्य परिभाषा"
+    },
+    {
+      "query_id": 705443,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8440312147140503,
+      "query": "सीमित-सञ्चये कः वेस्ट्-डेट् अस्ति"
+    },
+    {
+      "query_id": 681920,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8501777052879333,
+      "query": "किं डोर्जी"
+    },
+    {
+      "query_id": 58369,
+      "language": "san_Deva",
+      "category": "C",
+      "top1_score": 0.8738957643508911,
+      "query": "माध्यं घटकमूल्यं गणयतु"
+    },
+    {
+      "query_id": 851021,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8338484168052673,
+      "query": "पत्रस्य स्थूलता कियती अस्ति।"
+    },
+    {
+      "query_id": 27945,
+      "language": "san_Deva",
+      "category": "C",
+      "top1_score": 0.8581914901733398,
+      "query": "कस्मिन् वयसि शुनकः आरात्रं मूत्रं धारयितुं शक्नोति?"
+    },
+    {
+      "query_id": 513152,
+      "language": "san_Deva",
+      "category": "A",
+      "top1_score": 0.8736310005187988,
+      "query": "बालकानां कृते टेण्डन्स् परिभाषा"
+    },
+    {
+      "query_id": 591149,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8444554805755615,
+      "query": "भवतः जिह्वयि असंस्कृतस्थानानि किं कारणं भवति?"
+    },
+    {
+      "query_id": 942738,
+      "language": "san_Deva",
+      "category": "C",
+      "top1_score": 0.8535367846488953,
+      "query": "कदा पर्यटकाः अण्टर्क्टिका-प्रदेशं गन्तुम् आरब्धवन्तः?"
+    },
+    {
+      "query_id": 927381,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8555430173873901,
+      "query": "कस्मिन् वर्षे स्टेफ़न्-राज्ञः मतं पुस्तकं भवति"
+    },
+    {
+      "query_id": 610827,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8568757176399231,
+      "query": "ओसेज्-समुद्रतटः कस्मिन् प्रदेशे अस्ति?"
+    },
+    {
+      "query_id": 632868,
+      "language": "san_Deva",
+      "category": "A",
+      "top1_score": 0.8797621726989746,
+      "query": "अग्निद्वारा बाप्टिस्म् इत्यस्य कः अर्थः।"
+    },
+    {
+      "query_id": 1179085,
+      "language": "san_Deva",
+      "category": "A",
+      "top1_score": 0.8539797067642212,
+      "query": "कति रोगाणां व्याक्सीन्-द्वारा उन्मूलनं जातम्।"
+    },
+    {
+      "query_id": 687126,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8483405709266663,
+      "query": "आज़ूर् इति होस्टिंग् सैट् किम् अस्ति"
+    },
+    {
+      "query_id": 308242,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8382280468940735,
+      "query": "रेड्फ़ोर्ड् इत्यत्र भवान् प्रतिवर्षं कियत् ददाति?"
+    },
+    {
+      "query_id": 171831,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8520083427429199,
+      "query": "पार्श्ववायुः ज्ञानतन्तु-वेदनां जनयति वा?"
+    },
+    {
+      "query_id": 749381,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8622331023216248,
+      "query": "सामाजिक-सुरक्षायाः कृते पूर्ण-वयः किम् अस्ति"
+    },
+    {
+      "query_id": 201961,
+      "language": "san_Deva",
+      "category": "A",
+      "top1_score": 0.8290567994117737,
+      "query": "सर्वाधिकं बेस्बाल्-विजय-प्रतिशतम्।"
+    },
+    {
+      "query_id": 212636,
+      "language": "san_Deva",
+      "category": "C",
+      "top1_score": 0.8544274568557739,
+      "query": "अम्पलयबीजं कियत् गभीरे रोपणीयम्"
+    },
+    {
+      "query_id": 277077,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8410559892654419,
+      "query": "चेड्डार् तथा सौर्-क्रीम् आलुक-चिप्स् इत्येतयोः सर्विङ्ग्-मध्ये कति क्यालोरि भवति?"
+    },
+    {
+      "query_id": 651842,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8517593145370483,
+      "query": "निर्वाण इत्यस्य नाम किमर्थम् इति।"
+    },
+    {
+      "query_id": 143352,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8315460085868835,
+      "query": "आश्ले ग्रीन् इयं सोमर्हाल्डर् इत्यनेन कदाचित् डेट् अकरोत्।"
+    },
+    {
+      "query_id": 1063447,
+      "language": "san_Deva",
+      "category": "B",
+      "top1_score": 0.8582324385643005,
+      "query": "किमर्थं सर्वकारः टस्केगी-सिफ़िलिस्-रोगस्य प्रयोगम् अन्वमन्यत?"
+    },
+    {
+      "query_id": 819647,
+      "language": "san_Deva",
+      "category": "E",
+      "top1_score": 0.8498972654342651,
+      "query": "सीसन्-पास् कृते किं मूल्यम् अस्ति?"
+    },
+    {
+      "query_id": 427054,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8280224204063416,
+      "query": "இன்சூரன்ஸ் இல்லாததால் ஏற்படும் பெனால்டி இன்னும் நடைமுறையில் உள்ள ஓபமார்கேருக்கு இருக்கிறதா?"
+    },
+    {
+      "query_id": 501445,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8664767146110535,
+      "query": "ஸ்பைனட் பியானோ அகல பரிமாணங்கள்"
+    },
+    {
+      "query_id": 402120,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8493345975875854,
+      "query": "அலுமினியம் சல்பேட் நச்சுத்தன்மை கொண்டது."
+    },
+    {
+      "query_id": 1055281,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8126579523086548,
+      "query": "மார்செய்ல்ஸின் பைத்தியர்கள் யார்?"
+    },
+    {
+      "query_id": 399393,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8623131513595581,
+      "query": "இது ஒரு செயல்பாடு அல்லது ஒரு பின்னொட்டு"
+    },
+    {
+      "query_id": 220594,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8555063605308533,
+      "query": "கேம்பாயில் டைல்ஸ் எவ்வாறு வேலை செய்கின்றன"
+    },
+    {
+      "query_id": 931818,
+      "language": "tam_Taml",
+      "category": "C",
+      "top1_score": 0.8622890710830688,
+      "query": "வர்த்தக முத்திரை மற்றும் பதிப்புரிமைக்கு இடையே என்ன வித்தியாசம் உள்ளது"
+    },
+    {
+      "query_id": 1033587,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8149608373641968,
+      "query": "அவர் பியோவுல்ஃபிலிருந்து வந்த ஹிக்லாக்."
+    },
+    {
+      "query_id": 1014671,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8691297769546509,
+      "query": "கதிரியக்க தொலைநோக்கி பயன்பாட்டில் பின்வரும் கூறுகளில் எது பயன்படுத்தப்படலாம்"
+    },
+    {
+      "query_id": 156615,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8718616962432861,
+      "query": "இரத்தமக்குழாய் அணுக்கள் இரத்த அணுக்களாக மாறுகின்றன."
+    },
+    {
+      "query_id": 153396,
+      "language": "tam_Taml",
+      "category": "A",
+      "top1_score": 0.8638114929199219,
+      "query": "தூர கால்கரியிலிருந்து ஏரி லூயிஸ் வரை"
+    },
+    {
+      "query_id": 940017,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8812534213066101,
+      "query": "நீல் ஆர்ம்ஸ்ட்ராங் எப்போது நிலத்தில் இறங்கினார்"
+    },
+    {
+      "query_id": 1178894,
+      "language": "tam_Taml",
+      "category": "A",
+      "top1_score": 0.8514907956123352,
+      "query": "ஒரு வாரத்தில் எத்தனை மணி நேரம் சொத்து முதலீட்டு முகவர்கள் வேலை செய்கிறார்கள்."
+    },
+    {
+      "query_id": 461000,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8702805638313293,
+      "query": "மைரான் என்றால் பெயர் என்று பொருள்."
+    },
+    {
+      "query_id": 623690,
+      "language": "tam_Taml",
+      "category": "C",
+      "top1_score": 0.8516596555709839,
+      "query": "கடவுளை நினைவூட்ட அவர்களுக்கு மெசுசா என்ன செய்கிறார்கள்"
+    },
+    {
+      "query_id": 43392,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8437374830245972,
+      "query": "சராசரி சம்பளம் என்பது எம்எஸ்-இல் உள்ள எல்பிஎன்"
+    },
+    {
+      "query_id": 213403,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8760862350463867,
+      "query": "ஃபிரான்செஸ்கோ ரெடி எப்படி தன்னிச்சையான உருவாக்கம் என்ற கருத்தை மறுத்தார்?"
+    },
+    {
+      "query_id": 735644,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8442028164863586,
+      "query": "என்ன கிராக்கிள் ஆப்"
+    },
+    {
+      "query_id": 1055626,
+      "language": "tam_Taml",
+      "category": "C",
+      "top1_score": 0.8617627024650574,
+      "query": "அழகான கண்களைக் கொண்ட நடிகை யார்"
+    },
+    {
+      "query_id": 118761,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8542185425758362,
+      "query": "கார்பல் என்பது என்னவென்று வரையறுக்கவும்."
+    },
+    {
+      "query_id": 333078,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8541457653045654,
+      "query": "என்னோட ரிடையர்மென்ட் ஃபண்ட்ல இருந்து பணத்தை எடுக்க எனக்கு எவ்ளோ வயசாகும் தெரியுமா?"
+    },
+    {
+      "query_id": 925590,
+      "language": "tam_Taml",
+      "category": "A",
+      "top1_score": 0.8368354439735413,
+      "query": "தொழிற்சாலை விவசாயம் மேற்கொள்ளப்பட்டால் பொருளாதாரத்திற்கு என்ன நடக்கும்."
+    },
+    {
+      "query_id": 613646,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8509193062782288,
+      "query": "தேத்ஃபோர்ட் என்ற இடம் எந்த மாவட்டத்தில் உள்ளது?"
+    },
+    {
+      "query_id": 553469,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8401147127151489,
+      "query": "ஒரு ஏக்கர் நிலம் வாஷிங்டன் மாநிலத்தின் யாக்கிமா கவுண்டியில் எவ்வளவு செலவாகும்"
+    },
+    {
+      "query_id": 132506,
+      "language": "tam_Taml",
+      "category": "C",
+      "top1_score": 0.8740053176879883,
+      "query": "செயற்கைத் தேர்வு என்பதன் வரையறை"
+    },
+    {
+      "query_id": 1163547,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8818995356559753,
+      "query": "ட்ரென்டன் என்ற இடம் எந்த கவுண்டியில் உள்ளது?"
+    },
+    {
+      "query_id": 986296,
+      "language": "tam_Taml",
+      "category": "A",
+      "top1_score": 0.8632726669311523,
+      "query": "லாங்ஹார்ன் பென்சில்வேனியா"
+    },
+    {
+      "query_id": 757079,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8462226986885071,
+      "query": "என்ன ஐசிசி நேரடி"
+    },
+    {
+      "query_id": 282184,
+      "language": "tam_Taml",
+      "category": "E",
+      "top1_score": 0.8449004292488098,
+      "query": "யாஹ்ட்ஸி விளையாட்டை விளையாட எத்தனை பகடைகள் தேவைப்படுகின்றன."
+    },
+    {
+      "query_id": 860048,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8710760474205017,
+      "query": "யூவியோமெனிங்கோன்செஃபாலிடிக் நோய்க்குறி என்பது என்னவென்றால்"
+    },
+    {
+      "query_id": 108900,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8723819851875305,
+      "query": "ஜெர்பில்களை வளர்ப்பதற்கான செலவு"
+    },
+    {
+      "query_id": 18102,
+      "language": "tam_Taml",
+      "category": "B",
+      "top1_score": 0.8598736524581909,
+      "query": "சம்பவச் சம்பவம் என்பது நம்மை சுற்றி நிகழும் சூழ்நிலைகளில் நடக்கும் நிகழ்வுகளை விவரிக்கும் வகையில் வரையறுக்கப்பட்ட வரையறை."
+    },
+    {
+      "query_id": 977954,
+      "language": "urd_Arab",
+      "category": "D",
+      "top1_score": 0.8454318642616272,
+      "query": "جہاں بیلوو ٹی این ہے۔"
+    },
+    {
+      "query_id": 1000882,
+      "language": "urd_Arab",
+      "category": "B",
+      "top1_score": 0.8671635985374451,
+      "query": "جہاں زیادہ تر پینگوئن رہتے ہیں"
+    },
+    {
+      "query_id": 813343,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8508918881416321,
+      "query": "ہر مرحلے کے لیے تخلیقی سطح کیا ہے"
+    },
+    {
+      "query_id": 744057,
+      "language": "urd_Arab",
+      "category": "B",
+      "top1_score": 0.8749843835830688,
+      "query": "‏اینوویا کیا ہے‏"
+    },
+    {
+      "query_id": 846124,
+      "language": "urd_Arab",
+      "category": "C",
+      "top1_score": 0.8581964373588562,
+      "query": "سکروٹل کیا ہے"
+    },
+    {
+      "query_id": 334179,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8647440075874329,
+      "query": "بچوں کی فلم کا ٹکٹ کتنا پرانا ہے"
+    },
+    {
+      "query_id": 383696,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8796817064285278,
+      "query": "جِم کی ورزش میں ہاتھ کے وزن کو کیسے منتقل کیا جائے"
+    },
+    {
+      "query_id": 8423,
+      "language": "urd_Arab",
+      "category": "B",
+      "top1_score": 0.8801223039627075,
+      "query": "پاپولسٹ کون تھے؟ وہ کیا چاہتے تھے؟"
+    },
+    {
+      "query_id": 871529,
+      "language": "urd_Arab",
+      "category": "C",
+      "top1_score": 0.8599372506141663,
+      "query": "کلوروپلاسٹ میں کس قسم کے روغن ہوتے ہیں۔"
+    },
+    {
+      "query_id": 173259,
+      "language": "urd_Arab",
+      "category": "B",
+      "top1_score": 0.852559506893158,
+      "query": "کیا ٹوتھ پیسٹ مہاسوں سے چھٹکارا دیتا ہے"
+    },
+    {
+      "query_id": 156934,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8708347678184509,
+      "query": "کیا مجھے فلوریڈا کے تجارتی ڈرائیونگ لائسنس کی ضرورت ہے؟"
+    },
+    {
+      "query_id": 608325,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.864277184009552,
+      "query": "لانگہورن پا کون سا کاؤنٹی ہے جو"
+    },
+    {
+      "query_id": 671510,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8818998336791992,
+      "query": "کیا انشورنس بنیادی کام یا میڈیکئیر ہے"
+    },
+    {
+      "query_id": 938422,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8445238471031189,
+      "query": "‏فیکس ٹائٹل دوم کے ضوابط کو کب منظور کیا گیا تھا‏"
+    },
+    {
+      "query_id": 1182346,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8616060614585876,
+      "query": "اس کی تعریف"
+    },
+    {
+      "query_id": 789747,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.871523916721344,
+      "query": "خون کی مقدار ریڈو بلڈ کاؤنٹ ہے۔"
+    },
+    {
+      "query_id": 879830,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8632060885429382,
+      "query": "کون سے پٹھوں کا استعمال پش اپ کرنے کے لیے کیا جاتا ہے"
+    },
+    {
+      "query_id": 577899,
+      "language": "urd_Arab",
+      "category": "B",
+      "top1_score": 0.8493689298629761,
+      "query": "ہوٹل مینوپولیس کے قریب کن پرکشش مقامات ہیں"
+    },
+    {
+      "query_id": 937585,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8676376938819885,
+      "query": "برازیل نے اپنی آزادی کب حاصل کی۔"
+    },
+    {
+      "query_id": 339087,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8754147887229919,
+      "query": "تصور کے فوراً بعد کیا آپ حمل کی جانچ کر سکتے ہیں"
+    },
+    {
+      "query_id": 589241,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8731544613838196,
+      "query": "جھیلوں کے ٹرن اوور کا سبب کیا ہے"
+    },
+    {
+      "query_id": 394311,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.864193320274353,
+      "query": "کون سی ریاستوں میں یہ عظیم طاس واقع ہے۔"
+    },
+    {
+      "query_id": 977669,
+      "language": "urd_Arab",
+      "category": "C",
+      "top1_score": 0.8442963361740112,
+      "query": "بران کہاں ہے؟"
+    },
+    {
+      "query_id": 46003,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8635410070419312,
+      "query": "اوسط درجہ حرارت یا درجہ حرارت کا اضافہ ہے۔"
+    },
+    {
+      "query_id": 720186,
+      "language": "urd_Arab",
+      "category": "E",
+      "top1_score": 0.8523815870285034,
+      "query": "‏جو اسمر ہے‏"
+    },
+    {
+      "query_id": 1154215,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8816789984703064,
+      "query": "لیگو لینڈ کیا ہے"
+    },
+    {
+      "query_id": 84777,
+      "language": "urd_Arab",
+      "category": "A",
+      "top1_score": 0.8579769730567932,
+      "query": "جسم میں درد، جھٹکے، اور کبھی کبھی آنکھیں پھیرنے کے آثار"
+    },
+    {
+      "query_id": 900342,
+      "language": "urd_Arab",
+      "category": "D",
+      "top1_score": 0.8676420450210571,
+      "query": "جو کپڑوں سے بو آتی ہے اسے لینا ضروری ہے"
+    },
+    {
+      "query_id": 152346,
+      "language": "urd_Arab",
+      "category": "C",
+      "top1_score": 0.8643090128898621,
+      "query": "بیماریاں جو غیر صحت مند انتخاب کی وجہ سے ہوتی ہیں"
+    },
+    {
+      "query_id": 662183,
+      "language": "eng_Latn",
+      "category": "B",
+      "top1_score": 0.8777670860290527,
+      "query": "what foreign cars are compact cars?"
+    },
+    {
+      "query_id": 300097,
+      "language": "eng_Latn",
+      "category": "A",
+      "top1_score": 0.8677897453308105,
+      "query": "how many wives did hank williams have"
+    },
+    {
+      "query_id": 618691,
+      "language": "eng_Latn",
+      "category": "A",
+      "top1_score": 0.8721925020217896,
+      "query": "what did b.o.b hope die from?"
+    },
+    {
+      "query_id": 192252,
+      "language": "eng_Latn",
+      "category": "B",
+      "top1_score": 0.8685425519943237,
+      "query": "fun things to do in nyc during the week"
+    },
+    {
+      "query_id": 1035229,
+      "language": "eng_Latn",
+      "category": "A",
+      "top1_score": 0.8304103016853333,
+      "query": "who is legend Prince great musician"
+    },
+    {
+      "query_id": 405951,
+      "language": "eng_Latn",
+      "category": "A",
+      "top1_score": 0.8725388646125793,
+      "query": "is charles krauthammer pro trump or against trump"
+    }
+  ]
+}

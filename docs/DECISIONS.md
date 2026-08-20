@@ -860,3 +860,142 @@ those was explicitly checked against this phase's instructions before writing.
 
 **286/286 tests pass, ruff clean.** No test changes were needed (no production `src/` code
 changed — only `frontend/index.html`'s copy, `README.md`, and new one-off scripts/eval artifacts).
+
+## ADR-016 — Phase 7: diagnosed the 66.5% abstention rate in full; every cheap retrieval fix tested is rejected
+
+**Date:** 2026-08-20. **Status:** Accepted — as a decision NOT to change retrieval or G3.
+`src/vrag/guardrails/g3_confidence.py`, `src/vrag/retrieval/hybrid.py`, and every other production
+file are byte-identical before and after this ADR. No production code changed, nothing deployed.
+
+**Task:** Phases 4/5 established TAU isn't the problem and cheap G3-side confidence features don't
+help. This ADR asks a different question — can the *evidence handed to G3* be improved before it
+ever sees it, via cheap, deterministic, no-large-model retrieval changes? Diagnose first, then
+test candidates, informed by the diagnosis rather than guessing.
+
+### Part 1 — Abstention taxonomy (532-query set, 354 abstained)
+
+Classified every abstained query by where its real gold passage actually landed
+(`scripts/diagnose_abstention_taxonomy.py`, cross-validated: category A's count, 56, matches
+ADR-013's independently-computed `false_refusal` figure exactly):
+
+| Category | Meaning | Count | % of abstained |
+|---|---|---|---|
+| A | Correct evidence is rank 1, G3 still rejects (below TAU) | 56 | 15.8% |
+| B | Correct evidence in top-5, not rank 1 | 105 | 29.7% |
+| C | Correct evidence in top-10, not top-5 | 38 | 10.7% |
+| D | Correct evidence in top-20, not top-10 | 13 | 3.7% |
+| E | Correct evidence in the corpus, outside top-20 | 142 | 40.1% |
+| F | Correct evidence not in this index's corpus at all | 0 | 0.0% |
+
+F is genuinely zero — the held-out set was drawn from this same 100k pool, so every gold passage
+exists somewhere in it. **Category E (real retrieval misses, not a ranking problem) is the single
+largest bucket at 40.1%.** Refined in Part 4 below once the true boundary (top-100, not top-20)
+was checked. Per-language counts (`eval/g3_abstention_taxonomy.json`) show Sanskrit is the sharpest
+outlier — 20 of its 37 abstentions (54%) are category E, consistent with weaker embedding coverage
+for the lowest-resource language in the set.
+
+### Part 2 — Representative case inspection
+
+40 curated cases (`scripts/inspect_abstention_cases.py`, one A/B/C/D case + one E case per
+language where available, `eval/g3_abstention_case_inspection.json`) with real top-10 hit text,
+gold passage text/rank, and lexical-overlap numbers computed on both. Recurring patterns:
+**same-template distractors** (many passages share surface vocabulary — "capital", "routing
+number", zip-code boilerplate — regardless of whether they answer the specific query), and
+**translation/paraphrase variance** (genuinely correct passages sometimes share almost no
+vocabulary with the query — several real cases show gold-passage lexical overlap of 0.0–0.02 with
+the query, i.e. essentially no literal word overlap despite being the correct answer). Both
+patterns directly predict why lexical-signal reranking would fail — tested and confirmed in Part 3.
+
+### Part 3 — Candidate retrieval experiments (B/C/D/E) — all four rejected
+
+All four candidates were tested for real, not assumed. **All four are net-negative on Recall@1,
+with regressions consistently exceeding recoveries:**
+
+| Candidate | Method | Recall@1 (baseline 0.2218) | Abstentions flipped to correct | Of those, clear TAU | Currently-correct demoted |
+|---|---|---|---|---|---|
+| B | Rerank by raw lexical (Jaccard) overlap | 0.1128 | 29 | 11 | **87** |
+| C | Rerank by numeric+content-word "entity" proxy | 0.1203 | 31 | 10 | **85** |
+| D | Real BM25 (`bm25s`, IDF-weighted, language-filtered) + dense RRF | 0.1898 | 37 | 12 | **54** |
+| E | Dense + raw-lexical-overlap RRF | 0.1936 | 28 | 8 | **43** |
+
+(Full detail: `eval/g3_rerank_candidate_results.json`, `eval/g3_rerank_candidate_d_bm25_results.json`.)
+
+D (real BM25) was tested specifically because its IDF term-weighting is mechanistically different
+from B/E's raw Jaccard — it down-weights common template words like "capital" by corpus document
+frequency, which could plausibly dodge the same-template-distractor trap. **It didn't.** BM25
+alone scores worse than dense alone (Recall@1 0.1485 vs. 0.2218), and even fused with dense via
+RRF still nets negative (54 regressions vs. 37 recoveries, only 12 of which would actually clear
+TAU). This extends R-010's original Hindi-only BM25 finding and R-038's cross-encoder finding to
+the full family of term/relevance-overlap reranking methods on this corpus, cheap or expensive
+alike — the failure mode (same-template distractors sharing surface vocabulary; genuine matches
+sometimes phrased with almost no shared vocabulary) defeats anything that rewards query-document
+similarity, not just weak lexical methods. **This is diagnostic evidence the cross-encoder would
+not behave differently either** — the explicit condition for re-testing it ("only if diagnostics
+prove the failure mode specifically requires it") is not met; it is not re-tested.
+
+Candidate F (deterministic query normalization) was not built as a separate experiment: the case
+inspection found no punctuation/casing/formatting noise pattern to normalize — queries are already
+clean — and the dominant failure modes (same-template distractors, translation-induced lexical
+variance) are semantic/content-level, not textual noise a normalization step would touch.
+
+**Explicit safety check, run against every candidate before any of them were even considered
+viable** (`scripts/safety_check_capital_of_india.py`): "भारत की राजधानी क्या है?" and "What is the
+capital of India?" — under B, C, D, and E alike, every candidate's promoted rank-1 passage still
+scores below TAU and correctly abstains. Zero unsafe accepts on the flagship case. (They are still
+rejected on aggregate quality grounds regardless — passing this one check does not make a
+net-negative candidate safe to ship; the 43–87 regressions above are real, diffuse
+wrong-answer-risk increases elsewhere in the corpus, not concentrated on this one query.)
+
+### Part 4 — Depth sweep (top-10/20/50/100, plus a genuine beyond-100 test)
+
+Re-checked all 354 abstained queries at `k=100` — production's *real* effective search width
+today (`HybridRetriever`'s language filter already searches a raw dense pool of 100 before
+truncating to whatever `k` the caller requests; the Phase 4 taxonomy above only checked to rank 20
+and undercounted true recall depth as a result). Real, measured (`scripts/depth_recovery_sweep.py`,
+`eval/g3_depth_recovery_sweep.json`):
+
+| Depth | Abstentions with gold passage found | Cumulative |
+|---|---|---|
+| top-10 | 199 / 354 (56.2%) | — |
+| top-20 | 212 / 354 (59.9%) | +13 |
+| top-50 | 223 / 354 (63.0%) | +11 |
+| top-100 | 223 / 354 (63.0%) | **+0** |
+
+**Recall saturates completely between rank 50 and rank 100 — zero additional queries recovered.**
+89% of everything recoverable at all is already within the top-10. A further test — real raw
+`DenseIndex.search(k=300)`, bypassing `HybridRetriever`'s hardcoded 100-wide search entirely —
+recovered only 25 of the 131 still-missing queries (19%), at rank 101–300, far beyond any
+practical reranking window. **131 of 354 abstentions (37%) have no recoverable evidence within a
+300-deep raw dense search at all** — a genuine embedding-alignment gap, not a depth or ranking
+problem.
+
+**Latency and memory at depth, measured directly** (`DenseIndex.search`, 30 real queries,
+k=10/20/50/100/300/500): search cost is **flat across every depth tested, 1.7–2.0ms regardless of
+k** (HNSW graph-traversal cost dominates, not candidate-list size — a well-known property, verified
+here rather than assumed) and RSS is unchanged (370.8MB at every k). **Depth was never the
+bottleneck and was already free — the ceiling on what depth alone can recover is real and low.**
+
+### Part 5 — G3 recalibration: not applicable
+
+No candidate in Part 3 produced better top-1 evidence to recalibrate against — every one made
+Recall@1 worse. Per the explicit instruction ("investigate calibration only after improving
+candidates"), this step does not run. **TAU=0.8835, MARGIN=0.0 remain untouched.**
+
+### Decision
+
+**Reject every retrieval candidate tested (B, C, D, E) for production adoption. No production
+code changed.** The taxonomy explains why no cheap fix exists: 40% of abstentions are genuine
+retrieval misses that no reranking signal can fix (the passage was never retrieved to begin with,
+and depth beyond ~20 barely helps); of the 44% where evidence IS retrieved but outranked, every
+tested promotion signal (lexical, entity-proxy, real BM25, RRF combinations) causes more
+regressions among currently-correct answers than it recovers — the corpus's same-template
+distractors and translation-induced lexical variance defeat term/relevance-overlap methods
+generically, not just the specific ones already rejected (R-010, R-038). The real fix — flagged
+again, now with much stronger evidence — needs a better *embedding* (the thing actually failing to
+place 37% of gold passages anywhere near the top of a 300-deep search), not a better reranker.
+Out of scope for a "no large model" phase; a legitimate target for future work.
+
+**No corpus, FAISS, embedder, retrieval, or guardrail code changed.** New real BM25 artifact
+(`SparseIndex`, built fresh for this experiment) is not persisted or wired into any pipeline — the
+experiment scripts rebuild it in-memory each run, nothing is saved to `data/index/`. 286/286 tests
+pass, ruff clean.
