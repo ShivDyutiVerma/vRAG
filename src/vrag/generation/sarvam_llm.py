@@ -49,18 +49,34 @@ _CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
 # reasoning disabled. Plain sarvam-105b produces correct structured output; use that instead.
 _MODEL = "sarvam-105b"
 
-_SYSTEM_PROMPT = (
-    "You are a grounded question-answering assistant for a Hindi voice product. Answer ONLY "
-    "using the numbered context passages given. If the passages don't contain the answer, say "
-    "so plainly in the `answer` field rather than guessing. "
-    "CRITICAL: the `answer` field MUST be written in the same script and language as the "
-    "context passages (Hindi/Devanagari) — never answer in English even if you reason in "
-    "English internally. An answer in the wrong language is treated as a failure. "
-    "Cite only chunk_ids that were actually given to you — never invent one. "
-    "Keep the `reasoning` field to at most one short sentence (under 20 words) — it exists to "
-    "nudge you to check the context before answering, not to record a full chain of thought. "
-    "Spend your token budget on the answer, not on reasoning."
-)
+# Phase 3 (docs/DECISIONS.md ADR-012): the "Hindi voice product" framing and the hardcoded
+# "never answer in English" instruction are gone -- both were architectural assumptions from when
+# the corpus was Hindi-only (ADR-002/ADR-009), not requirements. generation_language now decides
+# the target language for real, per query, defaulting to Hindi only when no real signal exists
+# (a direct /ask call with no language hint) -- the same "Hindi is the fallback, not a hardcoded
+# assumption" default every other Phase 1/3 fallback in this codebase uses.
+_DEFAULT_GENERATION_LANGUAGE = "hi-IN"
+
+
+def _build_system_prompt(generation_language: str | None) -> str:
+    from vrag.languages import display_name
+
+    resolved = display_name(generation_language) or display_name(_DEFAULT_GENERATION_LANGUAGE)
+    assert resolved is not None  # the Hindi fallback is always in LANGUAGE_DISPLAY_NAMES
+    lang_name, script_name = resolved
+    return (
+        "You are a grounded question-answering assistant for a multilingual voice product. "
+        "Answer ONLY using the numbered context passages given. If the passages don't contain "
+        "the answer, say so plainly in the `answer` field rather than guessing. "
+        f"CRITICAL: the `answer` field MUST be written in {lang_name} ({script_name} script) — "
+        "never answer in a different language even if you reason in a different language "
+        "internally, and even if the context passages themselves are in a different language "
+        "than the question. An answer in the wrong language is treated as a failure. "
+        "Cite only chunk_ids that were actually given to you — never invent one. "
+        "Keep the `reasoning` field to at most one short sentence (under 20 words) — it exists to "
+        "nudge you to check the context before answering, not to record a full chain of thought. "
+        "Spend your token budget on the answer, not on reasoning."
+    )
 
 # Evidence: docs/DECISIONS_P.md P-017. Real streamed runs against the live API never showed more
 # than 2 consecutive whitespace-only/empty content deltas during genuine JSON formatting (e.g. the
@@ -274,9 +290,11 @@ async def _call_tool_decision(
     return {"query": query, "k": k}
 
 
-def _messages_for(query: str, chunks: list[RetrievedChunk]) -> list[dict]:
+def _messages_for(
+    query: str, chunks: list[RetrievedChunk], generation_language: str | None
+) -> list[dict]:
     return [
-        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "system", "content": _build_system_prompt(generation_language)},
         {
             "role": "user",
             "content": f"Context:\n{_build_context_block(chunks)}\n\nQuestion: {query}",
@@ -285,11 +303,20 @@ def _messages_for(query: str, chunks: list[RetrievedChunk]) -> list[dict]:
 
 
 async def generate(
-    query: str, chunks: list[RetrievedChunk], timeout_s: float = 10.0
+    query: str,
+    chunks: list[RetrievedChunk],
+    timeout_s: float = 10.0,
+    generation_language: str | None = None,
 ) -> GenerationResult | None:
     """Real network call. Returns None on any failure (missing key, timeout, HTTP error, or a
     parse failure that survives one repair attempt per AGENT_BUILD_SPEC.md §7.2 item 6) — the
     caller (GenerateStage) falls back to Track A. Never raises.
+
+    `generation_language` (docs/DECISIONS.md ADR-012): the real Sarvam-detected query language —
+    set once by `ExtractAnswerStage` (`ctx.data["generation_language"]`, defaults to
+    `query_language`, docs/DECISIONS.md ADR-008). None (e.g. no real STT signal) falls back to
+    Hindi, this project's pre-Phase-3 default — not a hardcoded assumption anymore, just what an
+    unknown language falls back to.
 
     Up to three round trips when the model signals `needs_more_context`: the initial structured
     answer, a tool-calling round to fetch more context (depth capped at 1 — this follow-up never
@@ -301,13 +328,17 @@ async def generate(
 
     try:
         async with httpx.AsyncClient(timeout=timeout_s) as client:
-            first = await _generate_structured(client, _messages_for(query, chunks))
+            first = await _generate_structured(
+                client, _messages_for(query, chunks, generation_language)
+            )
             if first is None:
                 return None
             if not first.needs_more_context:
                 return GenerationResult(answer=first, chunks=chunks)
 
-            tool_args = await _call_tool_decision(client, _messages_for(query, chunks))
+            tool_args = await _call_tool_decision(
+                client, _messages_for(query, chunks, generation_language)
+            )
             if tool_args is None:
                 logger.info(
                     "Track B: needs_more_context=True but no tool call followed, "
@@ -322,7 +353,9 @@ async def generate(
             seen_ids = {c.chunk_id for c in chunks}
             expanded_chunks = chunks + [c for c in fetched if c.chunk_id not in seen_ids]
 
-            second = await _generate_structured(client, _messages_for(query, expanded_chunks))
+            second = await _generate_structured(
+                client, _messages_for(query, expanded_chunks, generation_language)
+            )
             if second is None:
                 return GenerationResult(answer=first, chunks=chunks)
             return GenerationResult(answer=second, chunks=expanded_chunks)

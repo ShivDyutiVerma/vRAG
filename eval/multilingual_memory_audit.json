@@ -1,32 +1,32 @@
 {
   "100k": {
     "index_dir": "D:\\projects\\vRAG\\data\\index\\multilingual_100k",
-    "n_chunks": 99981,
+    "n_chunks": 107678,
     "chunk_lookup_backend": "sqlite (lean, matches production)",
     "stages": {
       "baseline": {
-        "rss_bytes": 19922944,
-        "peak_wset_bytes": 19922944
+        "rss_bytes": 19628032,
+        "peak_wset_bytes": 19628032
       },
       "after_index_load": {
-        "rss_bytes": 169598976,
-        "peak_wset_bytes": 169598976
+        "rss_bytes": 177901568,
+        "peak_wset_bytes": 177901568
       },
       "after_chunk_lookup_load": {
-        "rss_bytes": 196784128,
-        "peak_wset_bytes": 200216576
+        "rss_bytes": 206962688,
+        "peak_wset_bytes": 209760256
       },
       "after_embedder_construct": {
-        "rss_bytes": 196943872,
-        "peak_wset_bytes": 200216576
+        "rss_bytes": 207015936,
+        "peak_wset_bytes": 209760256
       },
       "after_first_real_query": {
-        "rss_bytes": 396877824,
-        "peak_wset_bytes": 482050048
+        "rss_bytes": 406433792,
+        "peak_wset_bytes": 492597248
       },
       "steady_state_after_5_queries": {
-        "rss_bytes": 396914688,
-        "peak_wset_bytes": 482050048
+        "rss_bytes": 406478848,
+        "peak_wset_bytes": 492597248
       }
     }
   },

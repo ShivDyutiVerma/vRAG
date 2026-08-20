@@ -1,0 +1,46 @@
+{
+  "original_500_on_new_index": {
+    "label": "original_500_hindi_on_new_index",
+    "n_queries": 500,
+    "recall@1": 0.0,
+    "recall@5": 0.0,
+    "recall@10": 0.0,
+    "mrr@10": 0.0,
+    "answered": 44,
+    "abstained": 456,
+    "abstain_rate": 0.912,
+    "abstained_evidence_location": {
+      "found_in_top10": 0,
+      "found_in_top11_to_20": 0,
+      "in_corpus_but_outside_top20": 0,
+      "not_in_corpus_at_all": 456
+    },
+    "top1_score_distribution_of_abstentions": {
+      "min": 0.787054181098938,
+      "max": 0.8833787441253662,
+      "mean": 0.845802349218151
+    }
+  },
+  "multilingual_494_on_new_index": {
+    "label": "multilingual_494_own_language",
+    "n_queries": 532,
+    "recall@1": 0.22180451127819548,
+    "recall@5": 0.5733082706766918,
+    "recall@10": 0.6785714285714286,
+    "mrr@10": 0.3617675140231531,
+    "answered": 178,
+    "abstained": 354,
+    "abstain_rate": 0.6654135338345865,
+    "abstained_evidence_location": {
+      "found_in_top10": 199,
+      "found_in_top11_to_20": 13,
+      "in_corpus_but_outside_top20": 142,
+      "not_in_corpus_at_all": 0
+    },
+    "top1_score_distribution_of_abstentions": {
+      "min": 0.8126579523086548,
+      "max": 0.8830022811889648,
+      "mean": 0.8589607076456318
+    }
+  }
+}

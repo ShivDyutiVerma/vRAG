@@ -1,6 +1,17 @@
 """Retrieval orchestration for `retrieve()` (src/vrag/retrieval/interface.py). Supports three modes
 — "dense" (default), "sparse", "hybrid" (RRF-fused dense+sparse) — selected via `retrieval_mode`.
 
+Language filtering (docs/DECISIONS.md ADR-012, wiring what ADR-009's `language` param left inert):
+when a real `language` (Sarvam BCP-47 code, e.g. `"hi-IN"`) is passed and maps to a known target
+language, `retrieve()` searches a WIDE candidate pool (`_LANGUAGE_FILTER_WIDE_K`) and restricts to
+chunks whose `language` metadata matches, before truncating to the caller's requested `k` — this is
+exactly the "filter" strategy Phase 2 measured as the winner (+8.7-9.1pp Recall@10 over no-filter,
+every corpus size, `docs/DECISIONS.md` ADR-009/ADR-012), not a new untested mechanism. Falls back to
+the unfiltered wide results if the filter would return nothing (a genuine "no same-language
+candidate in the window" case must not manufacture a zero-result failure — G3 downstream is what
+decides "not enough evidence", not this filter). `language=None` or an unmapped code searches
+exactly as before Phase 1/2/3 — this is fully backward compatible.
+
 **Default is "dense", not "hybrid."** The A3 ablation (docs/DECISIONS_R.md R-010,
 docs/EVAL_RESULTS.md §3) measured dense-only beating hybrid+RRF on this corpus (Recall@5 0.652 vs.
 0.604) — BM25 is comparatively weak on this machine-translated Hindi text, and naive equal-weight
@@ -31,7 +42,15 @@ from vrag.index.embedder import EmbedderProtocol
 from vrag.index.fusion import DEFAULT_K, reciprocal_rank_fusion
 from vrag.index.sparse import SparseIndex
 from vrag.index.sqlite_chunk_lookup import SQLiteChunkLookup
+from vrag.languages import SARVAM_TO_TARGET_LANG
 from vrag.retrieval.interface import RetrievedChunk
+
+# Candidate-pool width before narrowing to the caller's requested k, when language-filtering is
+# active (docs/DECISIONS.md ADR-012) -- same value Phase 2's real measurement used
+# (scripts/eval_multilingual_retrieval.py's WIDE_K); a narrower window risks an empty same-language
+# filter result on a roughly-evenly-split 14-language corpus purely from bad luck, not genuine
+# absence.
+_LANGUAGE_FILTER_WIDE_K = 100
 
 
 class HybridRetriever:
@@ -81,29 +100,47 @@ class HybridRetriever:
         """Never raises — matches the retrieve() contract in interface.py. Internal failures
         collapse to an empty result so the harness's grounding gate can abstain.
 
-        `language` (docs/DECISIONS.md ADR-009): accepted, not yet used — see interface.py's
-        retrieve() docstring. No filter/boost logic reads it until Phase 2 builds a multilingual
-        index; `metadata_aware`'s chunk-level `language` tag is the field it would filter/boost
-        against, already written at chunk-build time, never read at query time."""
+        `language` (docs/DECISIONS.md ADR-009/ADR-012): a real, mapped Sarvam code searches a
+        wide candidate pool and restricts to same-language chunks before truncating to `k` — see
+        module docstring for the measured evidence behind this. `None` or an unmapped code (e.g.
+        `te-IN`, which has no indexed corpus) searches exactly as before, unfiltered."""
         if not query.strip():
             return []
+
+        target_lang = SARVAM_TO_TARGET_LANG.get(language) if language else None
+        search_k = max(k, _LANGUAGE_FILTER_WIDE_K) if target_lang else k
 
         loop = asyncio.get_event_loop()
         try:
             if self._retrieval_mode == "dense":
                 hits = await loop.run_in_executor(
-                    self._executor, self._embed_and_search_dense, query, k
+                    self._executor, self._embed_and_search_dense, query, search_k
                 )
             elif self._retrieval_mode == "sparse":
-                hits = await loop.run_in_executor(self._executor, self._search_sparse, query, k)
+                hits = await loop.run_in_executor(
+                    self._executor, self._search_sparse, query, search_k
+                )
             else:  # "hybrid" — dense and sparse MUST run concurrently, see module docstring
                 dense_hits, sparse_hits = await asyncio.gather(
-                    loop.run_in_executor(self._executor, self._embed_and_search_dense, query, k),
-                    loop.run_in_executor(self._executor, self._search_sparse, query, k),
+                    loop.run_in_executor(
+                        self._executor, self._embed_and_search_dense, query, search_k
+                    ),
+                    loop.run_in_executor(self._executor, self._search_sparse, query, search_k),
                 )
                 hits = reciprocal_rank_fusion([dense_hits, sparse_hits], k=self._fusion_k)
         except Exception:  # noqa: BLE001 — contract requires [] on any internal failure
             return []
+
+        if target_lang:
+            same_language_hits = [
+                (chunk_id, score)
+                for chunk_id, score in hits
+                if (chunk := self._chunk_lookup.get(chunk_id)) is not None
+                and chunk.metadata.get("language") == target_lang
+            ]
+            # Documented fallback (module docstring): never manufacture a zero-result failure
+            # merely because this particular search window had no same-language candidate.
+            hits = same_language_hits if same_language_hits else hits
 
         results = []
         for chunk_id, score in hits[:k]:

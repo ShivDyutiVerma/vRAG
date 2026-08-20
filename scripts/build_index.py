@@ -44,17 +44,37 @@ class BuiltIndex:
     n_chunks: int
 
 
-def _rows_to_documents(rows: list[dict]) -> list[Document]:
+def _rows_to_documents(
+    rows: list[dict], qualify_doc_id_by_language: bool = False
+) -> list[Document]:
     """One Document per translated passage (AGENT_BUILD_SPEC.md §6.1 — passage is the natural
-    retrievable unit before any chunking strategy is applied)."""
+    retrievable unit before any chunking strategy is applied).
+
+    `qualify_doc_id_by_language` (default False, docs/DECISIONS.md ADR-009/ADR-011): every
+    existing caller (the single-language Hindi pipeline, `eval/heldout_queries.json`'s
+    `passage_id` convention) keeps the exact `f"{query_id}_{i}"` doc_id it always has -- changing
+    that format would silently break passage_id compatibility with the frozen Hindi held-out set.
+    MSMARCO-XI's `query_id` is a *global* identifier shared across all 13 language files (the same
+    underlying English query, translated 13 ways) -- a multilingual build that samples rows from
+    more than one language file can therefore draw the same query_id twice, colliding two
+    genuinely different chunks onto one doc_id/chunk_id (found and quantified in ADR-009: 0.67-
+    1.27% of rows). Passing True (the multilingual build path only) qualifies doc_id with the
+    row's own `target_lang` tag, which IS unique per language file, guaranteeing global uniqueness
+    without changing anything about how a single-language build behaves.
+    """
     docs: list[Document] = []
     for row in rows:
         translated = row["passages"].get("Translated_passages", [])
         is_selected = row["passages"].get("is_selected", [])
         for i, text in enumerate(translated):
+            doc_id = (
+                f"{row['target_lang']}::{row['query_id']}_{i}"
+                if qualify_doc_id_by_language
+                else f"{row['query_id']}_{i}"
+            )
             docs.append(
                 Document(
-                    doc_id=f"{row['query_id']}_{i}",
+                    doc_id=doc_id,
                     text=text,
                     language=row["target_lang"],
                     source_lang=row["source_lang"],
@@ -134,9 +154,7 @@ def load(path: str | Path) -> tuple[DenseIndex, SparseIndex, dict[str, Chunk]]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strategy", default="passage_native")
-    parser.add_argument(
-        "--embedder", default=E5Embedder.name, choices=sorted(EMBEDDER_REGISTRY)
-    )
+    parser.add_argument("--embedder", default=E5Embedder.name, choices=sorted(EMBEDDER_REGISTRY))
     parser.add_argument(
         "--save-dir",
         default=None,
@@ -144,9 +162,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     result = build(args.strategy, {}, embedder_name=args.embedder)
-    print(
-        f"Built '{args.strategy}' index: {result.n_chunks} chunks in {result.build_seconds:.1f}s"
-    )
+    print(f"Built '{args.strategy}' index: {result.n_chunks} chunks in {result.build_seconds:.1f}s")
     if args.save_dir:
         save(result, args.save_dir)
         print(f"Saved to {args.save_dir}")

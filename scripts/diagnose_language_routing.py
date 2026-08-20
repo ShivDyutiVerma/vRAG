@@ -68,20 +68,21 @@ def main() -> None:
         clamped_scores = [r["score_clamped"] for r in results]
         top1 = clamped_scores[0] if clamped_scores else 0.0
         weakest5 = clamped_scores[min(4, len(clamped_scores) - 1)] if clamped_scores else 0.0
-        if not clamped_scores:
-            abstained = True
-        elif top1 < TAU:
-            abstained = True
-        elif len(clamped_scores) >= 2 and (top1 - weakest5) < MARGIN:
+        if (
+            not clamped_scores
+            or top1 < TAU
+            or len(clamped_scores) >= 2
+            and (top1 - weakest5) < MARGIN
+        ):
             abstained = True
         else:
             abstained = False
 
         print(f"G3: top1={top1:.4f} weakest5={weakest5:.4f} TAU={TAU} -> abstained={abstained}")
         print(
-            f"embedding path: LiteE5Embedder (multilingual-e5-small, ONNX int8), "
-            f"'query: ' prefix, same code path regardless of query language -- no "
-            f"language-conditional branching exists in embedder.py or hybrid.py"
+            "embedding path: LiteE5Embedder (multilingual-e5-small, ONNX int8), "
+            "'query: ' prefix, same code path regardless of query language -- no "
+            "language-conditional branching exists in embedder.py or hybrid.py"
         )
 
     lookup.close()

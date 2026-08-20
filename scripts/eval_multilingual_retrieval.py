@@ -37,7 +37,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from vrag.index.dense import DenseIndex  # noqa: E402
 from vrag.index.embedder import E5Embedder  # noqa: E402
-from vrag.retrieval.metrics import dedupe_doc_ids, score_hits  # noqa: E402
+from vrag.retrieval.metrics import score_hits  # noqa: E402
 
 DATA_DIR = REPO_ROOT / "data"
 EVAL_DIR = REPO_ROOT / "eval"
@@ -59,22 +59,35 @@ def _load_chunk_lookup(index_dir: Path) -> dict[str, dict]:
     return raw  # chunk_id -> {"chunk_id", "doc_id", "text", "metadata": {"language": ...}, ...}
 
 
-def _mode_no_filter(hits: list[tuple[str, float]], lookup: dict, target_lang: str) -> list[tuple[str, float]]:
+def _mode_no_filter(
+    hits: list[tuple[str, float]], lookup: dict, target_lang: str
+) -> list[tuple[str, float]]:
     return hits[:FINAL_K]
 
 
-def _mode_filter(hits: list[tuple[str, float]], lookup: dict, target_lang: str) -> list[tuple[str, float]]:
+def _mode_filter(
+    hits: list[tuple[str, float]], lookup: dict, target_lang: str
+) -> list[tuple[str, float]]:
     same_lang = [
-        (cid, s) for cid, s in hits if lookup.get(cid, {}).get("metadata", {}).get("language") == target_lang
+        (cid, s)
+        for cid, s in hits
+        if lookup.get(cid, {}).get("metadata", {}).get("language") == target_lang
     ]
     if same_lang:
         return same_lang[:FINAL_K]
     return hits[:FINAL_K]  # documented fallback -- never manufacture a zero-result failure
 
 
-def _mode_boost(hits: list[tuple[str, float]], lookup: dict, target_lang: str) -> list[tuple[str, float]]:
+def _mode_boost(
+    hits: list[tuple[str, float]], lookup: dict, target_lang: str
+) -> list[tuple[str, float]]:
     boosted = [
-        (cid, s * BOOST_FACTOR if lookup.get(cid, {}).get("metadata", {}).get("language") == target_lang else s)
+        (
+            cid,
+            s * BOOST_FACTOR
+            if lookup.get(cid, {}).get("metadata", {}).get("language") == target_lang
+            else s,
+        )
         for cid, s in hits
     ]
     boosted.sort(key=lambda pair: pair[1], reverse=True)

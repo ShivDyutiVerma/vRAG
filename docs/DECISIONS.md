@@ -415,3 +415,134 @@ filtering should be treated as a strong, low-risk candidate for production wirin
 which size is chosen — it improved every metric at every size with near-zero latency cost and a
 near-zero fallback rate. Neither decision is made in this ADR; both are handed to the user with
 the evidence above.
+
+## ADR-010 — 100k selected as the production candidate; chunk_id collision fixed; BM25 dropped from the candidate artifact
+
+**Date:** 2026-08-20.
+**Status:** Accepted. User decision, evidence-driven: 100k over 150k/200k (Recall@10 0.652 vs.
+0.630 vs. 0.591, filter mode; 100k also lowest RSS and fastest build — see ADR-009). "Do not
+assume bigger is better" — confirmed correct by the data, not just accepted as a principle.
+
+**Chunk-ID collision fixed (docs/DECISIONS_R.md context: `_rows_to_documents` in
+`scripts/build_index.py`).** ADR-009 found and quantified the bug (MSMARCO-XI's `query_id` is
+global, not per-language — 0.67-1.27% of rows collided across languages). Fix: an opt-in
+`qualify_doc_id_by_language: bool = False` parameter — default unchanged (the single-language
+Hindi pipeline's doc_id format, and `eval/heldout_queries.json`'s `passage_id` compatibility, are
+byte-identical to before), `True` only for the multilingual build path, producing
+`f"{target_lang}::{query_id}_{i}"` (e.g. `"asm_Beng::655605_0"`). 6 new regression tests
+(`tests/test_build_index_multilingual_ids.py`) pin both the fixed collision behavior and the
+unchanged default. `eval/heldout_queries_multilingual.json`'s `passage_id`s were regenerated to
+match (same 494 queries, same text, verified by direct text-equality check during regeneration —
+not resampled). Rebuilt 100k index: 99,981 chunks, exactly matching `chunk_lookup`'s own entry
+count (zero collisions, confirmed directly) — real Recall@10 improved marginally to 0.6559 (was
+0.6518, the ~0.4pp gap is exactly the previously-silently-dropped chunks), fallback_rate now
+exactly 0.000 (was 0.002).
+
+**BM25/sparse dropped from the candidate build.** `save_built_index()` (`src/vrag/index/
+persistence.py`) now accepts `sparse: SparseIndex | None` — `None` skips writing a sparse artifact
+at all, additive, every existing caller unaffected. `scripts/build_multilingual_index.py` defaults
+to `build_sparse=False` for the production candidate (dense-only is the intentional retrieval
+mode, ADR-007 already never loads it into memory regardless — this drops the dead ~55MB disk
+weight too). `SparseIndex`/`HybridRetriever`'s sparse/hybrid modes are untouched; `--build-sparse`
+flag still produces a real one if a future experiment needs it.
+
+**English added as a 14th genuinely-indexed language.** Using the `English_passages` field every
+MSMARCO-XI row already carries (Phase 0 finding) — 771 rows (the same per-language budget every
+other language got at the 100k tier), deduped by query_id, drawn from the already-sampled 100k
+pool (no new download). 7,697 English chunks appended to the existing dense index via incremental
+`DenseIndex.add()` (HNSW supports this natively; the sqfp16 ScalarQuantizer's calibration doesn't
+need retraining — E5 embeddings are L2-normalised regardless of input language). Final candidate:
+**107,678 chunks, 14 languages**, balanced within ~0.5% of each other. `src/vrag/languages.py`
+updated: `en-IN` moves from excluded to `SUPPORTED_LANGUAGES`, and `CURRENTLY_INDEXED_LANGUAGES`
+now equals `SUPPORTED_LANGUAGES` for the first time (was a strict subset through Phase 1/2).
+
+**Final candidate memory (real, staged, isolated subprocess, lean SQLite lookup):**
+steady-state RSS **406.5MB**, peak WSet **492.6MB** — for comparison, the eager JSON lookup would
+cost 536-812MB at these corpus sizes (ADR-009's measured gap). Disk: dense 103MB → grows with the
+English append (not re-measured standalone), SQLite lookup 140.2MB, no sparse file.
+
+**Real end-to-end smoke test** (`scripts/smoke_test_multilingual_candidate.py`, via
+`VRAG_INDEX_DIR` env-var override — see `src/vrag/retrieval/interface.py`, never a hardcoded
+default swap, see that file's docstring for why): `/healthz` reports `retrieval:"real"`, no stub
+fallback, 5 languages (Hindi/English/Bengali/Tamil/Marathi) all reach retrieval with correct
+`query_language` propagation; separately verified real *answered* responses (Assamese examples)
+carry unique, language-qualified, valid `chunk_id`/`passage_id` citations.
+
+**`data/index/metadata_aware/` (Hindi-only, `baseline-hindi-only-v1`, live on Render) untouched
+throughout** — confirmed via `git diff`/`ls`, no script in this ADR's scope reads or writes that
+path.
+
+## ADR-011 — Phase 3: language filter wired into production retrieval; Track B generation is language-aware; real G3 re-evaluation
+
+**Date:** 2026-08-20. **Status:** Accepted (code + measurement). Deployment still explicitly out
+of scope — nothing in this ADR touches Render or the live URL.
+
+**Retrieval: the "filter" strategy ADR-009/ADR-010 measured as the winner is now wired into
+`HybridRetriever.retrieve()` for real** (`src/vrag/retrieval/hybrid.py`), not just accepted-but-
+inert (ADR-008's original `language` param). A real, mapped `language` searches a wide pool
+(`_LANGUAGE_FILTER_WIDE_K=100`, same value Phase 2's measurement used) and restricts to
+same-language chunks before truncating to the caller's `k`; falls back to the unfiltered ranking
+if no same-language candidate exists in the window (never manufactures a zero-result failure).
+`language=None` or an unmapped code (e.g. `te-IN`) is untouched — searches exactly as before. 5
+new tests (`tests/retrieval/test_hybrid.py`) cover filtering, fallback, the unfiltered path, and
+that the search width actually widens only when filtering is active.
+
+**`_INDEX_DIR` stays the Hindi-only production path by default — deliberately not hardcoded to
+the new candidate.** A new `VRAG_INDEX_DIR` env var (unset by default) lets a local session opt
+into `data/index/multilingual_100k/`. This was a real correction made mid-session: hardcoding the
+new path would mean the *next* `src/`-touching commit that reaches a real deploy silently falls
+back to the stub in production, since the multilingual candidate is gitignored with no release
+asset. The default swap is deferred to whenever real deployment is actually decided, not bundled
+into this ADR.
+
+**Generation: Track B's system prompt is no longer hardcoded to Hindi**
+(`src/vrag/generation/sarvam_llm.py`). `_build_system_prompt(generation_language)` names the real
+target language + script (e.g. "Hindi (Devanagari script)", "Tamil (Tamil script)") via a new
+`LANGUAGE_DISPLAY_NAMES` table in `src/vrag/languages.py`; falls back to Hindi only when no real
+signal exists (`None` or an unmapped code) — a documented default, not an assumption baked into
+the prompt text itself. `generate()` gains a `generation_language` parameter, threaded from
+`ctx.data["generation_language"]` (set once in `ExtractAnswerStage`, ADR-008: defaults to
+`query_language`) through `GenerateStage`. 14 new tests
+(`tests/generation/test_language_aware_generation.py`) cover the prompt-building function
+directly and, via `httpx.MockTransport`, a real `generate()` call's actual wire payload for
+Hindi/English/Bengali/Marathi/Kannada/Tamil/Urdu.
+
+**G3 re-evaluated on the real 100k/14-language candidate — two evaluations, kept deliberately
+separate** (`scripts/reeval_g3_on_multilingual_100k.py`), because they answer different
+questions:
+
+1. **The literal original 500-query Hindi held-out set, rerun as requested, against the new
+   index.** Checked directly *before* interpreting results (not assumed): the new index's Hindi
+   slice (771 independently reservoir-sampled rows) has **zero** passage_id overlap with the
+   original 500 queries' gold passages (drawn from the old pipeline's first-10,000-rows working
+   pool, 13x larger, differently sampled). Result: Recall@1/5/10 = 0.0, 456/500 (91.2%) abstained,
+   **100% of those abstentions are `not_in_corpus_at_all`** — confirming this is a corpus-coverage
+   mismatch from independent resampling, not a retrieval-quality regression. Reported plainly, not
+   hidden, matching this project's R-037/R-038 forensic discipline.
+2. **The new 532-query multilingual held-out set** (494 + 38 English, one 38-query slice per
+   language) — the fair, apples-to-apples measurement, since its gold passages exist in the new
+   index by construction (0 `not_in_corpus_at_all`). Real numbers: Recall@10=0.679, MRR@10=0.362 —
+   reasonable retrieval quality. **But abstain rate is 66.5% (354/532)** — dramatically higher than
+   the Hindi-only baseline's 25.8% (R-034/R-035). Evidence-location breakdown: 199 abstentions have
+   the right answer in the top-10 already (evidence found, scored under TAU anyway), 142 more are
+   in-corpus but ranked outside top-20. **TAU=0.8835 was calibrated on Hindi-only, same-script
+   score distributions (R-015) — cross-language/cross-script E5 similarity runs measurably lower**
+   (already observed in this session's earlier language-routing diagnostic: an English query
+   scored ~0.024 lower than the equivalent Hindi query for the same intent), and now 12 of 14
+   indexed languages contribute non-Hindi-same-script queries to the aggregate.
+
+**Direct answer to "does the multilingual filter materially improve the previous 25.8%
+abstention behavior": No — it makes it substantially worse (66.5% vs. 25.8%), despite decent
+underlying Recall@10.** TAU is **not** changed in response — per explicit instruction, this
+finding is reported, not silently patched. Recalibrating G3 for the new multilingual score
+distribution is flagged as necessary future work before this candidate could be considered
+demo-ready, not attempted here.
+
+**Regression case, not special-cased:** "भारत की राजधानी क्या है?" (Hindi) and "What is the
+capital of India?" (English) both abstain (top1 0.821 and 0.786, both under TAU) — **neither
+confidently cites the wrong answer** (the top-ranked-but-incorrect chunk is a Bangkok/Thailand
+passage; G3 correctly refuses rather than asserting it). The quality bar requested is met: no
+confidently-wrong capital-of-India answer, in either language, on the new candidate.
+
+**No corpus, FAISS, embedder, tokenizer, or G3 change beyond what's described above** — TAU/MARGIN
+values themselves are byte-identical to `g3_confidence.py` before this ADR. 286/286 tests pass.

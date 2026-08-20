@@ -245,7 +245,13 @@ class GenerateStage(Stage):
             # this, a generous budget (e.g. 12s) could still get cut short by generate()'s
             # unrelated internal default, which is exactly what happened during testing.
             result = await asyncio.wait_for(
-                generate_track_b(ctx.query, chunks, timeout_s=timeout_s), timeout=timeout_s
+                generate_track_b(
+                    ctx.query,
+                    chunks,
+                    timeout_s=timeout_s,
+                    generation_language=ctx.data.get("generation_language"),
+                ),
+                timeout=timeout_s,
             )
         except TimeoutError:
             if fair_chance:

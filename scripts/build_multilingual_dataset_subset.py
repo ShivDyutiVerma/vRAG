@@ -29,7 +29,6 @@ Usage: python scripts/build_multilingual_dataset_subset.py
 
 from __future__ import annotations
 
-import itertools
 import json
 import random
 import sys
@@ -38,8 +37,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _netcompat  # noqa: E402, F401 -- forces IPv4 DNS, must import before any network call
-from huggingface_hub import hf_hub_download  # noqa: E402
 import pyarrow.parquet as pq  # noqa: E402
+from huggingface_hub import hf_hub_download  # noqa: E402
 
 from vrag.languages import SARVAM_TO_MSMARCO_XI  # noqa: E402
 
@@ -56,7 +55,9 @@ HELDOUT_TOTAL = 500  # matches the existing Hindi-only heldout_queries.json size
 
 
 def _local_parquet_path(lang: str) -> str:
-    return hf_hub_download("ai4bharat/MSMARCO-XI", f"train/{lang}train.parquet", repo_type="dataset")
+    return hf_hub_download(
+        "ai4bharat/MSMARCO-XI", f"train/{lang}train.parquet", repo_type="dataset"
+    )
 
 
 def _reservoir_sample(lang: str, k: int, rng: random.Random) -> list[dict[str, Any]]:
@@ -117,8 +118,10 @@ def build() -> None:
         pools_150k[lang] = [superset[i] for i in idx_150]
         idx_100 = rng.sample(idx_150, min(rows_per_lang_100k, len(idx_150)))
         pools_100k[lang] = [superset[i] for i in idx_100]
-        print(f"  {lang}: 200k-pool={len(superset)} 150k-pool={len(pools_150k[lang])} "
-              f"100k-pool={len(pools_100k[lang])} target_lang={target_lang_by_code.get(lang)}")
+        print(
+            f"  {lang}: 200k-pool={len(superset)} 150k-pool={len(pools_150k[lang])} "
+            f"100k-pool={len(pools_100k[lang])} target_lang={target_lang_by_code.get(lang)}"
+        )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {

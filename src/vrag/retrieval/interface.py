@@ -5,13 +5,25 @@ in docs/DECISIONS.md immediately if it ever needs to change.
 Workstream P's harness calls retrieve() and only retrieve(). Workstream R owns the real
 implementation.
 
-Real path: loads the persisted `metadata_aware` index (docs/DECISIONS_R.md R-004 — the A1 ablation
-winner, chosen as "cheapest among five statistically-tied strategies") from `data/index/`, built
-offline by `scripts/build_index.py --save-dir` (AGENT_BUILD_SPEC.md §5.3 — never build the index at
-container start). Delegates to `HybridRetriever` (src/vrag/retrieval/hybrid.py) in `retrieval_mode=
-"dense"` — the A3 ablation winner (docs/DECISIONS_R.md R-010) — not the originally-assumed hybrid
-RRF path; see that ADR and the module docstring in hybrid.py for the measured reason and its
-consequences for RetrievedChunk.score's scale.
+Real path: loads the persisted index from `data/index/` (`metadata_aware` chunking strategy,
+docs/DECISIONS_R.md R-004), built offline by `scripts/build_index.py --save-dir`
+(AGENT_BUILD_SPEC.md §5.3 — never build the index at container start). Delegates to
+`HybridRetriever` (src/vrag/retrieval/hybrid.py) in `retrieval_mode="dense"` — the A3 ablation
+winner (docs/DECISIONS_R.md R-010) — not the originally-assumed hybrid RRF path; see that ADR and
+the module docstring in hybrid.py for the measured reason and its consequences for
+RetrievedChunk.score's scale.
+
+**Local-only candidate switch, Phase 3 (docs/DECISIONS.md ADR-012):** `VRAG_INDEX_DIR` (unset by
+default) lets a local session point at `data/index/multilingual_100k/` — the 14-language (13
+MSMARCO-XI + English) candidate selected after Phase 2's real measurement — without touching the
+default. This is deliberately an opt-in env var, not a hardcoded default swap: `data/index/
+multilingual_100k/` is gitignored, exists only on this dev machine, and has no GitHub Release
+asset or Dockerfile step — if the *default* were changed instead, the next `src/`-touching commit
+that reaches a real deploy would silently fall back to the stub in production (the multilingual
+candidate simply wouldn't exist on that container). The default stays `metadata_aware` (the
+Hindi-only, live-deployed-on-Render index, `baseline-hindi-only-v1`) so a fresh clone, CI, or an
+actual deploy behaves exactly as before this ADR, with zero risk, regardless of when this code
+next ships.
 
 Fallback: if the persisted index isn't present on disk (e.g. a fresh clone, or CI, where the
 multi-GB corpus + model haven't been downloaded), falls back to the Day-1 stub instead of raising —
@@ -38,6 +50,7 @@ for what's still needed on the deploy side to actually reach these code paths in
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -48,7 +61,15 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from vrag.retrieval.hybrid import HybridRetriever
 
-_INDEX_DIR = Path(__file__).resolve().parents[3] / "data" / "index" / "metadata_aware"
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+# VRAG_INDEX_DIR (docs/DECISIONS.md ADR-012): opt-in local override, unset by default -- see the
+# module docstring's "Local-only candidate switch" note for why this must never become the
+# hardcoded default before the multilingual candidate has a real deploy artifact.
+_INDEX_DIR = (
+    Path(os.environ["VRAG_INDEX_DIR"])
+    if os.environ.get("VRAG_INDEX_DIR")
+    else _REPO_ROOT / "data" / "index" / "metadata_aware"
+)
 
 # A3 winner, docs/DECISIONS_R.md R-010 — single source of truth, not a literal repeated at each
 # call site below. Both load_built_index_lean() (which decides whether to load the BM25/sparse

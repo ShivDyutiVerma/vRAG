@@ -158,10 +158,34 @@ collision artifact was found and quantified (0.67-1.27% of rows, root cause: MSM
 (out of Phase 2's scope). `data/index/metadata_aware/` (Hindi-only production index) untouched
 throughout. Size/config decision not yet made — handed to the user with the evidence.
 
-**Not started yet:** Phase 3 onward (production wiring decision for language filtering + corpus
-size, memory optimization pass, G3 recalibration on the multilingual corpus, full voice path
-verification, multilingual eval report, expanded tests, local-run README) — per the user's
-explicit "one phase at a time, stop after each phase" instruction.
+**Phase 2 decision + Phase 3 (production candidate selected, language-aware generation, real G3
+re-eval) done.** Full record: `docs/DECISIONS.md` ADR-010/ADR-011. User selected **100k, filter
+mode** as the production candidate (best on every measured axis, not just smallest). Before
+wiring it in: fixed the ADR-009 chunk_id collision (`qualify_doc_id_by_language`, opt-in, Hindi
+pipeline's default behavior byte-identical to before), dropped the dead BM25 artifact from the
+candidate build (`save_built_index` now accepts `sparse=None`), added English as a genuine 14th
+indexed language (771 rows from the `English_passages` field every row already carries — not a
+back-fill). Final candidate: **107,678 chunks, 14 languages, `data/index/multilingual_100k/`**,
+406.5MB steady-state RSS / 492.6MB peak (real, lean SQLite lookup).
+
+Phase 3: the validated "filter" strategy is now wired into `HybridRetriever.retrieve()` for real
+(was accepted-but-inert since Phase 1); `_INDEX_DIR` stays the Hindi-only default (`VRAG_INDEX_DIR`
+env var opts a local session into the candidate — deliberately not a hardcoded swap, to avoid
+silently breaking a future real deploy). Track B's system prompt is no longer hardcoded to Hindi —
+names the real `generation_language` (14 languages covered in tests). **Real G3 re-evaluation
+found the multilingual filter does NOT improve the previous 25.8% abstention rate — it makes it
+substantially worse (66.5%), because TAU=0.8835 was calibrated on Hindi-only same-script scores
+and cross-language E5 similarity runs measurably lower.** TAU left untouched, per explicit
+instruction — reported, not silently patched. The regression case ("capital of India", Hindi +
+English) correctly abstains in both languages rather than confidently citing the wrong country's
+capital. 286/286 tests pass. `data/index/metadata_aware/` (live Render production) untouched
+throughout — nothing in this repo has been deployed or redeployed.
+
+**Not started yet:** a real G3 recalibration for the multilingual score distribution (flagged as
+necessary before this candidate is demo-ready, not attempted — TAU changes need the same rigor as
+everything else); memory optimization pass beyond what ADR-010 already measured; full voice-path
+verification with a real Sarvam key; a versioned multilingual eval report; local-run README
+updates — per the user's explicit "stop after Phase 3" instruction.
 
 ---
 

@@ -21,14 +21,20 @@ from vrag.index.sqlite_chunk_lookup import SQLiteChunkLookup
 
 def save_built_index(
     dense: DenseIndex,
-    sparse: SparseIndex,
+    sparse: SparseIndex | None,
     chunk_lookup: dict[str, Chunk],
     path: str | Path,
 ) -> None:
+    """`sparse=None` (docs/DECISIONS.md ADR-011): skips writing a sparse/BM25 artifact at all --
+    for a dense-only production build, that's dead disk weight (never read by
+    `load_built_index_lean(retrieval_mode="dense")`, ADR-007). Passing a real `SparseIndex`
+    still works exactly as before -- this is additive, not a behavior change for any existing
+    caller; `SparseIndex`/`HybridRetriever`'s sparse/hybrid modes are untouched."""
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
     dense.save(path / "dense")
-    sparse.save(path / "sparse")
+    if sparse is not None:
+        sparse.save(path / "sparse")
     chunk_lookup_json = {chunk_id: chunk.model_dump() for chunk_id, chunk in chunk_lookup.items()}
     (path / "chunk_lookup.json").write_text(
         json.dumps(chunk_lookup_json, ensure_ascii=False), encoding="utf-8"

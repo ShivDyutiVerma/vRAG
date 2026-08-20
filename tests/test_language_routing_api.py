@@ -21,21 +21,16 @@ def test_hindi_query_with_detected_language_is_allowed_through_to_retrieval():
     assert body["query_language"] == "hi-IN"
 
 
-def test_english_query_is_refused_not_silently_searched_against_hindi_index():
-    """Core Phase 1 requirement: English is detected but not in SUPPORTED_LANGUAGES -- must be
-    refused at G2, must never reach retrieval or generation."""
+def test_english_query_reaches_retrieval_as_of_phase_3():
+    """Phase 1 (ADR-009) refused English (not yet indexed). Phase 3 (ADR-012) indexes it for
+    real -- an English query must now reach retrieval, not be refused at G2."""
     resp = client.post(
         "/ask", json={"query": "What is the capital of India?", "k": 3, "language": "en-IN"}
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["status"] == "refused"
-    assert body["refusal_reason"]
-    assert "en-IN" in body["refusal_reason"]
-    assert "retrieve" not in body["timings_ms"]
-    assert "generate" not in body["timings_ms"]
-    assert "retrieve" in body["stages_skipped"]
-    assert "generate" in body["stages_skipped"]
+    assert body["status"] != "refused"
+    assert "retrieve" in body["timings_ms"]
     assert body["query_language"] == "en-IN"
 
 

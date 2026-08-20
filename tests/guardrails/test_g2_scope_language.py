@@ -44,13 +44,13 @@ def test_hindi_language_code_passes():
     assert verdict.passed
 
 
-def test_english_language_code_is_refused_not_routed_to_hindi():
-    """English is not in SUPPORTED_LANGUAGES (Phase 0: not a MSMARCO-XI target language) --
-    must be refused explicitly at G2, never silently passed through to search the Hindi index."""
+def test_english_is_supported_as_of_phase_3():
+    """Phase 1 (ADR-009) excluded English (not yet indexed). Phase 3 (ADR-012) adds it for real
+    (771 rows from English_passages, the same per-language budget every other language got) --
+    G2 must now let it through, not refuse it. Telugu (no MSMARCO-XI train data at all) remains
+    refused -- see test_telugu_is_refused_despite_being_a_real_sarvam_code below, unchanged."""
     verdict = g2_scope_language.check("What is the capital of India?", language="en-IN")
-    assert not verdict.passed
-    assert "unsupported" in (verdict.reason or "").lower()
-    assert "en-IN" in (verdict.reason or "")
+    assert verdict.passed
 
 
 def test_several_additional_indic_languages_pass():

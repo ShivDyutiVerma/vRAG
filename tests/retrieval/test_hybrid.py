@@ -182,3 +182,121 @@ async def test_score_is_clamped_into_zero_one_range() -> None:
     )
     results = await retriever.retrieve("query", k=5)
     assert results[0].score == 1.0
+
+
+# --- Phase 3 (docs/DECISIONS.md ADR-012): language filtering, wiring what ADR-009's `language`
+# param left inert. Phase 2 measured this exact strategy (+8.7-9.1pp Recall@10 over no-filter).
+
+
+def _multilingual_lookup() -> dict[str, Chunk]:
+    return {
+        "hin1": Chunk(
+            chunk_id="hin1", doc_id="p1", text="hindi text", metadata={"language": "hin_Deva"}
+        ),
+        "hin2": Chunk(
+            chunk_id="hin2", doc_id="p2", text="hindi text 2", metadata={"language": "hin_Deva"}
+        ),
+        "ben1": Chunk(
+            chunk_id="ben1", doc_id="p3", text="bengali text", metadata={"language": "ben_Beng"}
+        ),
+        "tam1": Chunk(
+            chunk_id="tam1", doc_id="p4", text="tamil text", metadata={"language": "tam_Taml"}
+        ),
+    }
+
+
+class _MixedLanguageDense:
+    """Returns a realistic mixed-language ranking -- highest score first, only one of which is
+    Hindi -- so a filter test can prove it's actually re-prioritising, not just passing through."""
+
+    def search(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+        return [("ben1", 0.95), ("tam1", 0.90), ("hin1", 0.85), ("hin2", 0.80)][:k]
+
+    last_k: int | None = None
+
+
+@pytest.mark.asyncio
+async def test_language_filter_restricts_to_matching_language_and_reprioritises() -> None:
+    retriever = HybridRetriever(
+        dense=_MixedLanguageDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_multilingual_lookup(),
+    )
+    results = await retriever.retrieve("query", k=2, language="hi-IN")
+    assert [r.chunk_id for r in results] == ["hin1", "hin2"]
+    assert all(r.language == "hin_Deva" for r in results)
+
+
+@pytest.mark.asyncio
+async def test_no_language_filters_returns_unfiltered_ranking_unchanged() -> None:
+    """language=None must behave exactly as before Phase 1/2/3 -- no filtering at all."""
+    retriever = HybridRetriever(
+        dense=_MixedLanguageDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_multilingual_lookup(),
+    )
+    results = await retriever.retrieve("query", k=2, language=None)
+    assert [r.chunk_id for r in results] == ["ben1", "tam1"]
+
+
+@pytest.mark.asyncio
+async def test_unmapped_language_code_returns_unfiltered_ranking() -> None:
+    """A Sarvam code with no SARVAM_TO_TARGET_LANG entry (e.g. an unsupported/unmapped code)
+    must not crash or silently filter everything out -- falls back to unfiltered search."""
+    retriever = HybridRetriever(
+        dense=_MixedLanguageDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_multilingual_lookup(),
+    )
+    results = await retriever.retrieve("query", k=2, language="fr-FR")
+    assert [r.chunk_id for r in results] == ["ben1", "tam1"]
+
+
+@pytest.mark.asyncio
+async def test_language_filter_falls_back_when_no_same_language_candidate_in_window() -> None:
+    """A genuine 'no same-language candidate found' case must not manufacture a zero-result
+    failure -- falls back to the unfiltered ranking (docs/DECISIONS.md ADR-012)."""
+    lookup_no_urdu = _multilingual_lookup()  # no urd_Arab entries at all
+
+    class _NoUrduDense:
+        def search(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+            return [("ben1", 0.95), ("tam1", 0.90)][:k]
+
+    retriever = HybridRetriever(
+        dense=_NoUrduDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=lookup_no_urdu,
+    )
+    results = await retriever.retrieve("query", k=2, language="ur-IN")
+    # fell back to the unfiltered ranking rather than returning []
+    assert [r.chunk_id for r in results] == ["ben1", "tam1"]
+
+
+@pytest.mark.asyncio
+async def test_language_filter_widens_search_k_for_the_candidate_pool() -> None:
+    """When filtering is active, the underlying search must ask for a wide candidate pool
+    (_LANGUAGE_FILTER_WIDE_K), not just the caller's small requested k -- otherwise a
+    same-language chunk ranked #6 would never even be seen by the filter."""
+    requested_ks: list[int] = []
+
+    class _RecordingDense:
+        def search(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+            requested_ks.append(k)
+            return [("hin1", 0.9)]
+
+    retriever = HybridRetriever(
+        dense=_RecordingDense(),
+        sparse=_SlowSparse(),
+        embedder=_FakeEmbedder(),
+        chunk_lookup=_multilingual_lookup(),
+    )
+    await retriever.retrieve("query", k=5, language="hi-IN")
+    assert requested_ks == [100]  # widened, not the requested k=5
+
+    requested_ks.clear()
+    await retriever.retrieve("query", k=5, language=None)
+    assert requested_ks == [5]  # unfiltered path is untouched
