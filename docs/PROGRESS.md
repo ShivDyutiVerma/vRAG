@@ -202,10 +202,38 @@ a threshold fix. Raw artifacts: `eval/g3_calibration_multilingual_100k_raw.json`
 `eval/g3_threshold_sweep_multilingual_100k.json`. No corpus/retrieval/generation code changed;
 286/286 tests still pass (no test changes needed).
 
-**Not started yet:** improving G3's underlying signal (flagged in ADR-013 as the real fix needed,
-out of scope for a threshold-only pass); memory optimization pass beyond what ADR-010 already
-measured; full voice-path verification with a real Sarvam key; a versioned multilingual eval
-report; local-run README updates — per the user's "stop after calibration" instruction.
+**Phase 5 (cheap deterministic confidence-signal experiment) done — result: no candidate adopted.**
+Full record: `docs/DECISIONS.md` ADR-014. Investigated whether a cheap, CPU-only signal (no neural
+model, no LLM, no network call) beats top1 score alone at separating correct from incorrect
+retrieval on the multilingual candidate. Re-collected real production `retrieve()` output with
+full passage text this time (`scripts/collect_g3_feature_data.py`), computed 15 candidate features
++ 4 two-feature combinations with strict hindsight-leakage discipline (gold labels used only to
+*evaluate*, never to construct, a feature), evaluated via AUC/precision/coverage/per-language
+stability (`scripts/g3_feature_experiment.py`). **Found and fixed a real bug first:** Python's
+`\w` regex excludes Unicode combining marks, silently shattering Devanagari/Bengali/etc. text at
+every vowel sign — would have made every lexical feature meaningless if shipped un-caught. Two
+features (`score_std_top5` AUC=0.671, `gap15mean` AUC=0.667) genuinely beat top1 (AUC=0.640) in
+aggregate, and one combination (top1 + `concentration_ratio`) showed a real, mechanistically
+verified gain (208 vs. 178 answered at flat precision). **All three were rejected anyway** — three
+independent checks disqualified them: (1) the flagship "capital of India" (Hindi) regression case
+gets *accepted with the wrong Bangkok/Thailand evidence* by both top-AUC features; (2) that
+single-case survival by the one combination that passed doesn't generalize — 7 of the 10
+highest-confidence *wrong* queries in the whole set fool all three candidates alike; (3) the direct
+apples-to-apples "new risk" count (among queries production currently safely abstains on) shows
+~2.3–2.6 new wrong answers for every 1 new correct answer recovered, consistently across all three.
+`same_lang_consistency` scored a legitimate null (AUC=0.5, no variance left to exploit — production's
+existing hard language filter already saturates it). An offline logistic-regression diagnostic
+(numpy, train/val split by query_id parity, not shipped) confirmed it doesn't generalize either
+(train AUC 0.72 → val AUC 0.63). **Decision: `src/vrag/guardrails/g3_confidence.py` untouched.**
+Raw artifacts: `eval/g3_feature_experiment_raw.json`, `eval/g3_feature_experiment_results.json`.
+No production code changed; 286/286 tests still pass.
+
+**Not started yet:** a real fix for G3's underlying signal quality (ADR-013/014 both flag this as
+needing something beyond cheap deterministic features — likely a per-language-aware reranker or a
+stronger embedder, out of scope for both calibration passes); memory optimization pass beyond what
+ADR-010 already measured; full voice-path verification with a real Sarvam key; a versioned
+multilingual eval report; local-run README updates — per the user's "stop after this experiment"
+instruction.
 
 ---
 

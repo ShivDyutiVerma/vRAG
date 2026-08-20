@@ -639,3 +639,122 @@ margin, which this ADR's grid already found unhelpful alone) — not a smarter t
 **No corpus, FAISS, embedder, retrieval, or generation code changed by this ADR.**
 `src/vrag/guardrails/g3_confidence.py` is untouched. 286/286 tests still pass (no test changes were
 needed — no production code changed).
+
+## ADR-014 — Phase 5: cheap deterministic confidence-signal experiment; no candidate cleared the safety bar
+
+**Date:** 2026-08-20. **Status:** Accepted — as a decision NOT to add any new signal to G3.
+`src/vrag/guardrails/g3_confidence.py` is byte-identical before and after this ADR. TAU=0.8835,
+MARGIN=0.0 untouched. No production code changed. Deployment still out of scope.
+
+**Task:** ADR-013 found top1-score alone is a weak discriminator on the multilingual candidate.
+This ADR investigates whether a cheap, deterministic, CPU-only additional signal (no neural model,
+no LLM, no network call) can do better — either standalone or in a simple two-feature combination —
+using the same 532-query held-out set, with strict hindsight-leakage discipline (every feature is
+computed from query text + retrieved hits' text/score/language only; gold labels are used solely
+to evaluate features, never to construct them).
+
+**Method:** `scripts/collect_g3_feature_data.py` re-collected the real production `retrieve()`
+output (top-20, full passage text + language this time, not just scores) for all 532 queries;
+`scripts/g3_feature_experiment.py` computed 15 candidate features and evaluated each via
+rank-based AUC (correct vs. wrong top-1), a precision-floor-constrained threshold sweep (same
+0.3483 floor as ADR-013, for direct comparability), per-language AUC, and a global even/odd
+stability check. Four two-feature combinations (top1+gap, top1+concentration, top1+lexical,
+top1+same-language) were grid-swept the same way. A logistic-regression combination was fit purely
+as an offline diagnostic (numpy gradient descent — no new dependency; strict train/val split by
+query_id parity), per the explicit instruction that it must not be treated as production-ready.
+Raw artifacts: `eval/g3_feature_experiment_raw.json`, `eval/g3_feature_experiment_results.json`.
+
+**Real bug found and fixed before it could silently corrupt every lexical feature:** Python's `re`
+module's `\w` excludes Unicode combining marks (categories Mn/Mc). Naive `\w+` tokenization
+shatters Devanagari/Bengali/Gujarati/etc. text at every vowel sign — "भारत" (4 real characters)
+split into 4 garbage single-character tokens. Fixed with a manual scan treating L*/N*/Mn/Mc as
+word-continuing, verified against real Hindi text before use. Worth flagging for any future NLP
+work on this corpus: `\w+`/`\b` on Indic scripts is silently broken in stdlib `re`.
+
+**Individual features — two beat top1 on AUC:**
+
+| feature | AUC | best answered @ precision floor | per-lang AUC mean±std |
+|---|---|---|---|
+| `score_std_top5` (top-5 score std-dev) | **0.671** | 221 | 0.642 ± 0.112 |
+| `gap15mean` (top1 − mean(top5)) | **0.667** | 203 | 0.634 ± 0.121 |
+| `content_overlap_top1` (fixed-tokenizer lexical overlap, tokens ≥4 chars) | 0.644 | 148 | 0.632 ± 0.103 |
+| `top1` (ADR-013 baseline) | 0.640 | 180 | 0.622 ± 0.130 |
+| `concentration_ratio` (top1 / sum(top5)) | 0.635 | 175 | 0.606 ± 0.140 |
+| `lexical_overlap_top1` | 0.626 | 25 | — |
+| `gap12` (top1 − top2) | 0.611 | 132 | — |
+| `mutual_redundancy_top3` (pairwise Jaccard among top-3 passages) | 0.578 | 8 | — |
+| `zscore_top1` | 0.552 | 66 | — |
+| `same_lang_consistency` | 0.500 | none | structurally constant — see below |
+| `entropy_norm`, `n_hits`, `query_len_tokens` | 0.48–0.54 | none | uninformative |
+
+`same_lang_consistency` scored exactly 0.5 (no threshold clears the floor) because production's
+existing hard language filter (ADR-011/012) already forces near-total same-language homogeneity in
+what `retrieve()` returns — the feature has almost no variance left to be informative on. A
+legitimate null result, not a bug.
+
+**Latency (measured, `time.perf_counter`, not estimated):** all 15 features combined cost 535µs/
+query, dominated by tokenizing passage text for the lexical/redundancy features. The two
+score-arithmetic features (`concentration_ratio` alone: 1.5µs/query; `score_std_top5` +
+`gap15mean` together: 19µs/query) need no text processing at all — negligible against the 200ms
+pipeline budget either way, HOTPATH-safe by a wide margin.
+
+**Combinations:** A (top1+gap12), C (top1+lexical), D (top1+same-language) each collapsed to
+exactly the top1-only solution (178 answered, 0.3483 precision) — the second feature added zero
+filtering power at the grid optimum. **B (top1+concentration_ratio)** was the one real exception:
+208 answered, precision 0.351, and concentration_ratio was verified to be doing genuine work, not
+just riding along — at combo B's own (lowered) top1 threshold alone, precision would have
+collapsed to 0.276 (377 answered), but ANDing with concentration_ratio removes 169 of those
+candidates at a 4.5:1 bad:good ratio, restoring precision above the floor.
+
+**Why every one of these was rejected despite the attractive aggregate numbers — three
+independent findings, each disqualifying on its own:**
+
+1. **The flagship regression case exposes the two best-AUC features directly.** For "भारत की
+   राजधानी क्या है?" (top1=0.8208, top-1 passage is the same wrong Bangkok/Thailand passage
+   ADR-011 already flagged), `score_std_top5` and `gap15mean` both **cross their thresholds and
+   accept it** — precisely the "capital-of-India answered with wrong-country evidence" failure
+   mode this whole recalibration effort exists to prevent. `concentration_ratio` alone accepts it
+   too, by a razor-thin margin. Only combination B correctly abstains, and only because its top1
+   sub-threshold (0.859) happens to still exceed this specific query's 0.8208 — not because
+   `concentration_ratio` itself screens out the bad evidence.
+
+2. **That "save" doesn't generalize.** Among the 10 highest-top1 *wrong* queries in the whole
+   532-query set (real confidently-wrong cases, same failure family as the regression case — e.g.
+   "side effects of malarone tablets" at top1=0.9463, wrong passage), **7 of 10 are accepted by
+   `score_std_top5`, `gap15mean`, AND combination B alike** — all three fail together whenever
+   top1 itself is already very high (≳0.93), which is exactly the highest-risk region. (These 10
+   were already false-accepted by today's production TAU too, so they're not *new* risk — but they
+   prove none of the candidates add real protection where it matters most.)
+
+3. **The apples-to-apples "new risk" number is the most direct evidence.** Restricting to the 354
+   queries current production already abstains on (top1 < 0.8835) and asking what each candidate
+   would newly flip to "accepted": `score_std_top5` → 26 newly-correct vs. **61 newly-wrong**
+   (2.35 wrong per correct); `gap15mean` → 23 vs. **59** (2.57 wrong per correct); combination B →
+   24 vs. **59** (2.46 wrong per correct). Every candidate trades roughly 2.3–2.6 new wrong answers
+   for every 1 new correct answer recovered — an unfavorable, consistent ratio across all three.
+
+**Per-language stability:** every feature's per-language AUC has substantial spread (std
+0.10–0.14). `tam_Taml` is the sharpest warning sign: `score_std_top5` (AUC=0.388) and `gap15mean`
+(AUC=0.352) are *inverted* for Tamil — actively anti-predictive on exactly the corpus slice where
+they look strongest in aggregate. A single global rule built on these features would help some
+languages and actively hurt at least one.
+
+**Offline logistic-regression diagnostic does not generalize**, as instructed to check: train
+AUC=0.722, val AUC=0.632 (train/val split by query_id parity) — a 0.09 gap, confirming that
+squeezing more out of a learned combination overfits fast at n=532 (118 positives). Reinforces
+"don't invent complexity."
+
+**Decision: reject every candidate for production adoption.** No individual feature or simple
+combination clears the bar of "meaningful, safety-preserving improvement" — the two strongest
+(by AUC) fail the flagship regression case outright, the one combination that survives it fails
+the broader stress test the same way, and the real newly-introduced-error ratio (≈2.5:1 bad:good)
+is unfavorable across the board. This is not "G3 is unfixable" — `concentration_ratio` is a real,
+verified, near-free signal that does genuine filtering work in isolation (documented above for
+whoever revisits this) — but nothing explored here is safe enough to ship as-is. Consistent with
+this project's standing ablation discipline (R-038's honest net-negative report; ADR-013's "the
+evidence does not support a change"): reported honestly rather than forced into an adoption the
+data doesn't support.
+
+**No corpus, FAISS, embedder, retrieval, generation, or guardrail code changed by this ADR.**
+`src/vrag/guardrails/g3_confidence.py` is untouched. 286/286 tests still pass (no test changes
+needed — no production code changed).
