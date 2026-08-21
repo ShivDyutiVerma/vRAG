@@ -999,3 +999,124 @@ Out of scope for a "no large model" phase; a legitimate target for future work.
 (`SparseIndex`, built fresh for this experiment) is not persisted or wired into any pipeline — the
 experiment scripts rebuild it in-memory each run, nothing is saved to `data/index/`. 286/286 tests
 pass, ruff clean.
+
+## ADR-017 — Phase 8: is `multilingual-e5-small` the bottleneck? Real comparison against two candidates — keep the current model
+
+**Date:** 2026-08-21. **Status:** Accepted — as a decision NOT to replace the production embedder.
+`src/vrag/index/embedder.py` and every other production file are byte-identical before and after
+this ADR. No production code changed, nothing deployed.
+
+**Task:** ADR-016 flagged "a better embedding" as the real remaining fix for the multilingual
+candidate's abstention problem, having ruled out every cheap retrieval/reranking fix. This ADR
+asks the question directly: is `multilingual-e5-small` itself the bottleneck, tested for real
+against genuine alternatives, on a shared, representative subset — not a full 107k-chunk rebuild
+per candidate.
+
+**Method:** a shared 28,565-chunk subset (`scripts/build_embedding_diagnostic_subset.py`) — every
+gold passage for the real 532-query held-out set, plus a fixed-seed ~2,000/language random sample
+preserving real distractor density, plus the four known same-template distractors from Phases
+6/7 explicitly force-included so the capital-of-India critical case stays meaningful regardless of
+random sampling. Same queries, same gold labels, same language filtering, same FAISS methodology
+(`src/vrag/index/dense.py`'s real `DenseIndex`, HNSW32) and same evaluation code
+(`src/vrag/retrieval/metrics.py`) for every model — only the embedding model changes, run as an
+isolated subprocess per model (`scripts/embedding_model_diagnostic_worker.py`) so RAM numbers are
+never contaminated by a previously-loaded model.
+
+**Candidates — checked what's already available locally first, per the instructions.**
+`BAAI/bge-m3` was already fully cached on this machine (no download needed). `google/LaBSE` was
+considered specifically because its translation-alignment training objective directly targets
+ADR-016's "translation-induced lexical variance" finding, but its local cache turned out
+incomplete (config/tokenizer present, no weights) and a fresh download hung in this environment's
+known Hub-connectivity conditions (`scripts/_netcompat.py`) — swapped for
+`intfloat/multilingual-e5-base` instead, which shares infrastructure already proven reliable here
+and isolates a clean, independent question: does more capacity within the *same* architecture/
+training recipe help, separate from "is a fundamentally different model better."
+
+**A real operability finding, hit and fixed before any measurement could be trusted:** `bge-m3`'s
+first run crashed with a genuine CPU out-of-memory error (`RuntimeError: tried to allocate
+17,179,869,184 bytes`) — its 8192-token context window combined with `batch_size=64` caused a
+runaway attention-mask allocation on a long input. Fixed by capping `max_seq_length=512` (this
+corpus's real passage lengths never need more) and `batch_size=16` for this model only. Reported
+as a real deployability cost of `bge-m3`, not silently worked around and hidden.
+
+**Model comparison (real, measured):**
+
+| Model | Dim | Disk | RAM (loaded+used) | Embed latency/query | Recall@1 / @5 / @10 | MRR@10 |
+|---|---|---|---|---|---|---|
+| `multilingual-e5-small` (baseline) | 384 | 471MB | 2,336MB | 17.5ms | 0.462 / 0.735 / 0.780 | 0.579 |
+| `BAAI/bge-m3` | 1024 | 2,271MB | 3,350MB | 70.9ms (**4.06×**) | **0.579 / 0.878 / 0.910** | **0.712** |
+| `intfloat/multilingual-e5-base` | 768 | 1,100MB | 2,626MB | 53.5ms (3.06×) | 0.479 / 0.778 / 0.821 | 0.607 |
+
+(Absolute numbers here are higher than the production 107k-corpus figures throughout this
+project — expected and not comparable across the two: this diagnostic's shared subset has ~27% as
+many distractors. Only the *relative* comparison between the three models, on the identical
+subset, is meaningful.)
+
+**Focus languages (Sanskrit/Tamil/Urdu, weighted per the instructions, plus Hindi/English for
+context) — Recall@1:**
+
+| Language | e5-small | bge-m3 | e5-base |
+|---|---|---|---|
+| Sanskrit | 0.184 | **0.447** (+0.263) | 0.158 (−0.026) |
+| Tamil | 0.421 | **0.605** (+0.184) | 0.553 (+0.132) |
+| Urdu | 0.395 | **0.447** (+0.053) | 0.395 (+0.000) |
+| Hindi | 0.605 | 0.526 (−0.079) | 0.579 (−0.026) |
+| English | 0.763 | 0.763 (+0.000) | 0.658 (−0.105) |
+
+`bge-m3` is a real, substantial, consistent win on every one of the three explicitly-weighted
+difficult languages. `e5-base` is inconsistent — flat or worse on Sanskrit and Urdu specifically,
+and a real regression on English (the strongest-performing language) — confirming that capacity
+alone, within the same architecture and training recipe, is not the lever; a genuinely different
+model is what moves difficult-language performance.
+
+**Critical case: capital-of-India — the correct evidence does NOT move up, under any candidate.**
+Per the decision rule's own explicit requirement ("the correct evidence must actually move
+upward, not merely produce higher similarity scores"), this is checked directly, not inferred from
+the aggregate numbers:
+
+| Model | Hindi top-1 doc | English top-1 doc | Verdict |
+|---|---|---|---|
+| e5-small | `hin_Deva::1001095_3` (Bangkok/Thailand) | `eng_Latn::1012189_7` (wrong-topic) | still fooled |
+| bge-m3 | `hin_Deva::1001095_3` (same, unchanged) | `eng_Latn::1012189_7` (same, unchanged) | **still fooled** |
+| e5-base | `hin_Deva::1001095_3` (same, unchanged) | `eng_Latn::1012189_7` (same, unchanged) | still fooled |
+
+**Every candidate ranks the identical wrong passage at rank 1 for both flagship queries.**
+`bge-m3`'s raw score is much lower in absolute terms (0.50 vs. e5-small's 0.82) — its embedding
+space is scaled differently, and per the decision rule this is explicitly *not* treated as
+evidence of anything (a rescaled space "looking more/less confident" is exactly the trap the rule
+guards against) — but the *ranking* is unchanged. This is the most important single finding of
+this ADR: a substantially stronger embedding model, with real double-digit-point gains on the
+weakest languages, does not by itself resolve the specific same-template-distractor failure
+pattern ADR-016 diagnosed. That pattern appears to be a structural property of how *any* tested
+embedding model represents topically-adjacent-but-factually-different content (many countries'
+capital-city passages cluster together semantically, not just lexically), not something model
+capacity or training objective alone fixes.
+
+**Cost, real and substantial for `bge-m3`:** +1,014MB RAM (43% more), +1,800MB disk (4.8×), 4.06×
+embedding latency. Passage-embedding for just this 28,565-chunk subset took 8,704.7s (145
+minutes, 304.7ms/passage) — extrapolated (not measured; flagged explicitly as an extrapolation,
+not a real number) to the full 107,678-chunk production corpus, a one-time offline build would
+take on the order of 9 hours. `e5-base`'s cost is more moderate (+290MB RAM, +629MB disk, 3.06×
+latency) but its quality gain doesn't clear the bar to justify it.
+
+**Decision, applying the stated rule exactly:**
+
+- `e5-base`: **not adopted.** Gains are modest and inconsistent (flat on Urdu, negative on
+  Sanskrit-@1 and English) — does not "materially improve Recall@10/MRR/difficult-language
+  performance," the rule's own bar.
+- `bge-m3`: **not adopted, despite materially beating the bar on aggregate/difficult-language
+  metrics** — a real, reportable, promising result — because it fails the decision rule's other
+  explicit requirement (the correct evidence must move up on the critical case, not just the
+  aggregate score) and carries a real, non-trivial CPU/memory/disk cost that hasn't been weighed
+  against a proper recalibration in its own embedding space (not attempted here — TAU is
+  calibrated for e5-small's score distribution and is meaningless as-is for a different model).
+- **`multilingual-e5-small` remains the production embedder.** No TAU change, no retrieval change,
+  no deployment. `bge-m3`'s result is reported as a genuine, evidence-backed lead for future work
+  (a real quality ceiling above what's currently shipped, on the languages that need it most) —
+  not something to ship on this evidence alone, per the explicit instruction to report a winning
+  candidate without replacing production.
+
+**No production code changed.** Both candidate models remain in the local HF cache only (`bge-m3`
+was already there; `multilingual-e5-base` was downloaded, real, ~1.1GB, via the same
+`HF_HUB_DISABLE_XET=1` pattern this project's corpus downloads already established) — neither is
+referenced by any file under `src/`. 286/286 tests pass, ruff clean.

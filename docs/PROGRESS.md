@@ -286,6 +286,32 @@ candidate produced better evidence to recalibrate against.** No production code 
 BM25 index built for Candidate D is in-memory only, not persisted anywhere. 286/286 tests pass,
 ruff clean.
 
+**Phase 8 (is `multilingual-e5-small` itself the bottleneck?) done — result: keep the current
+model, real evidence either way.** Full record: `docs/DECISIONS.md` ADR-017. Real, isolated-
+subprocess comparison of the production embedder against two candidates on a shared 28,565-chunk
+representative subset (every gold passage for the 532-query set + a ~2,000/language random sample
++ the known same-template distractors force-included) — same queries, gold labels, language
+filter, FAISS methodology, and eval code throughout; only the model changed. `BAAI/bge-m3` was
+already cached locally (no download); `google/LaBSE` was considered (its translation-alignment
+objective directly targets ADR-016's translation-variance finding) but its cache was incomplete
+and a fresh download hung on this environment's known Hub-connectivity issue, so
+`intfloat/multilingual-e5-base` was substituted, isolating "does more capacity in the same
+architecture help" as a clean second question. Hit and fixed a real `bge-m3` CPU OOM
+(17GB allocation attempt from an uncapped 8192-token context + batch_size=64) before any number
+could be trusted. **`bge-m3` shows a real, substantial win on every one of the three
+explicitly-weighted difficult languages** (Sanskrit Recall@1 +26.3pp, Tamil +18.4pp, Urdu +5.3pp)
+and on every aggregate metric (Recall@10 +13.0pp, MRR@10 +13.3pp) — at a real cost (+1GB RAM, 4.8×
+disk, 4.06× embedding latency). `e5-base`'s gains are modest and inconsistent (flat on Urdu,
+worse on Sanskrit-@1 and English) — does not clear the bar. **The critical finding: under every
+candidate including `bge-m3`, the capital-of-India regression case still ranks the identical wrong
+passage at rank 1** — a substantially stronger model does not by itself fix the same-template-
+distractor pattern ADR-016 diagnosed; that pattern looks like a structural property of how these
+models represent topically-adjacent-but-factually-different content, not a capacity/training
+question alone. **Decision: `multilingual-e5-small` remains the production embedder — no TAU
+change, no retrieval change, nothing deployed.** `bge-m3`'s result is reported as a genuine,
+promising lead for future work, not adopted on this evidence. No production code changed (neither
+candidate model is referenced anywhere under `src/`). 286/286 tests pass, ruff clean.
+
 ---
 
 ## Historical: Day 1 sync snapshot (superseded above, kept for the record)
