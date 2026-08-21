@@ -387,15 +387,25 @@ stronger embedder — both out of scope here), not silently patched to look bett
 `scripts/e2e_bonus_answered_cases.py`, 19 real cases total, results in
 `eval/e2e_demo_readiness_results.json` / `eval/e2e_bonus_answered_results.json`):**
 
-- **Real voice tested once** (Hindi, `eval/audio/query_000.wav` through the real Sarvam realtime
-  STT connection — real network call, real API key). **Found a real limitation in the process**:
-  Sarvam transcribed the spoken Hindi as Romanized text ("Aap kis umr ke bachche ka dawa kar sakte
-  hain?") and its own language auto-detection labeled it `en-IN`, not Hindi — the query was then
-  searched against the English corpus slice and correctly abstained (weak match, as expected for
-  mismatched-language search), rather than confidently answering wrong. Safe outcome, but a real,
-  disclosed STT/language-ID gap worth knowing about before relying on voice for non-English/
-  non-clearly-scripted speech. Every other language below was tested via text (permitted — voice
-  requires physically speaking 9+ languages, which wasn't done; **no voice result is fabricated**).
+- **Voice tested for four languages (Hindi, English, Bengali, Tamil), and a critical, previously-
+  undiscovered finding came out of it (Phase 9, ADR-018) — read this before relying on voice for
+  anything but English.** All four, via Sarvam's real STT with `language_code="auto"` (the
+  production default), were **auto-detected as English** — Bengali and Tamil audio got
+  transliterated into English-script approximations instead of transcribed in their real script.
+  Isolated the cause directly: re-running the same audio with an **explicit** (non-auto) language
+  code transcribes both correctly, in the real script, near-perfectly. **The STT model can
+  transcribe every language tested — only auto-detection fails.** This matters because the entire
+  language-routing architecture (`query_language` → G2 → language-filtered retrieval →
+  `generation_language`) depends on auto-detection for real voice input; if it defaults to
+  English, every downstream stage — independently verified correct via text, in every phase —
+  never receives the right input for any language but English. Not fixed here (no STT
+  configuration change was authorized); flagged as the single most urgent open item from this
+  whole local build. **Also disclosed here plainly: no voice test in this project, this one
+  included, has used genuine human-spoken microphone input** — every audio file (this test's and
+  Phase 6's) is Sarvam-TTS-synthesized speech through real STT, not a human recording. That
+  distinction matters more than usual given what this test found. Every other language was tested
+  via text (permitted — voice requires physically speaking many languages, which wasn't done;
+  **no voice result is fabricated**).
 - **Answered, with correct in-language generation** (real, not translated to Hindi): English,
   Bengali, Marathi, Tamil, Kannada, Urdu, Gujarati, Assamese — 8 of the 9 text-tested languages
   produced at least one real grounded answer in its own script during this test pass (Hindi
@@ -416,17 +426,25 @@ stronger embedder — both out of scope here), not silently patched to look bett
 - **A genuinely unanswerable question correctly abstained**, not hallucinated: a constructed,
   out-of-domain English question found no confident evidence and abstained (top1=0.808).
 
-**A real disk-footprint finding, not a RAM finding** (the RAM numbers above are the true runtime
-footprint, verified via the isolated-subprocess audit — this doesn't change them): the local
-`data/index/multilingual_100k/` directory is 365MB on disk but only ~246MB of it (`dense/` +
-`chunk_lookup.sqlite3`) is ever loaded at runtime — a 120MB `chunk_lookup.json` left over from an
-earlier build step sits unused next to it. Similarly, `data/onnx/multilingual-e5-small/` is 583MB
-but the runtime code path (`LiteE5Embedder`, `DEFAULT_ONNX_FILE_NAME`) only ever opens the 118MB
-int8 `model_quint8_avx2.onnx` + 5MB `sentencepiece.bpe.model` — the 470MB FP32 `model.onnx` and
-17MB legacy `tokenizer.json` alongside them (487MB) are dead weight from an earlier download, not
-read by any code path. Neither directory is committed to git or shipped in the Docker image, so
-this doesn't affect the deployed system — flagged here because it would matter the moment either
-directory is packaged for distribution.
+**A real disk-footprint finding, cleaned up in Phase 9 (with one real mistake along the way) —
+not a RAM finding** (the RAM numbers above are the true runtime footprint either way): the local
+`data/index/multilingual_100k/` directory is 365MB on disk; only ~246MB of it (`dense/` +
+`chunk_lookup.sqlite3`) is ever loaded at runtime. The remaining 120MB, `chunk_lookup.json`, was
+initially flagged as dead weight — it isn't: it's a real, active dependency of several legitimate
+offline tools (`add_english_to_multilingual_index.py`, `eval_multilingual_retrieval.py`, and
+others), just not something production loads at request time, so it's **kept**. The embedder
+directory (`data/onnx/multilingual-e5-small/`) genuinely was bloated — 583MB, of which only the
+118MB int8 `model_quint8_avx2.onnx` + 5MB `sentencepiece.bpe.model` are ever read at runtime
+(`LiteE5Embedder`) — the 470MB FP32 `model.onnx` was confirmed unreferenced anywhere and deleted
+(regenerable via the existing `scripts/export_onnx_embedder.py` if ever needed again). Its
+neighbor `tokenizer.json` (17MB) was deleted in the same pass on the same "unreferenced" check —
+**that check was wrong**: an `src/`-only grep missed that a real regression test
+(`tests/index/test_lite_e5_embedder_tokenizer_regression.py`, 11 tests) depends on it as a
+byte-identical comparison baseline. Caught immediately by running the full suite, fixed by
+regenerating the file directly from the HF tokenizer. **Real net saving: 448MB** (embedder
+directory 583MB → 135MB), with the mistake-and-fix disclosed rather than only the clean outcome.
+Neither directory is committed to git or shipped in the Docker image, so none of this affects the
+deployed system.
 
 **How to run this candidate locally** (no Docker image exists for it yet — this is the real,
 current, multi-step process, not a one-command shortcut):
@@ -545,21 +563,28 @@ Stated plainly, not minimized:
   both verified working independently the same day.
 - **The multilingual candidate ([§12A](#12a-the-multilingual-candidate--local-only-not-deployed))
   abstains far more often than the Hindi-only system** — 66.5% vs. 25.8%, on real per-language
-  evidence. Two dedicated investigation phases found the cause is weak retrieval-confidence signal
-  on this multilingual corpus, not a bad threshold; every cheap fix tried was rejected as unsafe
-  (traded ~2.3-2.6 wrong answers for every 1 correct one recovered). Genuinely unresolved — flagged,
-  not hidden.
+  evidence. **Four independent investigations** (cheap retrieval reranking, an embedding-model
+  head-to-head against two real alternatives, and now a shrinkage-based per-language threshold)
+  all reach the same conclusion: no safe fix exists at the threshold or retrieval-reranking layer.
+  Every cheap fix tried was rejected as unsafe or unstable. Genuinely unresolved — flagged, not
+  hidden; the real fix needs a better embedding model or a per-language-aware reranker, out of
+  scope for every pass attempted so far.
 - **The multilingual candidate is not packaged for distribution** — no GitHub release asset, no
   Docker image. Reproducing it requires rerunning the real data-download-and-build pipeline
   locally (real time and bandwidth), documented in [§12A](#12a-the-multilingual-candidate--local-only-not-deployed),
   not a one-command judge path today.
-- **Real voice input was tested for only one language (Hindi, one real audio file) and revealed a
-  real limitation**: Sarvam's STT romanized the Hindi speech and its own auto-detection labeled
-  the result as English, causing a language-mismatched (but still safe — correctly abstained)
-  search. Not fixed; disclosed in [§12A](#12a-the-multilingual-candidate--local-only-not-deployed).
-  The other 8 tested languages were verified via text input only (real corpus queries, real
-  pipeline, no synthetic/fabricated results) — genuine human-spoken-voice verification in those
-  languages has not been performed.
+- **Real voice input auto-detects as English for every non-English language tested (Hindi, Bengali,
+  Tamil) — a critical, previously-undiscovered finding.** Sarvam's real STT, in its production
+  `language_code="auto"` mode, mis-detected all three as English, transliterating Bengali/Tamil
+  speech into English-script approximations. Isolated directly: the *same* audio, given an
+  *explicit* (non-auto) language code, transcribes correctly in the real script — the recognizer
+  itself works, only auto-detection fails. Since the entire language-routing pipeline depends on
+  auto-detection for real voice input, this means real spoken queries in any language but English
+  risk being silently mis-routed today. Not fixed (no STT config change authorized where this was
+  found); the single most urgent open item from this build. **Also disclosed: no voice test in
+  this project has used genuine human speech** — every audio file, including this one, is
+  Sarvam-TTS-synthesized through real STT, not a human recording. Full detail in
+  [§12A](#12a-the-multilingual-candidate--local-only-not-deployed).
 
 ## 16. Project structure
 

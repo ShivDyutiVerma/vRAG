@@ -312,6 +312,47 @@ change, no retrieval change, nothing deployed.** `bge-m3`'s result is reported a
 promising lead for future work, not adopted on this evidence. No production code changed (neither
 candidate model is referenced anywhere under `src/`). 286/286 tests pass, ruff clean.
 
+**Phase 9 (final G3 calibration + final local validation) done.** Full record:
+`docs/DECISIONS.md` ADR-018. **G3: TAU=0.8835/MARGIN=0.0 confirmed unchanged, for the third
+independent method running.** Re-ran ADR-013's full sweep fresh (byte-identical, as expected —
+nothing about retrieval changed since). Tested one genuinely new idea: shrinkage-based
+per-language TAU (partial pooling toward the global default) — every shrinkage strength that
+stays stable (passes the same even/odd check ADR-013 used) converges to within ~7 answered
+queries of the current baseline; every strength that gains more fails the same stability bar the
+free per-language rule already failed. No safe, materially-better rule exists. Full safety suite
+re-confirmed: both capital-of-India cases abstain, a genuinely unsupported question abstains,
+correct-evidence cases answer correctly — the 5 highest-scoring wrong queries in the set are
+false-accepted, but this is the same, already-disclosed 34.8% precision baseline from ADR-013,
+not a new regression.
+
+**Real disk cleanup, with one real mistake caught and fixed.** Deleted the unused FP32
+`model.onnx` (470MB) and `tokenizer.json` (17MB) from the local embedder directory after
+confirming via grep they're unreferenced by `src/` — but `tokenizer.json` turned out to be a real
+dependency of a regression test (11 tests broke), missed because the grep only covered `src/`, not
+`tests/`. Caught immediately by running the full suite, fixed by regenerating the file directly
+from the HF tokenizer (byte-identical size, all 11 tests re-verified). `chunk_lookup.json` (120MB)
+was investigated and explicitly **kept** — it's a real, active dependency of several legitimate
+offline tools, not runtime residency (production never loads it). Net real saving: 448MB
+(embedder directory 583MB → 135MB). Memory/latency re-measured fresh and unchanged within noise
+(405.6MB steady RSS, 492.8MB peak, P50=13.3ms pipeline latency).
+
+**A critical, previously-undiscovered finding from real voice testing:** all four tested
+languages (Hindi, English, Bengali, Tamil), via Sarvam's real STT with `language_code="auto"` (the
+production default), were auto-detected as English — including Bengali and Tamil audio, which got
+transliterated into English-script approximations instead of transcribed in their real script.
+Isolated the cause directly: re-running the same audio with an **explicit** (non-auto) language
+code transcribes both correctly, in the real script, near-perfectly. **The STT model can
+transcribe every language tested — only auto-detection fails.** This matters because the entire
+Phase 1 language-routing architecture depends on auto-detection being the source of
+`query_language` for real voice input; if it defaults to English, every downstream stage (all
+independently verified correct via text) never gets the right input to work with, for any
+language but English. Not fixed this phase (no STT config change authorized) — flagged as the
+single most urgent open item from this whole build, ahead of the G3 abstention rate. Voice tests
+also honestly reclassified: none of them, including Phase 6's, used genuine human speech — all
+are Sarvam-TTS-synthesized audio through real STT, a real but limited form of validation.
+
+No production code changed, nothing deployed. 286/286 tests pass, ruff clean.
+
 ---
 
 ## Historical: Day 1 sync snapshot (superseded above, kept for the record)

@@ -1,0 +1,164 @@
+{
+  "tau": 0.8835,
+  "margin": 0.0,
+  "all_safety_checks_pass": false,
+  "results": {
+    "capital_of_india": [
+      {
+        "label": "hindi_capital_of_india",
+        "query": "भारत की राजधानी क्या है?",
+        "top1_score": 0.8207622170448303,
+        "top1_passage_id": "hin_Deva::1001095_3",
+        "top1_text_preview": "इसकी राजधानी और सबसे अधिक आबादी वाला शहर बैंकॉक है। यह उत्तर में म्यांमार और लाओस, पूर्व में लाओस और कंबोडिया, दक्षिण में थाईलैंड की खाड़ी और मलेशिया,",
+        "g3_decision": "ABSTAINED",
+        "safe": true
+      },
+      {
+        "label": "english_capital_of_india",
+        "query": "What is the capital of India?",
+        "top1_score": 0.81670743227005,
+        "top1_passage_id": "eng_Latn::1012189_7",
+        "top1_text_preview": "While Asia is home to the world's most expensive city, the region also boasts the world's most affordable cities, including Karachi and Bengaluru (for",
+        "g3_decision": "ABSTAINED",
+        "safe": true
+      }
+    ],
+    "same_template_distractors": [
+      {
+        "query_id": 497643,
+        "language": "eng_Latn",
+        "query": "side effects of malarone tablets",
+        "top1_score": 0.946294903755188,
+        "g3_decision": "ANSWERED",
+        "relevant_in_top1": false,
+        "safe": false
+      },
+      {
+        "query_id": 3753,
+        "language": "kan_Knda",
+        "query": "ಹೆಪಟೈಟಿಸ್ ಲಸಿಕೆ ಎಷ್ಟು ಕಾಲ ಉಳಿಯುತ್ತದೆ",
+        "top1_score": 0.9417906999588013,
+        "g3_decision": "ANSWERED",
+        "relevant_in_top1": false,
+        "safe": false
+      },
+      {
+        "query_id": 502833,
+        "language": "hin_Deva",
+        "query": "त्वचा विशेषज्ञ के लिए प्रारंभिक वेतन",
+        "top1_score": 0.9407301545143127,
+        "g3_decision": "ANSWERED",
+        "relevant_in_top1": false,
+        "safe": false
+      },
+      {
+        "query_id": 536034,
+        "language": "npi_Deva",
+        "query": "शाकाहारी परिभाषाहरू",
+        "top1_score": 0.9407016634941101,
+        "g3_decision": "ANSWERED",
+        "relevant_in_top1": false,
+        "safe": false
+      },
+      {
+        "query_id": 862624,
+        "language": "hin_Deva",
+        "query": "वेनाची वा ज़िप कोड क्या है",
+        "top1_score": 0.9354516267776489,
+        "g3_decision": "ANSWERED",
+        "relevant_in_top1": false,
+        "safe": false
+      }
+    ],
+    "correct_top1_evidence": [
+      {
+        "query_id": 478449,
+        "language": "asm_Beng",
+        "query": "জনসংখ্যাৰ সংখ্যা অক্লাহোমা",
+        "top1_score": 0.8973467350006104,
+        "g3_decision": "ANSWERED",
+        "correct": true,
+        "safe": true
+      },
+      {
+        "query_id": 769603,
+        "language": "asm_Beng",
+        "query": "কঁকালৰ অৰ্থ কি",
+        "top1_score": 0.886986494064331,
+        "g3_decision": "ANSWERED",
+        "correct": true,
+        "safe": true
+      },
+      {
+        "query_id": 489671,
+        "language": "asm_Beng",
+        "query": "ৰকলেজ ফ্ল'ৰিডাৰ জনসংখ্যা",
+        "top1_score": 0.8941508531570435,
+        "g3_decision": "ANSWERED",
+        "correct": true,
+        "safe": true
+      }
+    ],
+    "correct_evidence_lower_rank": [
+      {
+        "category": "B_top5",
+        "query_id": 958359,
+        "language": "asm_Beng",
+        "top1_score": 0.8785977363586426,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      },
+      {
+        "category": "B_top5",
+        "query_id": 898437,
+        "language": "asm_Beng",
+        "top1_score": 0.8611720204353333,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      },
+      {
+        "category": "B_top5",
+        "query_id": 970126,
+        "language": "asm_Beng",
+        "top1_score": 0.8779395818710327,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      },
+      {
+        "category": "C_top10",
+        "query_id": 392162,
+        "language": "asm_Beng",
+        "top1_score": 0.8484620451927185,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      },
+      {
+        "category": "C_top10",
+        "query_id": 445809,
+        "language": "ben_Beng",
+        "top1_score": 0.87093186378479,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      },
+      {
+        "category": "C_top10",
+        "query_id": 451541,
+        "language": "ben_Beng",
+        "top1_score": 0.877871572971344,
+        "g3_decision": "ABSTAINED",
+        "note": "correct evidence exists lower-ranked; abstaining is expected, not a safety failure -- see ADR-016 for why fixing this via reranking was rejected"
+      }
+    ],
+    "unsupported_question": [
+      {
+        "label": "unanswerable_out_of_domain",
+        "query": "What did the vRAG project's lead engineer eat for breakfast on August 21st, 2026?",
+        "top1_score": 0.8040178418159485,
+        "top1_passage_id": "eng_Latn::1032480_1",
+        "top1_text_preview": "In the 1920s, Bernays was approached by the Beech-Nut Packing Company – producers of everything from pork products to the nostalgic Beech-Nut bubble g",
+        "g3_decision": "ABSTAINED",
+        "safe": true
+      }
+    ]
+  }
+}

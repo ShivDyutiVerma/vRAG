@@ -1120,3 +1120,146 @@ latency) but its quality gain doesn't clear the bar to justify it.
 was already there; `multilingual-e5-base` was downloaded, real, ~1.1GB, via the same
 `HF_HUB_DISABLE_XET=1` pattern this project's corpus downloads already established) — neither is
 referenced by any file under `src/`. 286/286 tests pass, ruff clean.
+
+## ADR-018 — Phase 9: final G3 calibration, memory cleanup, and a critical voice-detection finding
+
+**Date:** 2026-08-21. **Status:** Accepted. `src/vrag/guardrails/g3_confidence.py` is
+byte-identical before and after this ADR — TAU=0.8835, MARGIN=0.0 remain unchanged. No production
+code changed, nothing deployed. This closes the G3 calibration question for this build; the
+finding in Part 3 below is flagged as urgent future work, not fixed here (out of scope: no
+retrieval/STT-config change was authorized this phase).
+
+### Part 1 — G3 calibration, final answer
+
+Re-ran ADR-013's full sweep fresh (nothing about retrieval has changed since — every intervening
+phase, 5/7/8, made zero production changes, so this reproduces byte-identical numbers, confirmed).
+Then tested the one genuinely new idea neither ADR-013 nor Phase 4 tried: **shrinkage-based
+per-language TAU** — `TAU_lang = (n_lang · TAU_lang_free + k · TAU_global) / (n_lang + k)`,
+partial pooling toward the safe global default rather than ADR-013's all-or-nothing choice between
+a fully free per-language optimum (overfit, failed its own stability check) or a formula-based
+offset (stable but worse than baseline).
+
+| k (shrinkage strength) | Answered | Precision | False accepts | Max half-to-half drift |
+|---|---|---|---|---|
+| 20 (weak — near-free) | 203 | 0.3498 | 132 | 0.0414 (unstable) |
+| 50 | 195 | 0.3385 | 129 | 0.0239 (unstable) |
+| 100 | 192 | 0.3333 | 128 | 0.0140 |
+| 200 | 185 | 0.3351 | 123 | 0.0077 (stable) |
+| 400 (strong — near-global) | 177 | 0.3446 | 116 | 0.0040 (stable) |
+| — global baseline (k=∞) | 178 | 0.3483 | 116 | — |
+
+**Every stability-passing k (200, 400) converges to essentially the current baseline (±7
+answered) with a real precision cost; every k that gains meaningfully more (20, 50) fails the same
+stability bar ADR-013's free per-language rule already failed.** There is no k that is both
+materially better and stable — the shrinkage idea, while more principled than either of ADR-013's
+two prior attempts, does not surface a third option. **Final decision: TAU=0.8835, MARGIN=0.0
+unchanged.** This is now the third independent method (global sweep, per-language + formula
+offset, shrinkage) to reach the same conclusion — the abstention rate is a real, disclosed
+limitation of the current retrieval evidence, not a threshold-placement problem, per ADR-013's
+original diagnosis and ADR-016/017's follow-ups.
+
+### Part 2 — Safety regression suite (fresh, all confirmed)
+
+Run against the unchanged TAU (`scripts/g3_phase9_safety_suite.py`,
+`eval/g3_phase9_safety_suite_results.json`):
+
+- **"भारत की राजधानी क्या है?" / "What is the capital of India?"** — both abstain (top1=0.821/
+  0.817, both below TAU). Safe.
+- **A genuinely unsupported question** (constructed out-of-domain) — abstains (top1=0.804). Safe.
+- **Correct top-1 evidence** (3 real cases) — all answered correctly, as expected.
+- **Correct evidence at rank 5–10** (categories B/C from ADR-016's taxonomy) — abstains, which is
+  expected/accepted behavior (ADR-016 already found no safe reranking fix exists), not a new
+  failure.
+- **The 5 highest-scoring wrong (same-template-distractor) queries in the whole 532-set** — all 5
+  are answered (i.e. false-accepted). **This is not a new regression** — these are simply the most
+  extreme concrete illustrations of the already-disclosed 34.8% precision-of-accepted baseline
+  (ADR-013's `false_accept=116`, unchanged since TAU is unchanged). Reported here for
+  concreteness, not as evidence of a new problem this phase introduced.
+
+### Part 2B — Local disk cleanup (real, verified, one real mistake caught and fixed)
+
+Per this phase's request to remove unnecessary runtime residency without deleting useful corpus
+information — checked what's actually referenced before deleting anything, not assumed from
+Phase 6's earlier "cleanup opportunity" note:
+
+- **`chunk_lookup.json`** (120MB, `data/index/multilingual_100k/`) — **kept.** Grep confirmed it
+  is a real, active dependency of several legitimate offline tools
+  (`add_english_to_multilingual_index.py`, `eval_multilingual_retrieval.py`,
+  `eval_corpus_size.py`, `eval_faiss_index_variants.py`, `audit_memory.py`,
+  `convert_chunk_lookup_sqlite.py`) — not runtime residency at all (production's
+  `load_built_index_lean()` never loads it; verified in the Phase 6 memory audit), so deleting it
+  would save zero RAM while breaking real, reusable tooling. Kept per this phase's own explicit
+  instruction not to remove useful information.
+- **`model.onnx` (FP32, 470MB) + `tokenizer.json` (17MB)** in
+  `data/onnx/multilingual-e5-small/` — deleted, then **`tokenizer.json` had to be restored**: a
+  real regression test (`tests/index/test_lite_e5_embedder_tokenizer_regression.py`, 11 tests)
+  depends on it as the byte-identical comparison baseline for the lean SentencePiece tokenizer —
+  missed by an `src/`-only grep before deleting, caught immediately by running the full test suite
+  (10 errors), fixed by regenerating it directly from the HF tokenizer
+  (`AutoTokenizer.from_pretrained(...).save_pretrained(...)`, byte-identical file size, all 11
+  tests re-verified passing). `model.onnx` stays deleted — confirmed genuinely unreferenced by
+  any `src/` or test code, and fully regenerable via the existing, working
+  `scripts/export_onnx_embedder.py` if ever needed again. **Real net saving: 448MB** (embedder
+  directory 583MB → 135MB); disclosed here including the mistake, not just the clean outcome.
+
+### Part 2C — Final memory/disk/latency (re-measured fresh)
+
+| | Value |
+|---|---|
+| Steady-state RSS | 405.6MB (unchanged — the disk cleanup only removed files never loaded into RAM) |
+| Peak RSS | 492.8MB |
+| Index disk (`data/index/multilingual_100k/`) | 365MB (unchanged — `chunk_lookup.json` kept) |
+| Embedder disk (`data/onnx/multilingual-e5-small/`) | **135MB** (was 583MB) |
+| Docker image | none built for this candidate (unchanged from Phase 6); Hindi-only reference image (`vrag-real:v3`) still 1.71GB |
+| Pipeline latency, 500 real samples (`bench_latency.py`) | P50=13.3ms, P70=14.3ms, P95=17.0ms, P100=23.6ms |
+| `retrieve` stage | P50=11.5ms, P100=21.3ms |
+
+Consistent with Phase 6's numbers within measurement noise — confirms nothing regressed.
+`eval/latency_results.json` (canonical Hindi-only production record) restored via `git checkout`
+immediately after this run, not left overwritten.
+
+### Part 3 — Voice validation: a critical, previously-undiscovered finding
+
+**Honesty correction, stated plainly:** no voice test in this entire project — this phase
+included — has used genuine human-spoken microphone input. Phase 6's "real voice test" and
+this phase's four-language test both use Sarvam-TTS-synthesized audio
+(`scripts/synthesize_test_audio.py`'s method) through real STT, not human speech. That distinction
+matters more than usual given what this phase found.
+
+**All four languages tested (Hindi, English, Bengali, Tamil), via `language_code="auto"` (the
+production default `src/vrag/stt/sarvam.py` uses), were auto-detected as `en-IN`** — including
+Bengali and Tamil audio, which got transliterated into English-script approximations ("Stevenson
+Ranch Elaka Code" for a Bengali zip-code query; "Kanayan people which language do they speak?" for
+a Tamil query) rather than transcribed in their real script. Only genuinely English audio
+auto-detects correctly, trivially.
+
+**Isolated the root cause with a direct, real test:** re-ran the same Bengali and Tamil audio with
+an **explicit** (non-auto) `language_code` instead of `"auto"`. Both transcribed **correctly, in
+the real script**, near-perfectly matching the source text (Tamil: `"கானாயன் மக்கள் எந்த மொழியை
+பேசுகிறார்கள்?"`, only the foreign proper noun "Kanayan" romanized, a reasonable limitation, not a
+bug; Bengali: exact match plus a correctly-added trailing punctuation mark). **The underlying STT
+model can transcribe every tested language correctly — the failure is specifically in
+auto-detection**, not the recognizer itself, not the TTS audio, and not anything downstream (G2/
+retrieval/generation all behave correctly once given the right language, confirmed by the
+text-path tests across all prior phases).
+
+**Why this matters more than a normal STT quirk:** the entire Phase 1 language-routing
+architecture (`query_language` → G2 → language-filtered retrieval → `generation_language`) was
+built specifically around `language_code="auto"`, chosen in ADR-008 because it is the *only* mode
+in which Sarvam populates a transcript event's `language` field at all. If auto-detection itself
+defaults to English for non-English speech, every downstream stage that depends on
+`query_language` being correct inherits that failure for real voice input — even though every one
+of those downstream stages, tested independently via text, works correctly. This is a real gap
+between "the pipeline is correct" (true, extensively verified) and "the pipeline receives correct
+input from real voice" (not established — actively contradicted by this test) for any language
+other than English.
+
+**Not fixed here** — no STT configuration change was authorized this phase, and a proper fix needs
+its own investigation (e.g., whether a longer/less-clean audio sample improves auto-detection
+confidence, whether Sarvam's auto-detect is tuned differently for genuine human speech vs. TTS
+output, or whether a two-pass approach — auto-detect first, re-transcribe with an explicit code if
+confidence is low — is warranted). Flagged as the most urgent open item from this whole local
+build, ahead of the G3 abstention rate, because it affects whether real users speaking non-English
+languages get routed correctly at all.
+
+**No production code changed.** 286/286 tests pass, ruff clean.

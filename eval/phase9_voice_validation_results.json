@@ -1,0 +1,79 @@
+[
+  {
+    "label": "hindi",
+    "expected_query": "आप किस उम्र के बच्चे का दावा कर सकते हैं",
+    "stt_transcript": "Aap kis umr ke bachche ka dawa kar sakte hain?",
+    "stt_detected_language": "en-IN",
+    "stt_ms": 831.5861999872141,
+    "pipeline_ms": 1630.2225999970688,
+    "total_voice_to_answer_ms": 2461.808799984283,
+    "status": "abstained",
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "answer": null,
+    "citations": [],
+    "refusal_reason": "Top result confidence 0.85 is below threshold 0.8835."
+  },
+  {
+    "label": "english",
+    "expected_query": "daniella monet net worth",
+    "stt_transcript": "Daniela Monet Networth",
+    "stt_detected_language": "en-IN",
+    "stt_ms": 834.8945999896387,
+    "pipeline_ms": 30.008699992322363,
+    "total_voice_to_answer_ms": 864.903299981961,
+    "status": "answered",
+    "answer_language": "eng_Latn",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.9228423237800598,
+    "answer": "Daniella Monet Articles Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million.",
+    "citations": [
+      {
+        "chunk_id": "eng_Latn::115346_0::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_0",
+        "score": 0.9228423237800598,
+        "text_span": "Daniella Monet Articles Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million."
+      },
+      {
+        "chunk_id": "eng_Latn::115346_6::metadata_aware::0",
+        "passage_id": "eng_Latn::115346_6",
+        "score": 0.9156241416931152,
+        "text_span": "Daniella Monet Articles. Daniella Monet Net Worth Daniella Monet Net Worth: Daniella Monet is an American actress, singer, and dancer who has a net worth of $3 million. Daniella Mo..."
+      }
+    ],
+    "refusal_reason": null
+  },
+  {
+    "label": "bengali",
+    "expected_query": "স্টিভেনসন র‍্যাঞ্চ এলাকা কোড",
+    "stt_transcript": "Stevenson Ranch Elaka Code",
+    "stt_detected_language": "en-IN",
+    "stt_ms": 1043.6308000062127,
+    "pipeline_ms": 25.09460000146646,
+    "total_voice_to_answer_ms": 1068.7254000076791,
+    "status": "abstained",
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "answer": null,
+    "citations": [],
+    "refusal_reason": "Top result confidence 0.83 is below threshold 0.8835."
+  },
+  {
+    "label": "tamil",
+    "expected_query": "கானாயன் மக்கள் எந்த மொழியைப் பேசுகிறார்கள்?",
+    "stt_transcript": "Kanayan people which language do they speak?",
+    "stt_detected_language": "en-IN",
+    "stt_ms": 896.1471999937203,
+    "pipeline_ms": 23.572599995532073,
+    "total_voice_to_answer_ms": 919.7197999892524,
+    "status": "abstained",
+    "answer_language": "en-IN",
+    "query_language_recorded": "en-IN",
+    "confidence": 0.0,
+    "answer": null,
+    "citations": [],
+    "refusal_reason": "Top result confidence 0.80 is below threshold 0.8835."
+  }
+]
