@@ -387,25 +387,21 @@ stronger embedder — both out of scope here), not silently patched to look bett
 `scripts/e2e_bonus_answered_cases.py`, 19 real cases total, results in
 `eval/e2e_demo_readiness_results.json` / `eval/e2e_bonus_answered_results.json`):**
 
-- **Voice tested for four languages (Hindi, English, Bengali, Tamil), and a critical, previously-
-  undiscovered finding came out of it (Phase 9, ADR-018) — read this before relying on voice for
-  anything but English.** All four, via Sarvam's real STT with `language_code="auto"` (the
-  production default), were **auto-detected as English** — Bengali and Tamil audio got
-  transliterated into English-script approximations instead of transcribed in their real script.
-  Isolated the cause directly: re-running the same audio with an **explicit** (non-auto) language
-  code transcribes both correctly, in the real script, near-perfectly. **The STT model can
-  transcribe every language tested — only auto-detection fails.** This matters because the entire
-  language-routing architecture (`query_language` → G2 → language-filtered retrieval →
-  `generation_language`) depends on auto-detection for real voice input; if it defaults to
-  English, every downstream stage — independently verified correct via text, in every phase —
-  never receives the right input for any language but English. Not fixed here (no STT
-  configuration change was authorized); flagged as the single most urgent open item from this
-  whole local build. **Also disclosed here plainly: no voice test in this project, this one
-  included, has used genuine human-spoken microphone input** — every audio file (this test's and
-  Phase 6's) is Sarvam-TTS-synthesized speech through real STT, not a human recording. That
-  distinction matters more than usual given what this test found. Every other language was tested
-  via text (permitted — voice requires physically speaking many languages, which wasn't done;
-  **no voice result is fabricated**).
+- **Voice tested for four languages (Hindi, English, Bengali, Tamil) — found a critical STT
+  auto-detection bug (Phase 9, ADR-018), fixed one phase later (Phase 10, ADR-019).** All four, via
+  Sarvam's real STT with `language_code="auto"`, were **auto-detected as English** — Bengali and
+  Tamil audio got transliterated into English-script approximations instead of transcribed in
+  their real script. Isolated the cause directly: the same audio, given an **explicit** language
+  code, transcribed correctly, in the real script, near-perfectly — the recognizer works, only
+  auto-detection fails. **Fixed in Phase 10:** `/voice` no longer relies on auto-detection at all —
+  the user selects their language up front (see [§12A](#12a-the-multilingual-candidate--local-only-not-deployed)
+  below), and that selection, not a detected guess, drives `query_language` throughout. This routes
+  around the failure; it doesn't repair Sarvam's auto-detector itself, which remains untouched.
+  **Still disclosed plainly: no voice test in this project, before or after the fix, has used
+  genuine human-spoken microphone input** — every audio file is Sarvam-TTS-synthesized speech
+  through real STT, not a human recording. Every other language in this specific test pass was
+  tested via text (permitted — voice requires physically speaking many languages, which wasn't
+  done; **no voice result is fabricated**).
 - **Answered, with correct in-language generation** (real, not translated to Hindi): English,
   Bengali, Marathi, Tamil, Kannada, Urdu, Gujarati, Assamese — 8 of the 9 text-tested languages
   produced at least one real grounded answer in its own script during this test pass (Hindi
@@ -573,17 +569,23 @@ Stated plainly, not minimized:
   Docker image. Reproducing it requires rerunning the real data-download-and-build pipeline
   locally (real time and bandwidth), documented in [§12A](#12a-the-multilingual-candidate--local-only-not-deployed),
   not a one-command judge path today.
-- **Real voice input auto-detects as English for every non-English language tested (Hindi, Bengali,
-  Tamil) — a critical, previously-undiscovered finding.** Sarvam's real STT, in its production
-  `language_code="auto"` mode, mis-detected all three as English, transliterating Bengali/Tamil
-  speech into English-script approximations. Isolated directly: the *same* audio, given an
-  *explicit* (non-auto) language code, transcribes correctly in the real script — the recognizer
-  itself works, only auto-detection fails. Since the entire language-routing pipeline depends on
-  auto-detection for real voice input, this means real spoken queries in any language but English
-  risk being silently mis-routed today. Not fixed (no STT config change authorized where this was
-  found); the single most urgent open item from this build. **Also disclosed: no voice test in
-  this project has used genuine human speech** — every audio file, including this one, is
-  Sarvam-TTS-synthesized through real STT, not a human recording. Full detail in
+- **Sarvam's voice auto-detection defaulted to English for every non-English language tested
+  (Hindi, Bengali, Tamil) — found in Phase 9, routed around in Phase 10 (ADR-019).** The
+  recognizer itself was never broken — an explicit language code transcribed the same audio
+  correctly every time — only `language_code="auto"` failed. **Fix shipped:** `/voice` now
+  requires the user to select their language before recording (a dropdown next to the mic,
+  populated from the same `SUPPORTED_LANGUAGES` source of truth G2/retrieval use); `query_language`
+  is always that selection, never a detected guess. This is the first production code change since
+  Phase 3 — everything else in this multi-phase effort (Phases 4–9) was diagnosis only. **What
+  this does and doesn't fix:** it makes real voice input reliable by *not depending on*
+  auto-detection any more — Sarvam's auto-detector itself is untouched and would presumably still
+  mis-detect if ever used again. Verified via 15 new tests with a recording fake STT (confirms the
+  right language reaches the STT call, survives a simulated Sarvam-language mismatch without
+  switching routing, and falls back to Hindi for an unsupported/missing selection) and a real
+  browser load (the dropdown genuinely populates with all 14 languages from a live `/languages`
+  call). **Still not tested: genuine human-spoken microphone input**, in any language — every
+  voice test in this project, before and after this fix, uses Sarvam-TTS-synthesized audio through
+  real STT, not a human recording. Full detail in
   [§12A](#12a-the-multilingual-candidate--local-only-not-deployed).
 
 ## 16. Project structure

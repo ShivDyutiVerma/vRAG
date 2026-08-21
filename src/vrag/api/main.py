@@ -29,6 +29,7 @@ from starlette.websockets import WebSocketState
 from vrag.harness.budget import Budget
 from vrag.harness.pipeline import PipelineContext, run_pipeline
 from vrag.harness.stages import default_stages
+from vrag.languages import LANGUAGE_DISPLAY_NAMES, SUPPORTED_LANGUAGES, is_supported
 from vrag.retrieval.interface import is_retrieval_real
 from vrag.schemas import AnswerResponse
 from vrag.stt.sarvam import stream_transcribe
@@ -79,6 +80,15 @@ _FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
 # proving the mechanism works, not hitting the final number.
 _DEFAULT_BUDGET_MS = 200.0
 
+# Phase 10 (docs/DECISIONS.md ADR-019): Sarvam's `language_code="auto"` was found to default to
+# English for every non-English language tested (real Hindi/Bengali/Tamil audio, ADR-018) — the
+# underlying STT transcribes correctly once given an explicit code, only auto-detection fails.
+# `/voice` now requires the client to select a language up front instead of relying on
+# auto-detection to discover it after the fact. Hindi is the default when no selection is sent
+# (backward compatibility with a client that predates this change), matching this project's
+# original Hindi-only scope.
+_DEFAULT_VOICE_LANGUAGE = "hi-IN"
+
 
 class AskRequest(BaseModel):
     query: str
@@ -101,9 +111,11 @@ async def build_answer(
     fires a trace emission in the background — never awaited before the response is built, so
     disk I/O never sits on the hot path (docs/CONVENTIONS.md).
 
-    `language`: the real Sarvam-detected query language (docs/DECISIONS.md ADR-009), None when no
-    real signal exists. Stored as `query_language` — never overloaded onto the "language" key the
-    rest of the pipeline uses for the answer's own language (see src/vrag/languages.py)."""
+    `language`: the query's language — the caller-supplied hint for `/ask`, or (since Phase 10,
+    ADR-019) the user's explicitly *selected* language for `/voice`, no longer Sarvam's own
+    auto-detected one. None when no signal exists at all. Stored as `query_language` — never
+    overloaded onto the "language" key the rest of the pipeline uses for the answer's own
+    language (see src/vrag/languages.py)."""
     ctx = PipelineContext(query=query, budget=Budget(total_ms=budget_ms))
     ctx.data["k"] = k
     ctx.data["query_language"] = language
@@ -125,21 +137,81 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok", "retrieval": "real" if is_retrieval_real() else "stub"}
 
 
+@app.get("/languages")
+async def languages() -> list[dict[str, str]]:
+    """Phase 10 (docs/DECISIONS.md ADR-019): the frontend's language selector is populated from
+    this endpoint rather than a hardcoded list, so it can never drift out of sync with
+    `src/vrag/languages.py`'s `SUPPORTED_LANGUAGES` — the same source G2/retrieval already use."""
+    out = []
+    for code in SUPPORTED_LANGUAGES:
+        name, script = LANGUAGE_DISPLAY_NAMES.get(code, (code, ""))
+        out.append({"code": code, "name": name, "script": script})
+    out.sort(key=lambda row: row["name"])
+    return out
+
+
 @app.post("/ask", response_model=AnswerResponse)
 async def ask(req: AskRequest) -> AnswerResponse:
     return await build_answer(req.query, k=req.k, language=req.language)
+
+
+async def _read_selected_language(websocket: WebSocket) -> tuple[str, bytes | None]:
+    """Phase 10 (docs/DECISIONS.md ADR-019): the client's first WS message must be
+    `{"event": "start", "language": "<supported code>"}`, sent before any audio. Returns the
+    resolved language (falling back to `_DEFAULT_VOICE_LANGUAGE` for a missing/unsupported code —
+    requirement 9's "backward compatibility" default) and, for an old client that skips the start
+    control and sends audio immediately, that first audio chunk so it isn't silently dropped."""
+    try:
+        message = await websocket.receive()
+    except WebSocketDisconnect:
+        return _DEFAULT_VOICE_LANGUAGE, None
+    if message.get("type") == "websocket.disconnect":
+        return _DEFAULT_VOICE_LANGUAGE, None
+
+    text = message.get("text")
+    if text:
+        try:
+            control = json.loads(text)
+        except json.JSONDecodeError:
+            control = {}
+        if control.get("event") == "start":
+            candidate = control.get("language")
+            if isinstance(candidate, str) and is_supported(candidate):
+                return candidate, None
+            logger.info(
+                "WS /voice: missing/unsupported language in start control (%r) — defaulting to %s",
+                candidate,
+                _DEFAULT_VOICE_LANGUAGE,
+            )
+            return _DEFAULT_VOICE_LANGUAGE, None
+        return _DEFAULT_VOICE_LANGUAGE, None
+
+    # No start control at all (client predates Phase 10) — first message is presumably audio;
+    # don't drop it, hand it back to be replayed as the stream's first chunk.
+    logger.info("WS /voice: no start control received — defaulting to %s", _DEFAULT_VOICE_LANGUAGE)
+    return _DEFAULT_VOICE_LANGUAGE, message.get("bytes")
 
 
 @app.websocket("/voice")
 async def voice(websocket: WebSocket) -> None:
     """Browser mic -> raw PCM16 frames over this socket -> real Sarvam STT -> transcript events
     relayed back, per docs/API_CONTRACTS.md. On a final transcript, runs the full harness
-    pipeline (build_answer) and returns the resulting AnswerResponse."""
+    pipeline (build_answer) and returns the resulting AnswerResponse.
+
+    Phase 10 (docs/DECISIONS.md ADR-019): the client selects its language up front (see
+    `_read_selected_language`) instead of relying on Sarvam's `language_code="auto"` detection,
+    which ADR-018 found defaults to English for every non-English language tested. `query_language`
+    is always the user's selection, never Sarvam's own detected language — see the mismatch check
+    below."""
     await websocket.accept()
-    logger.info("WS /voice: accepted")
+    selected_language, first_audio_chunk = await _read_selected_language(websocket)
+    logger.info("WS /voice: accepted, selected_language=%s", selected_language)
 
     async def browser_audio_chunks():
         n = 0
+        if first_audio_chunk:
+            n += 1
+            yield first_audio_chunk
         while True:
             try:
                 message = await websocket.receive()
@@ -165,18 +237,28 @@ async def voice(websocket: WebSocket) -> None:
                     return
 
     try:
-        # Phase 1 (docs/DECISIONS.md ADR-009): "auto" replaces the old hardcoded "hi-IN" — Sarvam
-        # only populates a transcript event's `language` field when the connection used "auto"
-        # (verified live against docs.sarvam.ai, not assumed), so this is also what makes real
-        # language detection possible at all, not just a cosmetic default change.
-        async for event in stream_transcribe(browser_audio_chunks(), language_code="auto"):
+        # Explicit, not "auto" (ADR-019) -- requirement 10: auto-detection is no longer the
+        # primary routing mechanism. Sarvam only populates a transcript event's `language` field
+        # in "auto" mode (verified, ADR-009) -- in explicit mode `event.language` is structurally
+        # None on real Sarvam responses, so the mismatch check below is a defensive/dormant safety
+        # net (kept per requirement 12), not an active signal under normal operation.
+        audio_stream = browser_audio_chunks()
+        async for event in stream_transcribe(audio_stream, language_code=selected_language):
             logger.info("WS /voice: transcript event: %s", event)
             if event.type == "partial":
                 await websocket.send_json({"type": "transcript_partial", "text": event.text})
             elif event.type == "final":
                 await websocket.send_json({"type": "transcript_final", "text": event.text})
+                if event.language and event.language != selected_language:
+                    logger.warning(
+                        "WS /voice: Sarvam-reported language (%s) differs from user selection "
+                        "(%s) — routing is NOT switched, query_language stays %s",
+                        event.language,
+                        selected_language,
+                        selected_language,
+                    )
                 if event.text.strip():
-                    answer = await build_answer(event.text, language=event.language)
+                    answer = await build_answer(event.text, language=selected_language)
                     await websocket.send_json(
                         {"type": "answer_final", "answer_response": answer.model_dump()}
                     )

@@ -1263,3 +1263,95 @@ build, ahead of the G3 abstention rate, because it affects whether real users sp
 languages get routed correctly at all.
 
 **No production code changed.** 286/286 tests pass, ruff clean.
+
+## ADR-019 — Phase 10: explicit user-selected language replaces auto-detection for /voice
+
+**Date:** 2026-08-21. **Status:** Accepted. First production code change since ADR-012 (Phase 3)
+— every intervening phase (4 through 9) was diagnosis/experimentation only. G3, the corpus, the
+embedding model, FAISS, and reranking are all untouched, per this phase's explicit constraints.
+Nothing deployed.
+
+**Task:** ADR-018 found Sarvam's `language_code="auto"` defaults to English for every non-English
+language tested (Hindi, Bengali, Tamil), even though the same audio transcribes correctly given an
+explicit language code. Fix: stop relying on auto-detection for real voice input; let the user
+select their language before recording, same as the `SUPPORTED_LANGUAGES` source of truth already
+governs G2/retrieval.
+
+**Backend (`src/vrag/api/main.py`):**
+- **New `GET /languages`** — returns `[{code, name, script}, ...]` sourced directly from
+  `src/vrag/languages.py`'s `SUPPORTED_LANGUAGES`/`LANGUAGE_DISPLAY_NAMES`, so the frontend
+  selector can never drift out of sync with what G2/retrieval actually accept.
+- **`WS /voice`** now requires the client's first message to be
+  `{"event": "start", "language": "<code>"}`, read by a new `_read_selected_language()` helper
+  before the existing `browser_audio_chunks()` generator starts. An unsupported or missing code
+  falls back to `_DEFAULT_VOICE_LANGUAGE = "hi-IN"` (requirement 9's backward-compatibility
+  default); a client that predates this change and sends audio immediately (no start control at
+  all) gets the same fallback, and that first audio chunk is threaded back in as the stream's
+  first yield rather than silently dropped.
+- `stream_transcribe(...)` is now called with `language_code=selected_language` (explicit), not
+  `"auto"` — requirement 10, auto-detection is no longer the primary routing mechanism.
+- **`query_language` is always the user's selection.** `build_answer(event.text,
+  language=selected_language)` — not `event.language`. `retrieved_language` (set later, from the
+  actually-retrieved chunk's own language tag) and `generation_language` (defaults to
+  `query_language`, unchanged mechanism from ADR-008) are unaffected — both already correctly
+  distinct from `query_language`, verified again this phase.
+- **Mismatch handling (requirement 12):** if `event.language` is present and differs from the
+  selection, a warning is logged (`selected=... detected=...`) — routing is never switched.
+  **Verified real, structural constraint, not assumed:** Sarvam only populates `event.language` in
+  `"auto"` mode (ADR-009) — confirmed again in ADR-018's explicit-code tests, where it came back
+  `None`. Since this fix deliberately moves away from `"auto"`, this check is a defensive/dormant
+  safety net under normal operation, not an active signal — documented as such in the code, not
+  silently pretended to be doing more than it can.
+- G2 (`src/vrag/guardrails/g2_scope_language.py`) is untouched — still the same real
+  `is_supported()` check, now simply always receiving a known-valid code from the selector instead
+  of an unreliable detected one.
+- `AnswerResponse`'s schema is unchanged — no new field added; the mismatch signal is logged only,
+  never exposed to the API response, keeping this change minimal per the instructions.
+
+**Frontend (`frontend/index.html`):** a `<select id="langSelect">` next to the mic (matching the
+requested `Language: [ Hindi ▼ ] / [ Microphone ]` layout), populated from `GET /languages` on
+load (a hardcoded Hindi-only `<option>` already in the markup is the fallback if that fetch ever
+fails — the selector still works, just Hindi-only, rather than breaking). Defaults to `hi-IN`.
+Sent as the WS's first message on `ws.onopen`, before any audio starts. Disabled while
+listening/working (no language switch mid-recording), re-enabled on every terminal state (idle,
+answered, degraded, abstained, refused, error). No redesign — same card, same states, same four-
+status rendering logic untouched.
+
+**Tests (`tests/test_voice_language_selection.py`, 15 new, all passing):** every selected language
+(Hindi/English/Bengali/Tamil plus Gujarati/Marathi/Kannada) reaches `stream_transcribe` as the
+explicit `language_code` and lands in `query_language` unchanged; an unsupported code and a
+missing start control both fall back to Hindi; the first-audio-chunk-preserved case is verified
+directly (the fake STT records every chunk it received); the Sarvam-mismatch case is verified
+directly (a fake final event claims `en-IN` while the user selected `ta-IN` — `query_language`
+stays `ta-IN`); `GET /languages` matches `SUPPORTED_LANGUAGES` exactly; the pre-existing stop
+control still ends the stream correctly; G2 still lets a selected, supported language through; the
+full `AnswerResponse` schema is confirmed present and unchanged. One more test verifies
+`generation_language` directly against `PipelineContext` (not exposed in the API schema) — set to
+the selected `query_language`, per ADR-008's unchanged `ExtractAnswerStage` default. This is
+in-process/offline verification with a recording fake STT, exactly as requested — **not a claim of
+real human-microphone verification**, which remains unperformed for every language, as disclosed
+in ADR-018.
+
+**Latency impact: none to the measured pipeline.** No harness stage, retrieval code, or generation
+code changed — Phase 6/9's real `bench_latency.py` numbers (P50=13.3ms) remain valid as-is, since
+that script exercises `/ask`, which is untouched. The only new cost is one WS control-message
+round trip at voice-session *start*, before the user speaks (not inside any measured latency
+window), plus an O(1) frozenset membership check (`is_supported`) — both negligible. Real STT
+transcription time itself is unaffected: same Sarvam connection either way, just a different
+`language_code` value.
+
+**Verified real (not assumed):** a fresh local server (`VRAG_INDEX_DIR` pointed at the
+multilingual candidate) served `GET /languages` returning all 14 real languages; a real browser
+load confirmed the `<select>` populates with the exact same 14 options (checked via
+`document.getElementById('langSelect').options`, not just visual screenshot — native `<select>`
+popups don't reliably screenshot), defaulting to Hindi, positioned exactly as requested.
+
+**Does this bypass the auto-detection failure safely?** Yes, for the *routing* decision — the
+system no longer asks Sarvam to guess the language and no longer trusts that guess if it's wrong.
+It does not, and cannot, fix Sarvam's auto-detector itself (out of scope, not attempted) — it
+routes around it. Real human-microphone testing of the new flow has not been performed (same
+disclosed gap as every prior phase); the fix is verified via real in-process pipeline execution
+with a mocked STT layer, which is what this phase asked for.
+
+**301/301 tests pass** (286 pre-existing + 15 new), ruff clean. No corpus, embedder, FAISS, G3, or
+reranking code touched. Nothing deployed.

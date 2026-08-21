@@ -353,6 +353,24 @@ are Sarvam-TTS-synthesized audio through real STT, a real but limited form of va
 
 No production code changed, nothing deployed. 286/286 tests pass, ruff clean.
 
+**Phase 10 (fix the STT auto-detection failure) done — first production code change since Phase
+3.** Full record: `docs/DECISIONS.md` ADR-019. Replaced Sarvam's `language_code="auto"` (found in
+ADR-018 to default to English for every non-English language tested) with an explicit,
+user-selected language for `/voice`. New `GET /languages` endpoint sources the frontend's
+selector directly from `SUPPORTED_LANGUAGES` (can't drift out of sync with G2/retrieval). The WS
+protocol now requires a `{"event": "start", "language": "..."}` control message before any audio;
+an unsupported/missing code falls back to Hindi (backward compatibility), and a pre-Phase-10
+client that sends audio immediately gets the same fallback without losing its first chunk.
+`query_language` is now always the user's selection — never Sarvam's own detected language, which
+is logged for a (currently dormant, since explicit mode never populates it) mismatch check but
+never used for routing. Frontend gets a `<select>` next to the mic, defaulting to Hindi, disabled
+while listening, matching the requested layout — no redesign. 15 new tests (all passing) cover
+every required scenario including the first-audio-chunk-preservation and Sarvam-mismatch cases
+directly, via a recording fake STT — real in-process/offline verification, not a claim of human-
+microphone testing (still unperformed, disclosed same as ADR-018). No latency impact to the
+measured pipeline (nothing in `/ask` or the harness changed). G3, corpus, embedding model, FAISS,
+and reranking all untouched. 301/301 tests pass (286 + 15 new), ruff clean, nothing deployed.
+
 ---
 
 ## Historical: Day 1 sync snapshot (superseded above, kept for the record)

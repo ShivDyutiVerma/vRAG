@@ -178,6 +178,15 @@
   .btn-primary{ background: var(--signal); color: var(--paper); }
   .btn-secondary{ background: transparent; color: var(--signal); border-color: var(--signal); }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .lang-row{ display:flex; align-items:center; gap:8px; }
+  .lang-label{ font-size:10.5px; letter-spacing:.08em; color: var(--moss); font-weight:700; text-transform:uppercase; }
+  .lang-select{
+    font-family: var(--mono); font-size:12.5px; font-weight:600; color: var(--ink);
+    background: var(--paper); border:2px solid var(--moss); border-radius:10px;
+    padding:6px 10px; cursor:pointer;
+  }
+  .lang-select:disabled{ opacity:.6; cursor:not-allowed; }
+  .lang-select:focus-visible{ outline: 3px solid var(--signal); outline-offset:2px; }
 </style>
 </head>
 <body data-state="idle">
@@ -187,6 +196,12 @@
       <div class="pattern-strip" aria-hidden="true"></div>
 
       <div class="mic-col">
+        <div class="lang-row">
+          <label class="lang-label" for="langSelect">Language</label>
+          <select class="lang-select" id="langSelect" aria-label="Choose the language you'll speak in">
+            <option value="hi-IN">Hindi</option>
+          </select>
+        </div>
         <div class="mic-wrap">
           <div class="ring"></div>
           <button class="mic-circle" id="micBtn" aria-label="Tap to speak">
@@ -254,6 +269,21 @@
   const pill = document.getElementById('statusPill');
   const statusText = document.getElementById('statusText');
   const actions = document.getElementById('actions');
+  const langSelect = document.getElementById('langSelect');
+
+  // Populated from the backend's source of truth (Phase 10, docs/DECISIONS.md ADR-019) so this
+  // can never drift out of sync with what G2/retrieval actually accept. The hardcoded "Hindi"
+  // <option> already in the markup is the fallback if this fetch fails -- the selector still
+  // works (just Hindi-only) rather than breaking.
+  fetch('/languages')
+    .then(r => r.json())
+    .then(langs => {
+      langSelect.innerHTML = langs.map(l =>
+        `<option value="${l.code}">${l.name}</option>`
+      ).join('');
+      langSelect.value = 'hi-IN';
+    })
+    .catch(err => console.warn('Could not load /languages, keeping Hindi-only fallback:', err));
 
   let ws = null;
   let audioCtx = null;
@@ -270,6 +300,7 @@
 
   function goIdle(){
     body.dataset.state = 'idle';
+    langSelect.disabled = false;
     micHint.textContent = 'Tap the mic to start';
     eyebrow.textContent = 'Voice · 14 languages';
     headline.innerHTML = 'Ask in <span class="script-accent">14 languages</span>. Grounded in seconds.';
@@ -368,6 +399,7 @@
   function renderAnswerResponse(answerResponse){
     const d = describeAnswerResponse(answerResponse);
     body.dataset.state = d.state;
+    langSelect.disabled = false;
     micHint.textContent = d.micHint;
     eyebrow.textContent = d.eyebrow;
     headline.textContent = d.headline;
@@ -397,6 +429,7 @@
 
   function goError(detail){
     body.dataset.state = 'refused';
+    langSelect.disabled = false;
     headline.textContent = 'Something went wrong.';
     lede.textContent = '';
     panel.innerHTML = `<p class="refuse-text">${detail}</p>`;
@@ -430,6 +463,13 @@
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
+      // Phase 10 (docs/DECISIONS.md ADR-019): must be the FIRST message the server sees, before
+      // any audio bytes — the backend reads exactly one control message to resolve the language,
+      // then treats everything else as audio. Sarvam's own auto-detection was found to default
+      // to English for every non-English language tested, so the user's explicit choice is what
+      // drives routing now, not a signal recovered from the audio after the fact.
+      ws.send(JSON.stringify({ event: 'start', language: langSelect.value }));
+
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       sourceNode = audioCtx.createMediaStreamSource(micStream);
       processorNode = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -441,6 +481,7 @@
       sourceNode.connect(processorNode);
       processorNode.connect(audioCtx.destination);
       listening = true;
+      langSelect.disabled = true;
       goListening();
     };
 

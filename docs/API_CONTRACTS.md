@@ -89,7 +89,21 @@ Returns ready only after all models + the JSON schema are warmed at boot.
 ## WebSocket
 
 ### `WS /voice`
-Client streams raw PCM (`pcm_s16le`, 16kHz) audio frames. Server streams back JSON events:
+**Phase 10 (docs/DECISIONS.md ADR-019):** the client's first message must now be a JSON control
+message selecting the language, sent before any audio:
+```json
+{"event": "start", "language": "hi-IN"}
+```
+`language` must be one of `src/vrag/languages.py`'s `SUPPORTED_LANGUAGES` (also served at
+`GET /languages`, which the frontend's selector is populated from) — an unsupported or missing
+code falls back to `hi-IN` (backward compatibility). A client that predates this change and sends
+audio immediately, with no start control, gets the same `hi-IN` fallback and its first audio
+chunk is not dropped. This replaces Sarvam's `language_code="auto"` detection, found in ADR-018
+to default to English for every non-English language tested; STT now runs with the user's
+explicit language code, and `query_language` is always that selection — never silently
+overwritten if Sarvam's own (structurally absent in explicit mode) `event.language` differs.
+
+Client streams raw PCM (`pcm_s16le`, 16kHz) audio frames next. Server streams back JSON events:
 
 ```json
 {"type": "transcript_partial", "text": "..."}
